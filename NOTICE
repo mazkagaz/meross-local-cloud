@@ -1,0 +1,21 @@
+Meross Cloud IoT (meross_cloud) — MRS100/local-broker fork
+==========================================================
+
+This repository is a fork of:
+  https://github.com/albertogeniola/meross-homeassistant
+
+Original project: meross-homeassistant
+Original license: MIT
+Original copyright: Copyright (c) 2023 Alberto Geniola
+
+The fork changes distribution metadata and documentation so the integration
+can be installed as a HACS custom repository and used with the local Meross
+broker add-on. It adds roller-shutter open/close duration number entities
+(`signalOpen`/`signalClose`), calibration start/stop buttons and a calibration
+status sensor (`Appliance.RollerShutter.Adjust`); it does not change the Meross
+cloud API protocol.
+Fork modifications: Copyright (c) 2026 the MRS100 fork contributors, MIT.
+See MODIFICATIONS.md and LEGAL.md.
+
+Meross is a trademark of its respective owner. This fork is not affiliated
+with, endorsed by, or sponsored by Meross or the upstream author.

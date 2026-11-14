@@ -1,0 +1,19 @@
+{
+  "domain": "meross_cloud",
+  "name": "Meross Cloud IoT (MRS100 fork)",
+  "documentation": "https://github.com/mazkagaz/meross-cloud#readme",
+  "issue_tracker": "https://github.com/mazkagaz/meross-cloud/issues",
+  "dependencies": [
+    "persistent_notification"
+  ],
+  "codeowners": [
+    "@mazkagaz"
+  ],
+  "requirements": [
+    "meross_iot==0.4.9.2"
+  ],
+  "config_flow": true,
+  "quality_scale": "platinum",
+  "iot_class": "cloud_push",
+  "version": "1.3.13"
+}

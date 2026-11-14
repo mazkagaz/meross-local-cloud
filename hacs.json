@@ -1,0 +1,15 @@
+{
+  "name": "Meross Cloud IoT (MRS100/local broker fork)",
+  "hacs": "1.6.0",
+  "homeassistant": "2025.6",
+  "domains": [
+    "sensor",
+    "climate",
+    "switch",
+    "cover",
+    "humidifier",
+    "light",
+    "number",
+    "button"
+  ]
+}
