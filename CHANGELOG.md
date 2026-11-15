@@ -1,3 +1,12 @@
+## 1.3.22
+
+- Fix every MRS100 entity update failing with `AttributeError: 'list' object
+  has no attribute 'get'`. The pinned `meross_iot` release calls `.get()` on
+  the default `light` digest even when the device has no light payload; a
+  runtime patch now skips that mixin for non-light devices.
+- Entity updates can no longer prevent an entity from being added when the
+  third-party device update raises.
+
 ## 1.3.21
 
 - Fix the 500 error when opening the integration options (gear icon):

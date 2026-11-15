@@ -17,7 +17,6 @@ from meross_iot.http_api import MerossHttpClient, ErrorCodes
 from meross_iot.manager import MerossManager
 from meross_iot.model.credentials import MerossCloudCreds
 from meross_iot.model.enums import OnlineStatus, Namespace
-from meross_iot.model.exception import CommandTimeoutError
 from meross_iot.model.http.device import HttpDeviceInfo
 from meross_iot.model.http.exception import (
     TokenExpiredException,
@@ -50,6 +49,9 @@ from .common import (
     MEROSS_DEFAULT_CLOUD_API_URL
 )
 from .version import MEROSS_IOT_VERSION
+from .patches import apply_patches
+
+apply_patches()
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -236,7 +238,9 @@ class MerossDevice(Entity):
         if self.online:
             try:
                 await self._device.async_update()
-            except CommandTimeoutError as e:
+            except Exception:
+                # A failing third-party device update must not prevent the
+                # entity from being added or kept in Home Assistant.
                 log_exception(logger=_LOGGER, device=self._device)
 
     def _http_data_changed(self) -> None:
