@@ -1,3 +1,9 @@
+## 1.3.19
+
+- Keep cover entities available when the HTTP device list transiently omits a
+  device from a multi-device account: fall back to the MQTT online status
+  instead of raising or marking the entity unavailable.
+
 ## 1.3.18
 
 - Regenerate every icon from the transparent logo artwork (the JPEG source

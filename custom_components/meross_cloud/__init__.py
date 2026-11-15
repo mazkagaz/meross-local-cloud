@@ -240,7 +240,10 @@ class MerossDevice(Entity):
                 log_exception(logger=_LOGGER, device=self._device)
 
     def _http_data_changed(self) -> None:
-        new_data = self._coordinator.data.get(self._device.uuid)
+        new_data = (self._coordinator.data or {}).get(self._device.uuid)
+        if new_data is None:
+            self.async_schedule_update_ha_state(force_refresh=False)
+            return
         if self._last_http_state is not None and self._last_http_state.online_status != OnlineStatus.ONLINE and new_data.online_status == OnlineStatus.ONLINE:
             self._last_http_state = new_data
             self.async_schedule_update_ha_state(force_refresh=True)
@@ -252,10 +255,15 @@ class MerossDevice(Entity):
     def online(self) -> bool:
         if not self._coordinator.last_update_success:
             return False
-        elif self._last_http_state is not None:
+        new_data = (self._coordinator.data or {}).get(self._device.uuid)
+        if new_data is not None:
+            return new_data.online_status == OnlineStatus.ONLINE
+        if self._last_http_state is not None:
             return self._last_http_state.online_status == OnlineStatus.ONLINE
-        else:
-            return self._coordinator.data.get(self._device.uuid).online_status == OnlineStatus.ONLINE
+        # The HTTP list can transiently omit a device (multi-device accounts);
+        # fall back to the MQTT transport state instead of crashing/marking it
+        # unavailable.
+        return self._device.online_status == OnlineStatus.ONLINE
 
     @property
     def unique_id(self) -> str:
