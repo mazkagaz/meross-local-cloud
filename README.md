@@ -16,13 +16,13 @@ Ce fork ajoute le support MRS100 :
 |---|---|---|
 | **Meross Local Broker** | add-on : broker MQTT + API locale | [mazkagaz/meross-local-broker](https://github.com/mazkagaz/meross-local-broker) |
 | **Meross Cloud IoT** | cette intégration Home Assistant (HACS) | [mazkagaz/meross-cloud](https://github.com/mazkagaz/meross-cloud) |
-| **Local Pairer** | application Android d'appairage | [mazkagaz/meross-local-pairer](https://github.com/mazkagaz/meross-local-pairer) |
+| **Meross Local Pairer** | application Android d'appairage | [mazkagaz/meross-local-pairer](https://github.com/mazkagaz/meross-local-pairer) |
 
 ```
 MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> cette intégration
                             ^
                             │ appairage initial
-                       Local Pairer (Android)
+                       Meross Local Pairer (Android)
 ```
 
 ## Avant de commencer
@@ -30,7 +30,7 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 1. L'add-on **Meross Local Broker** est installé et démarré.
 2. Un **compte local** a été créé dans l'add-on (adresse e-mail et mot de
    passe, Meross Link désactivé).
-3. Le MRS100 a été appairé avec **Local Pairer**.
+3. Le MRS100 a été appairé avec **Meross Local Pairer**.
 4. **HACS** est installé dans Home Assistant.
 5. Home Assistant 2025.6 ou plus récent.
 
@@ -67,7 +67,7 @@ des modules complémentaires (lien ci-dessus).
 
 Si Home Assistant n'est pas joignable via `homeassistant.local`, remplacer par
 son adresse IP (`http://192.168.x.x:2003` et `192.168.x.x:2001`). Dans ce cas,
-utiliser la configuration manuelle des identifiants dans Local Pairer.
+utiliser la configuration manuelle des identifiants dans Meross Local Pairer.
 
 ## Entités créées
 
