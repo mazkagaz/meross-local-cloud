@@ -1,7 +1,6 @@
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
-![Build](https://img.shields.io/azure-devops/build/albertogeniola/c4128d1b-c23c-418d-95c5-2de061954ee5/3/master?style=for-the-badge)
-
 # Meross HomeAssistant component (MRS100/local broker fork)
+
+**THIS IS A WORK IN PROGRESS - DO NOT USE IT UNTILL I PUT OUT THIS MESSAGE**
 
 ## MRS100 / local-broker fork
 
@@ -37,13 +36,10 @@ If you have already HACS installed on your HomeAssistant, it's better to go with
 On the other hand, if you don't have HACS installed or if you don't plan to install it, then you can use manual installation.
 
 ### Option A: Installing via HACS
-If you have HACS, well, it's piece of cake! 
-Just search for "Meross" (Full name is Meross Integration) in the default repository of HACS and it'll show up.
-Click on Install. When the installation completes, **you must restart homeassistant** in order to make it work.
-As soon as HomeAssistant is restarted, you can proceed with __component setup__.
+Not yet
 
 ### Option B: Classic installation (custom_component)
-1. Download the latest zip release archive from [here](https://github.com/albertogeniola/meross-homeassistant/releases/latest)
+1. Download the latest zip release archive from [here](https://github.com/mazkagaz/meross-cloud/releases/latest)
 1. Unzip/copy the meross_cloud directory within the `custom_components` directory of your homeassistant installation.
 The `custom_components` directory resides within your homeassistant configuration directory.
 Usually, the configuration directory is within your home (`~/.homeassistant/`).
@@ -79,32 +75,20 @@ The following table summarizes the fields that the wizard will require you to fi
 | Password                         | R4nd0mS3cret            | Your Meross account password. If connecting to the official Meross cloud, use the same from the Meross App |
 | Skip MQTT certificate validation | True (Checked)          | Configures MQTT certificate validation. When unchecked it requires a valid certificate to be exposed from the Meross Server. If checked, it skips the MQTT certificate validation. If connecting to the official Meross cloud, you can uncheck this. When connecting to local-lan or custom MQTT brokers, you might want to check this. |
 
-The following animation shows an example of component configuration
-[![Installation via web UI](https://raw.githubusercontent.com/albertogeniola/meross-homeassistant/master/docs/source/images/components/meross_cloud/install-via-webui.gif)](https://raw.githubusercontent.com/albertogeniola/meross-homeassistant/master/docs/source/images/components/meross_cloud/install-via-webui.gif)
 
 ## Features
-### Massive support
-This library supports all the Meross devices currently exposed by the Meross IoT library.
+### Support
+This library supports all the Meross devices currently exposed by the Albertogeniola Meross IoT library.
 In particular Bulbs, Switches, Garage Door Openers and Smart Valves/Thermostat are fully supported and perfectly integrated with HomeAssistant.
 
-<details>
-    <summary>Have a look a the screenshots below...</summary>
 
-<img src="docs/source/images/components/meross_cloud/general-ui.png" alt="User interface" width=400> 
-<img src="docs/source/images/components/meross_cloud/bulb-control.png" alt="Controlling the light bulb" width=400> 
-<img src="docs/source/images/components/meross_cloud/garage-control.png" alt="Controlling the garage opener" width=400> 
-<img src="docs/source/images/components/meross_cloud/sensor.png" alt="Power sensor feedbacks" width=400> 
-<img src="docs/source/images/components/meross_cloud/switch-control.png" alt="Controlling switches" width=400> 
-</details>
- 
-## :new: :rocket: A first version of the Local-Only Addon is HERE! :rocket:
-It took a bit, but eventually it's here. A very first **unstable** version of the Local Meross Addon has been developed.
-The latest version of this component, v1.2.5rc1, does support it and has been tested successfully with both a MSS210 and a MSS310 devices.
+## A fork version of the Albertogeniola Local-Only Addon is HERE
+It is an **unstable** version of the Local Meross Addon. I am working on integrationg MRS100.
 Please note that the usage of the Local Addon is only advised for all the advanced users who are experiencing problems with Meross security
 team, complaining about high rate API calls to their systems. If you plan to use such devices off-grid, the Local Addon is what you are
 looking for. Again, be avised: it's still a work in progress and your devices might not work as expected (for now).
 
-You can find installation instructions for the Local Addon directly [here](https://github.com/albertogeniola/ha-meross-local-broker).
+You can find installation instructions for the Local Addon directly [here](https://github.com/mazkagaz/meross-local-broker).
 
 ### What is the local-addon?
 Meross Plugin has gained great success and popularity among the HomeAssistant users. However, the Meross engineers are imposing
@@ -113,13 +97,13 @@ more than 10 devices connected to HA. For this reason, I am working on a new Hom
 which aims at re-implementing the Meross MQTT Broker and HTTP API layer locally to the addon. This would basically allow users
 to rely only on LAN-local connection, using HomeAssistant as command center. 
 
-### How to use the this Meross Component with the Local Addon?
+### How to use this Meross Component with the Local Addon?
 In order to take advantage of the Local Meross Addon, you need to follow the instructions below:
-1. Install or update the version of the Meross Custom Component via HACS (or manually, if you prefer) at least to version 1.2.5rc1, 
+1. Install or update the version of the Meross Custom Component at least to version 1.2.5rc1, 
 which is the first one supporting the Meross Local Addon.
-1. Add the Meross Local Addon repository to your HomeAssistant installation. You can do that following the [instructions here]([url](https://github.com/albertogeniola/ha-meross-local-broker)) or simply press the following button
+1. Add the Meross Local Addon repository to your HomeAssistant installation. You can do that following the [instructions here]([url](https://github.com/mazkagaz/meross-local-broker)) or simply press the following button
 
-    [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Falbertogeniola%2Fha-meross-local-broker)
+    [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmazkagaz%2Fmeross-local-broker)
 1. Make sure the "Meross Local Addon for Homeassistant" appears in the section of "community addons" and, if so, install it. At the time of writing the latest
 available version is *0.0.1-alpha42*. Depending on the HA hosting system and on the internect connection speed, it can take up to 20 minutes for the installation to complete.
 
@@ -160,18 +144,11 @@ When switching from a cloud based to a local integration, it is important that t
 9. Be sure you have paired all devices, and changed their "friendly names". Only then add the Meross IoT integration, and select the local broker, as described above. Your devices will be re-discovered with the correct friendly names, and can be integrated into HA.
 10. If you have followed these steps, all devices should again work with all scenes and automations as before.
 
-## Supporting my work
-As you can imagine, there is a huge work behind this repo: first I need to reverse-engineer the Meross protocols, then I need to 
-implement any "logic-layer" implemented on Meross Systems on the new addon I am developing and, eventually, I have to make
-sure that everything works together. That means that I am not able to spend much time in solving issues that may arise in 
-the meantime, and for that I apologize. If you like this project and you want to support me, please consider donating:
-that motivates me and helps me buy _more ram_ which is absolutely necessary when developing on a virtualized environment.
+## Supporting his work
+This is a fork of Albertogeniola work.
+[![Buy him a coffe!](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/albertogeniola)
 
-By buying me a coffee, not only you make my development more efficient, but also motivate me to further improve 
-my work. On the other hand, buying me a beer will certainly make me happier: **a toast to you, supporter**!
-In case you are a pro and a strong opensource supporter, you might also consider [sponsoring my GitHub work](https://github.com/sponsors/albertogeniola).
-
-[![Buy me a coffe!](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/albertogeniola)
+I may add mine too later when this will work as I would like it to work.
 
 ## License and attribution
 
