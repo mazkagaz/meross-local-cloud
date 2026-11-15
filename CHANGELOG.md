@@ -1,3 +1,10 @@
+## 1.3.18
+
+- Regenerate every icon from the transparent logo artwork (the JPEG source
+  contained a checkerboard background).
+- Set cover features through `_attr_supported_features` so open/close controls
+  are exposed consistently, and log cover entity creation for diagnostics.
+
 ## 1.3.17
 
 - Create cover entities even when the device reports no channel list, and

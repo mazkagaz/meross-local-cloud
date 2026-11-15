@@ -42,6 +42,8 @@ class GarageOpenerEntityWrapper(MerossDevice, CoverEntity):
 
     _device: MerossGarageDevice
     _cover_transient_status: CoverTransientStatus | None = None
+    _attr_device_class = CoverDeviceClass.GARAGE
+    _attr_supported_features = CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
 
     def __init__(self,
                  channel: int,
@@ -68,16 +70,6 @@ class GarageOpenerEntityWrapper(MerossDevice, CoverEntity):
 
     def close_cover(self, **kwargs: Any) -> None:
         self.hass.async_add_executor_job(self.async_close_cover, **kwargs)
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return CoverDeviceClass.GARAGE
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        return CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE
 
     @property
     def is_closed(self):
@@ -109,6 +101,13 @@ class RollerShutterEntityWrapper(MerossDevice, CoverEntity):
     """Wrapper class to adapt the Meross roller shutter into the Homeassistant platform"""
 
     _device: MerossRollerShutterDevice
+    _attr_device_class = CoverDeviceClass.SHUTTER
+    _attr_supported_features = (
+        CoverEntityFeature.OPEN
+        | CoverEntityFeature.CLOSE
+        | CoverEntityFeature.STOP
+        | CoverEntityFeature.SET_POSITION
+    )
 
     def __init__(self,
                  channel: int,
@@ -137,18 +136,6 @@ class RollerShutterEntityWrapper(MerossDevice, CoverEntity):
 
     def stop_cover(self, **kwargs) -> None:
         self.hass.async_add_executor_job(self.async_stop_cover, **kwargs)
-
-    @property
-    def device_class(self):
-        """Return the class of this device, from component DEVICE_CLASSES."""
-        return CoverDeviceClass.SHUTTER
-
-    @property
-    def supported_features(self):
-        """Flag supported features."""
-        # So far, the Roller Shutter RST100 supports position, but it looks like it is fake and not reliable.
-        # So we don't support that on HA neither.
-        return CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP | CoverEntityFeature.SET_POSITION
 
     @property
     def current_cover_position(self):
@@ -183,6 +170,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         coordinator = hass.data[DOMAIN][DEVICE_LIST_COORDINATOR]
         devices = manager.find_devices(device_class=[GarageOpenerMixin, RollerShutterTimerMixin])
         new_entities = []
+        _LOGGER.info("Cover platform: %d candidate device(s)", len(devices))
         for d in devices:
             # For multi-channel garage doors opener (like MSG200), the main channel is not operable and
             # does not provide meaningful states. For this reason, we will ignore the "main channel"
@@ -203,6 +191,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
                     continue
                 if w.unique_id not in hass.data[DOMAIN]["ADDED_ENTITIES_IDS"]:
                     new_entities.append(w)
+                    _LOGGER.info("Adding cover %s (channel %d, features %s)", w.name, channel_index, w.supported_features)
 
         async_add_entities(new_entities, True)
 
