@@ -1,12 +1,13 @@
 # Meross HomeAssistant component (MRS100/local broker fork)
 
 **THIS IS A WORK IN PROGRESS - DO NOT USE IT UNTILL I PUT OUT THIS MESSAGE**
+**I ACTUALLY WORKED ON THE CODE BUT NOT THAT MUCH ON THE DOC, SO PLEASE WAIT**
 
 ## MRS100 / local-broker fork
 
-This fork is distributed so it can be installed as a HACS **custom
+This fork is distributed so it **WILL** be installed as a HACS **custom
 repository** and used with the local Meross broker add-on
-(`meross-local-broker`, MRS100 fork). It keeps the existing Meross cloud
+(`https://github.com/mazkagaz/meross-local-broker`, MRS100 fork). It keeps the existing Meross cloud
 support, but when configured against the local broker it does not require the
 Meross cloud for day-to-day device control.
 
@@ -30,10 +31,7 @@ It also adds **start calibration** and **stop calibration** buttons using `Appli
 A **Calibration status** diagnostic sensor reports the result: `success`, `timeout`, `motor_blocked`, `failed_3`..`failed_6`, plus `in_progress` locally after a start. It polls `GET Appliance.RollerShutter.Adjust` every 5 minutes, and after a start every 15 seconds for two minutes following a 90 s delay (the official app waits 90 s before its first status poll). `meross_iot` 0.4.9.2 drops incoming Adjust pushes, so push-based status is not available without a library change.
 
 ## Installation & configuration
-You can install this component in two ways: via HACS or manually.
-HACS is a nice community-maintained components manager, which allows you to install git-hub hosted components in a few clicks.
-If you have already HACS installed on your HomeAssistant, it's better to go with that.
-On the other hand, if you don't have HACS installed or if you don't plan to install it, then you can use manual installation.
+You **WILL BE ABLE TO** install this component in two ways: via HACS (**IN THE FUTURE**) or manually.
 
 ### Option A: Installing via HACS
 Not yet
@@ -68,6 +66,8 @@ To do so, navigate to "Configuration -> Integrations -> Add Integration" and loo
 As soon as you add it, you'll be asked to configure it. 
 The following table summarizes the fields that the wizard will require you to fill in:
 
+**TODO: UPDATE THE TABLE**
+
 |  Field Name                      | Example Value           | Description                                             | 
 |----------------------------------|-------------------------|---------------------------------------------------------|
 | HTTP Api Endpoint                | One of the following: <br/> - https://iotx-ap.meross.com (for Asia/Pacific regions) <br/> - https://iotx-eu.meross.com (for Europe) <br/> - https://iotx-us.meross.com (for United States) | Is the HTTP(s) API endpoint used by the Meross Manager. This might vary in accordance with your country | 
@@ -82,52 +82,29 @@ This library supports all the Meross devices currently exposed by the Albertogen
 In particular Bulbs, Switches, Garage Door Openers and Smart Valves/Thermostat are fully supported and perfectly integrated with HomeAssistant.
 
 
-## A fork version of the Albertogeniola Local-Only Addon is HERE
+## A fork version of the Albertogeniola Local-Only Addon is [here](https://github.com/mazkagaz/meross-local-broker)
 It is an **unstable** version of the Local Meross Addon. I am working on integrationg MRS100.
 Please note that the usage of the Local Addon is only advised for all the advanced users who are experiencing problems with Meross security
 team, complaining about high rate API calls to their systems. If you plan to use such devices off-grid, the Local Addon is what you are
-looking for. Again, be avised: it's still a work in progress and your devices might not work as expected (for now).
+looking for. Again, be avised: it's still a work in progress of a fork of a work in progress... :-D ... and your devices might not work as expected (for now).
 
 You can find installation instructions for the Local Addon directly [here](https://github.com/mazkagaz/meross-local-broker).
 
 ### What is the local-addon?
 Meross Plugin has gained great success and popularity among the HomeAssistant users. However, the Meross engineers are imposing
 new limits on their MQTT broker system, which cause problems to the HA users who want to implement aggressive polling or have
-more than 10 devices connected to HA. For this reason, I am working on a new HomeAssistant addon, namely "Meross Local Addon", 
+more than 10 devices connected to HA. For this reason, Albertogeniola is working on a new HomeAssistant addon, namely "Meross Local Addon", 
 which aims at re-implementing the Meross MQTT Broker and HTTP API layer locally to the addon. This would basically allow users
-to rely only on LAN-local connection, using HomeAssistant as command center. 
+to rely only on LAN-local connection, using HomeAssistant as command center. And as i am not a patient person, i forked it. 
 
 ### How to use this Meross Component with the Local Addon?
 In order to take advantage of the Local Meross Addon, you need to follow the instructions below:
 1. Install or update the version of the Meross Custom Component at least to version 1.2.5rc1, 
 which is the first one supporting the Meross Local Addon.
-1. Add the Meross Local Addon repository to your HomeAssistant installation. You can do that following the [instructions here]([url](https://github.com/mazkagaz/meross-local-broker)) or simply press the following button
+2. Add the Meross Local Addon repository to your HomeAssistant installation. You can do that following the [instructions here]([url](https://github.com/mazkagaz/meross-local-broker)) or simply press the following button
 
     [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmazkagaz%2Fmeross-local-broker)
-1. Make sure the "Meross Local Addon for Homeassistant" appears in the section of "community addons" and, if so, install it. At the time of writing the latest
-available version is *0.0.1-alpha42*. Depending on the HA hosting system and on the internect connection speed, it can take up to 20 minutes for the installation to complete.
-
-    <a href="https://user-images.githubusercontent.com/4648843/174432626-51b6a569-2d95-464e-87bc-8a6fa702f9f1.png"><img src="https://user-images.githubusercontent.com/4648843/174432626-51b6a569-2d95-464e-87bc-8a6fa702f9f1.png" width=300/></a>
-    <a href="https://user-images.githubusercontent.com/4648843/174432630-031526ee-5f42-4d61-bfa2-e9badbc74675.png"><img src="https://user-images.githubusercontent.com/4648843/174432630-031526ee-5f42-4d61-bfa2-e9badbc74675.png" width=300/></a>
-1. Navigate to the configuration section of the "Meross Local Addon" and make sure the option reinit_db is OFF, while the option "advertise" is ON. Leave debug_mode OFF, unless you need to provide supplementary logging information to debug issues. Make sure you don't have any firewall blocking the network traffic to the ports indicated on this section, as the addon will receive traffic from both meross devices and pairer app on such ports.
-    
-    <a href="https://user-images.githubusercontent.com/4648843/174433609-0997e67d-adf5-4262-9c30-ea2eaae08169.png"><img src="https://user-images.githubusercontent.com/4648843/174433609-0997e67d-adf5-4262-9c30-ea2eaae08169.png" width=300></a>
-1. Navigate to the "info" panel of the addon and make sure the "Start at boot" option is ON. Also, make sure the "Show in menu" option is set to ON. Then, start the ADDON and wait at least 5 minutes. Depending on the device you are running on, the first boot may take up to 10 minutes to complete.
-
-    <a href="https://user-images.githubusercontent.com/4648843/174433626-f3cb7efb-b6aa-4930-9a13-ba7a95cae678.png"><img src="https://user-images.githubusercontent.com/4648843/174433626-f3cb7efb-b6aa-4930-9a13-ba7a95cae678.png" width=300/></a>
-1. Open "Meross Local Addon" web-interface (you can either click on "Open Web UI" or click on the left menu icon <img src="https://user-images.githubusercontent.com/4648843/174433435-3b723738-7e31-4146-9237-709bd9816be5.png" width=32>. Then, from the web-ui, click on "Wizard Setup" or on "Setup"  and follow the instructions to configure your addon. For now, it's advised not to use the "Official Meross Link", as it is still under development.
-
-    <a href="https://user-images.githubusercontent.com/4648843/174433687-deb0ee20-a4fc-4258-9553-cd5221a64b0e.png"><img src="https://user-images.githubusercontent.com/4648843/174433687-deb0ee20-a4fc-4258-9553-cd5221a64b0e.png" width=300/></a>
-    <a href="https://user-images.githubusercontent.com/4648843/174433758-69c4eb07-c00e-49f5-b041-60f36f5fef93.png"><img src="https://user-images.githubusercontent.com/4648843/174433758-69c4eb07-c00e-49f5-b041-60f36f5fef93.png" width=300/><a>
-
-1. The wizard will guide you through the Account Setup, Meross App installation and pairing process. Make sure you are able to pair at least one device.
-    Note about Step 1, credentials setup: choose the username/password you will be using locally to pair your devices. If you don't plan to "link" the local addon to the official meross broker, you can choose whatever credentials you like. For instance, you can set: 
-        username: `meross@local`
-        password: `changeme`
-1. When you have paired all the devices you want to manage locally, you can proceed with the setup of the Meross Component. 
-Navigate to the HA integration list, and proceed with the installation of the Meross Addon. During the setup phase, make sure to select local addon setup option, not the one relying on the official Meross Broker.
-    
-**NOTE**: sometimes, for yet-unknown reasons, MSS310 fails to pair with the local addon broker. However, resetting and retrying the pairing procedure a second time usually works. More recent devices, as the mss210, seem not to suffer of the same problem.
+3. Make sure the "Meross Local Addon for Homeassistant" appears in the section of "community addons" and, if so, install it.
 
 ### How to switch from a cloud based integration to a local integration
 _Credits to @olivermaor_
@@ -148,7 +125,7 @@ When switching from a cloud based to a local integration, it is important that t
 This is a fork of Albertogeniola work.
 [![Buy him a coffe!](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/albertogeniola)
 
-I may add mine too later when this will work as I would like it to work.
+I may add my coffe box later when this will work as I would like it to work.
 
 ## License and attribution
 
