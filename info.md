@@ -1,57 +1,36 @@
-# Meross Custom Component (MRS100/local broker fork)
+# Meross Cloud IoT — broker local (fork MRS100)
 
-> Use this fork with the local Meross broker add-on. Install it as a HACS custom repository (category Integration). The add-on itself is installed via the Supervisor add-on store.
+Intégration Home Assistant non officielle pour piloter des appareils Meross
+appairés à un **broker local**, sans cloud Meross au quotidien.
 
+## Installation rapide
 
-Based on pure-python library, this custom component enables full control on your meross devices.
+1. Installer d'abord l'add-on
+   [Meross Local Broker](https://github.com/mazkagaz/meross-local-broker).
+2. Appairer l'appareil avec
+   [Local Pairer](https://github.com/mazkagaz/meross-local-pairer).
+3. Dans HACS : **Intégrations → ⋮ → Dépôts personnalisés**, ajouter
+   `https://github.com/mazkagaz/meross-cloud` en catégorie **Integration**.
+4. Télécharger l'intégration, redémarrer Home Assistant.
+5. **Paramètres → Appareils et services → Ajouter une intégration →
+   Meross Cloud IoT**, choisir le mode
+   **Connect to LAN-only broker**, puis saisir :
+   - HTTP : `http://homeassistant.local:2003`
+   - MQTT : `homeassistant.local:2001`
+   - compte local de l'add-on
+   - **Skip MQTT certificate validation** coché.
 
-## Features
+## Apports du fork MRS100
 
-- Supports the majority of Meross devices on the market: from power plugs to light bulbs to temp/humidity sensors
-- Fully async architecture that makes this integration run fast and lightweight
-- Roller-shutter open/close duration number entities (`signalOpen`/`signalClose`), persisted by the local broker add-on
-- Roller-shutter start/stop calibration buttons and a calibration status sensor (`Appliance.RollerShutter.Adjust`)
-- Event driven: updates are based on push notification rather than polling when possible
-- Auto discovery of new meross devices
-- Auto-reconnect in case of connection drop
-- Configurable API rate limits
+- entités `number` pour les durées d'ouverture et de fermeture ;
+- boutons de démarrage/arrêt de calibration ;
+- capteur de statut de calibration.
 
-## Requirements
+La procédure détaillée, les entités et le dépannage sont dans le
+[README](https://github.com/mazkagaz/meross-cloud#readme).
 
-Please note that the Meross devices are controlled via Meross Cloud. This means that homeassistant
-_must have_ internet access to accomplish such task. You also need an account for the Meross cloud:
-you should reuse the one from your meross app.
+## Licence
 
-## Installation & Configuration
-First, you need to install this integration via HACS. To do so, simply click on INSTALL on this dialog.
-Once installed, you should set up the Meross Cloud component to connect to the Meross Cloud service.
-Just navigate to \_settings -> Integrations, click "add" and then select "Meross Cloud IoT".
-A pop-up will appear, asking for the Meross API endpoint to use and your Meross credentials.
-
-There are multiple official server endpoints, and you should select the one that is closest to your geo-region.
-The following table will help you get the right one:
-
-- Asia/Pacific: https://iotx-ap.meross.com
-- United States: https://iotx-us.meross.com
-- Europe: https://iotx-eu.meross.com
-
-The following animation shows how to do that.
-
-<a href="https://raw.githubusercontent.com/albertogeniola/meross-homeassistant/master/docs/source/images/components/meross_cloud/install-via-webui.gif">
-<img src="https://raw.githubusercontent.com/albertogeniola/meross-homeassistant/master/docs/source/images/components/meross_cloud/install-via-webui.gif" alt="Installation via web-ui" width=400>
-</a>
-
-### API rate limit
-
-__Meross does implement strict API rate limits__.
-When connecting an more than 5 Meross sensors/devices to HomeAssistant via this integration,
-the Meross security team might request you to release/decrease the API calling frequency.
-Therefore, you should avoid using high-frequency polling scripts/automations with Meross devices.
-
-## Be nice!
-
-If you like the component, why don't you support me by buying me a beer or a coffe?
-It would certainly motivate me to further improve this work. [Sponsor me on GitHub](https://github.com/sponsors/albertogeniola)!
-
-Or, if you prefer, buy me some coffe for further improve this component even more.
-[![Buy me a coffe!](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/albertogeniola)
+MIT. Fork non officiel de
+[albertogeniola/meross-homeassistant](https://github.com/albertogeniola/meross-homeassistant) ;
+attribution conservée dans `LICENSE`, `NOTICE` et `MODIFICATIONS.md`.
