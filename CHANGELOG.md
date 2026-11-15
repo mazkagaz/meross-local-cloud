@@ -1,3 +1,8 @@
+## 1.3.15
+
+- Fix remaining naming inconsistencies in logs and notices (**Meross Local
+  Cloud**, **Meross Local Broker**).
+
 ## 1.3.14
 
 - Rename the integration to **Meross Local Cloud** and make it local-only: the

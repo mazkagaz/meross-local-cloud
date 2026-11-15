@@ -23,14 +23,14 @@ git remote remove origin 2>/dev/null || true
 git remote add origin "github.com-meross-cloud:${USER}/meross-cloud.git"
 git push -u origin main
 
-if ! git rev-parse "v1.3.13" >/dev/null 2>&1; then
-  git tag -a v1.3.13 -m "MRS100/local broker fork"
+if ! git rev-parse "v1.3.15" >/dev/null 2>&1; then
+  git tag -a v1.3.15 -m "Meross Local Cloud 1.3.15"
 fi
-git push origin v1.3.13
+git push origin v1.3.15
 
 if command -v gh >/dev/null 2>&1; then
-  gh release create v1.3.13 --title "v1.3.13 (MRS100/local broker fork)" \
-    --notes "HACS-installable fork for use with the local Meross broker add-on." \
+  gh release create v1.3.15 --title "Meross Local Cloud v1.3.15" \
+    --notes "HACS-installable local-only integration for the Meross Local Broker add-on." \
     || true
 fi
 
