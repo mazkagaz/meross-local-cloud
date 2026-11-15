@@ -39,3 +39,15 @@ async def test_initial_flow_survives_discovery_failure(hass, monkeypatch):
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "configure_manager"
     assert result["errors"]["base"] == "mdns_lookup_failed"
+
+
+async def test_options_flow_loads(hass):
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    entry = MockConfigEntry(domain=DOMAIN, data={}, options={}, entry_id="options-test")
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "init"

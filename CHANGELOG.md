@@ -1,3 +1,9 @@
+## 1.3.21
+
+- Fix the 500 error when opening the integration options (gear icon):
+  `OptionsFlow.config_entry` is now a read-only property in modern Home
+  Assistant, so the flow must not assign it in its constructor.
+
 ## 1.3.20
 
 - Keep entities available when the broker's HTTP device list reports a stale

@@ -17,7 +17,7 @@
 | File | Change |
 |---|---|
 | `hacs.json` | Fork name; HACS custom-repository metadata |
-| `custom_components/meross_cloud/manifest.json` | Fork name, documentation/issue URLs, codeowner placeholder, version 1.3.20; requirements unchanged (`meross_iot==0.4.9.2`) |
+| `custom_components/meross_cloud/manifest.json` | Fork name, documentation/issue URLs, codeowner placeholder, version 1.3.21; requirements unchanged (`meross_iot==0.4.9.2`) |
 | `README.md`, `info.md` | Fork install/usage notes and attribution |
 | `CHANGELOG.md` | 1.3.11-1.3.13 fork entries |
 | `custom_components/meross_cloud/common.py` | Registered the `number` and `button` platforms |
