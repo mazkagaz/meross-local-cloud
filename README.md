@@ -1,8 +1,11 @@
-# Meross Cloud IoT — intégration Home Assistant pour broker local
+# Meross Local Cloud — intégration Home Assistant pour broker local
+
+![Meross Local Cloud](custom_components/meross_cloud/brand/logo.png)
 
 Intégration **non officielle** pour Home Assistant, distribuée via HACS. Elle
 pilote les appareils Meross appairés à un broker local, sans passer par le cloud
-Meross pour l'usage quotidien.
+Meross pour l'usage quotidien. Elle ne propose que le mode local : aucun
+identifiant du cloud officiel n'est demandé ni utilisé.
 
 Ce fork ajoute le support MRS100 :
 
@@ -15,7 +18,7 @@ Ce fork ajoute le support MRS100 :
 | Brique | Rôle | Dépôt |
 |---|---|---|
 | **Meross Local Broker** | add-on : broker MQTT + API locale | [mazkagaz/meross-local-broker](https://github.com/mazkagaz/meross-local-broker) |
-| **Meross Cloud IoT** | cette intégration Home Assistant (HACS) | [mazkagaz/meross-cloud](https://github.com/mazkagaz/meross-cloud) |
+| **Meross Local Cloud** | cette intégration Home Assistant (HACS) | [mazkagaz/meross-cloud](https://github.com/mazkagaz/meross-cloud) |
 | **Meross Local Pairer** | application Android d'appairage | [mazkagaz/meross-local-pairer](https://github.com/mazkagaz/meross-local-pairer) |
 
 ```
@@ -28,8 +31,8 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 ## Avant de commencer
 
 1. L'add-on **Meross Local Broker** est installé et démarré.
-2. Un **compte local** a été créé dans l'add-on (adresse e-mail et mot de
-   passe, Meross Link désactivé).
+2. Un **compte local** a été créé dans l'add-on (login et mot de passe).
+   N'utilisez pas votre compte Meross officiel : ce compte est indépendant.
 3. Le MRS100 a été appairé avec **Meross Local Pairer**.
 4. **HACS** est installé dans Home Assistant.
 5. Home Assistant 2025.6 ou plus récent.
@@ -41,7 +44,7 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 3. Ajouter :
    - URL : `https://github.com/mazkagaz/meross-cloud`
    - Catégorie : **Integration**
-4. Ouvrir la fiche **Meross Cloud IoT**, télécharger la dernière version.
+4. Ouvrir la fiche **Meross Local Cloud**, télécharger la dernière version.
 5. Redémarrer Home Assistant.
 
 HACS installe l'intégration, pas l'add-on. L'add-on se trouve dans la boutique
@@ -50,20 +53,23 @@ des modules complémentaires (lien ci-dessus).
 ## Ajouter l'intégration
 
 1. **Paramètres → Appareils et services → Ajouter une intégration**.
-2. Chercher **Meross Cloud IoT**.
-3. Choisir
-   **Connect to LAN-only broker (requires Meross Local Addon)**.
-4. Renseigner les champs :
+2. Chercher **Meross Local Cloud**.
+3. L'assistant lance directement la configuration du broker local et tente de
+   le découvrir en mDNS. Renseigner les champs :
 
 | Champ | Valeur |
 |---|---|
 | HTTP API Endpoint | `http://homeassistant.local:2003` |
 | MQTT Address | `homeassistant.local:2001` |
-| Email Address | le compte local de l'add-on, par exemple `meross@local` |
+| Local login | le compte local de l'add-on, par exemple `meross-local` |
 | Password | le mot de passe local |
 | Skip MQTT certificate validation | **coché** (certificat auto-signé) |
 
-5. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
+Le login local n'est pas obligatoirement une adresse email : un simple nom
+d'utilisateur suffit. **N'utilisez jamais les identifiants du cloud Meross
+officiel** ; l'intégration ne contacte que le broker local.
+
+4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
 
 Si Home Assistant n'est pas joignable via `homeassistant.local`, remplacer par
 son adresse IP (`http://192.168.x.x:2003` et `192.168.x.x:2001`). Dans ce cas,
@@ -92,7 +98,7 @@ utiliser la configuration manuelle des identifiants dans Meross Local Pairer.
 
 ## Mise à jour
 
-HACS → Intégrations → Meross Cloud IoT → **Mettre à jour**, puis redémarrer
+HACS → Intégrations → Meross Local Cloud → **Mettre à jour**, puis redémarrer
 Home Assistant. Une nouvelle release GitHub est publiée pour chaque version.
 
 ## Dépannage
@@ -105,12 +111,6 @@ Home Assistant. Une nouvelle release GitHub est publiée pour chaque version.
 | Erreur MQTT | adresse `…:2001`, `Skip MQTT certificate validation` coché |
 | Entités absentes | redémarrer HA après l'appairage, puis recharger l'intégration |
 | Statut de calibration bloqué | vérifier les logs de l'add-on et le capteur `Calibration status` |
-
-## Mode cloud officiel
-
-Le mode cloud d'origine reste disponible dans l'assistant, mais il n'est pas
-nécessaire pour ce montage local. Utiliser le mode **LAN-only broker** avec
-l'add-on.
 
 ## Origine, licence et historique
 

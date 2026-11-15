@@ -1,40 +1,37 @@
 {
   "config": {
     "abort": {
-      "single_instance_allowed": "Il plugin Meross risulta già installato e non può essere installato nuovamente."
+      "single_instance_allowed": "È consentita una sola configurazione di Meross Local Cloud."
     },
     "error": {
-      "connection_error": "Impossibile connettersi a Meross.",
-      "invalid_credentials": "Credenziali non valide.",
-      "invalid_http_endpoint": "Endpoint HTTP invalido",
-      "api_invalid_ssl_code": "Il server ha riportato un errore SSL. Accertarsi che il server sia esposto in HTTPS o provare con HTTP. ",
+      "connection_error": "Impossibile connettersi al broker locale.",
+      "invalid_credentials": "Nome utente locale o password non validi.",
+      "invalid_http_endpoint": "Endpoint HTTP non valido",
+      "api_invalid_ssl_code": "Il server ha riportato un errore SSL. Accertarsi che il server sia esposto in HTTPS o provare con HTTP.",
       "unknown_error": "Si è verificato un errore inatteso",
       "api_connection_refused": "Impossibile connettersi al server API. Controlla l'indirizzo del server.",
       "client_connection_error": "Si è verificato un errore durante la connessione alle API HTTP",
-      "missing_credentials": "Per favore inserire le credenziali di accesso",
-      "mdns_lookup_failed": "La ricerca automatica non è stata in grado di identificare gli indirizzi dei servizi API/MQTT. Sono stati inseriti quelli di default."
+      "missing_credentials": "Per favore inserire le credenziali di accesso mancanti",
+      "mdns_lookup_failed": "La ricerca automatica non è stata in grado di identificare gli indirizzi locali dei servizi API/MQTT. Sono stati inseriti quelli predefiniti."
     },
     "step": {
-      "user": {
-        "title": "Seleziona il broker",
-        "data": {}
-      },
       "configure_manager": {
+        "title": "Accedi a Meross Local Cloud",
+        "description": "Usa l'account locale creato nell'add-on Meross Local Broker. Non usare le credenziali del cloud Meross: questa integrazione comunica solo con il broker locale.",
         "data": {
           "password": "Password",
-          "username": "Indirizzo Email",
+          "username": "Nome utente locale",
           "http_api_endpoint": "Endpoint HTTP",
           "override_mqtt_endpoint": "Indirizzo MQTT (host:port)",
           "skip_mqtt_cert_validation": "Salta la validazione SSL per MQTT"
-        },
-        "title": "Inserisci le credenziali del tuo account Meross"
+        }
       },
       "reauth_confirm": {
         "title": "Rinnovo dell'autenticazione richiesto",
-        "description": "L'integrazione con Meross richiede la ri-autenticazione dell'account"
+        "description": "Meross Local Cloud richiede di ri-autenticarsi al broker locale"
       }
     },
-    "title": "Meross"
+    "title": "Meross Local Cloud"
   },
   "options": {
     "error": {},
@@ -44,7 +41,7 @@
           "custom_user_agent": "Header User-Agent personalizzato",
           "lan_transport_mode": "Opzioni di comunicazione con i dispositivi"
         },
-        "title": "Opzioni Meross Cloud"
+        "title": "Opzioni di Meross Local Cloud"
       }
     }
   }

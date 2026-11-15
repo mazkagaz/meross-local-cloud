@@ -1,35 +1,48 @@
 {
     "config": {
         "abort": {
-            "single_instance_allowed": "El complemento Meross ya está instalado y no se puede volver a instalar."
+            "single_instance_allowed": "Solo se permite una configuración de Meross Local Cloud."
         },
         "error": {
-            "invalid_credentials": "Credenciales no válidas.",
-            "connection_error": "No se puede conectar con Meross.",
-            "invalid_http_endpoint": "Punto de conexión de la API de HTTTP de Meross no válido",
-            "api_invalid_ssl_code": "Respuesta SSL no válida recibida por el servidor. ¿Estás seguro de que el servidor está expuesto en HTTPS? Intentalo con http y comprueba si esto sucede nuevamente.",
+            "invalid_credentials": "Inicio de sesión local o contraseña no válidos.",
+            "connection_error": "No se puede conectar con el broker local.",
+            "invalid_http_endpoint": "Punto de conexión de la API HTTP no válido",
+            "api_invalid_ssl_code": "Respuesta SSL no válida recibida por el servidor. ¿Estás seguro de que el servidor está expuesto en HTTPS? Inténtalo con http y comprueba si esto sucede nuevamente.",
             "unknown_error": "Ocurrió un error inesperado",
-            "api_connection_refused": "No se puede conectar al servidor de API HTTP (S). Asegurate de que la dirección es correcta",
-            "client_connection_error": "Ha ocurrido un error mientras se conectaba al API HTTP",
-            "missing_credentials": "Proporciona las credenciales que faltan"
+            "api_connection_refused": "No se puede conectar al servidor de API HTTP(S). Asegúrate de que la dirección es correcta",
+            "client_connection_error": "Ha ocurrido un error mientras se conectaba a la API HTTP",
+            "missing_credentials": "Proporciona las credenciales que faltan",
+            "mdns_lookup_failed": "La búsqueda automática no ha podido encontrar las direcciones locales de la API/MQTT. Se han seleccionado los valores predeterminados."
         },
         "step": {
             "configure_manager": {
+                "title": "Iniciar sesión en Meross Local Cloud",
+                "description": "Utiliza la cuenta local creada en el add-on Meross Local Broker. No uses tus credenciales de la nube Meross; esta integración solo se comunica con el broker local.",
                 "data": {
                     "password": "Contraseña",
-                    "username": "Correo electrónico",
+                    "username": "Inicio de sesión local",
                     "http_api_endpoint": "HTTP API Endpoint",
-                    "mqtt_hostname": "Dirección IP MQTT",
-                    "mqtt_port": "Puerto MQTT",
-                    "skip_mqtt_cert_validation": "Omite las comprobaciones de validación del certificadoSkip MQTT"
-                },
-                "title": "Ingrese las credenciales de su cuenta Meross"
+                    "override_mqtt_endpoint": "Dirección MQTT (host:port)",
+                    "skip_mqtt_cert_validation": "Omitir la validación del certificado MQTT"
+                }
             },
             "reauth_confirm": {
-              "title": "Requiere volver a autenticarse",
-              "description": "La integración de Meross requiere que vuelvas a autenticarte con tu cuenta"
+                "title": "Requiere volver a autenticarse",
+                "description": "Meross Local Cloud requiere volver a autenticarse con tu broker local"
             }
         },
-        "title": "Meross"
+        "title": "Meross Local Cloud"
+    },
+    "options": {
+        "error": {},
+        "step": {
+            "init": {
+                "data": {
+                    "custom_user_agent": "Cabecera User-Agent personalizada",
+                    "lan_transport_mode": "Opciones de comunicación con los dispositivos"
+                },
+                "title": "Opciones de Meross Local Cloud"
+            }
+        }
     }
 }

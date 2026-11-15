@@ -11,12 +11,25 @@ from meross_iot.model.enums import DiffuserLightMode
 import homeassistant.util.color as color_util
 from homeassistant.components.light import LightEntity
 from homeassistant.components.light import ColorMode, \
-    ATTR_HS_COLOR, ATTR_COLOR_TEMP, ATTR_BRIGHTNESS, ATTR_RGB_COLOR
+    ATTR_HS_COLOR, ATTR_COLOR_TEMP_KELVIN, ATTR_BRIGHTNESS, ATTR_RGB_COLOR
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from . import MerossDevice
 from .common import (DOMAIN, MANAGER, HA_LIGHT, DEVICE_LIST_COORDINATOR)
 
 _LOGGER = logging.getLogger(__name__)
+
+MIN_KELVIN = 2000
+MAX_KELVIN = 6500
+
+
+def _meross_temperature_from_kelvin(kelvin: int) -> float:
+    kelvin = max(MIN_KELVIN, min(MAX_KELVIN, kelvin))
+    return (kelvin - MIN_KELVIN) * 100 / (MAX_KELVIN - MIN_KELVIN)
+
+
+def _kelvin_from_meross_temperature(value: float) -> int:
+    value = max(0, min(100, value))
+    return round(MIN_KELVIN + (value / 100) * (MAX_KELVIN - MIN_KELVIN))
 
 
 class MerossOilDiffuserLightDevice(DiffuserLightMixin, BaseDevice):
@@ -63,11 +76,10 @@ class DiffuserLightEntityWrapper(MerossDevice, LightEntity):
             rgb = color_util.color_hsv_to_RGB(h, s, 100)
             _LOGGER.debug("color change: rgb=%r -- h=%r s=%r" % (rgb, h, s))
             await self._device.async_set_light_mode(channel=self._channel_id, mode=DiffuserLightMode.FIXED_RGB, rgb=rgb, onoff=True, skip_rate_limits=True)
-        elif ATTR_COLOR_TEMP in kwargs:
-            mired = kwargs[ATTR_COLOR_TEMP]
-            norm_value = (mired - self.min_mireds) / (self.max_mireds - self.min_mireds)
-            temperature = 100 - (norm_value * 100)
-            _LOGGER.debug("temperature change: mired=%r meross=%r" % (mired, temperature))
+        elif ATTR_COLOR_TEMP_KELVIN in kwargs:
+            kelvin = kwargs[ATTR_COLOR_TEMP_KELVIN]
+            temperature = _meross_temperature_from_kelvin(kelvin)
+            _LOGGER.debug("temperature change: kelvin=%r meross=%r" % (kelvin, temperature))
             await self._device.async_set_light_mode(channel=self._channel_id, mode=DiffuserLightMode.FIXED_LUMINANCE, onoff=True, rgb=65293, brightness=temperature, skip_rate_limits=True)
 
         # Brightness must always be set, so take previous luminance if not explicitly set now.
@@ -126,11 +138,10 @@ class LightEntityWrapper(MerossDevice, LightEntity):
             rgb = color_util.color_hsv_to_RGB(h, s, 100)
             _LOGGER.debug("color change: rgb=%r -- h=%r s=%r" % (rgb, h, s))
             await self._device.async_set_light_color(channel=self._channel_id, rgb=rgb, onoff=True, skip_rate_limits=True)
-        elif ATTR_COLOR_TEMP in kwargs:
-            mired = kwargs[ATTR_COLOR_TEMP]
-            norm_value = (mired - self.min_mireds) / (self.max_mireds - self.min_mireds)
-            temperature = 100 - (norm_value * 100)
-            _LOGGER.debug("temperature change: mired=%r meross=%r" % (mired, temperature))
+        elif ATTR_COLOR_TEMP_KELVIN in kwargs:
+            kelvin = kwargs[ATTR_COLOR_TEMP_KELVIN]
+            temperature = _meross_temperature_from_kelvin(kelvin)
+            _LOGGER.debug("temperature change: kelvin=%r meross=%r" % (kelvin, temperature))
             await self._device.async_set_light_color(channel=self._channel_id, temperature=temperature, skip_rate_limits=True)
 
         # Brightness must always be set, so take previous luminance if not explicitly set now.
@@ -188,11 +199,10 @@ class LightEntityWrapper(MerossDevice, LightEntity):
             return None  # Return None if RGB value is not available
 
     @property
-    def color_temp(self):
+    def color_temp_kelvin(self) -> int | None:
         if self._device.get_supports_temperature(channel=self._channel_id):
             value = self._device.get_color_temperature()
-            norm_value = (100 - value) / 100.0
-            return self.min_mireds + (norm_value * (self.max_mireds - self.min_mireds))
+            return _kelvin_from_meross_temperature(value)
         return None
 
 

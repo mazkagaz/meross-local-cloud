@@ -6,12 +6,18 @@
 - Fork license: MIT (see `LICENSE`)
 - Modifications copyright: 2026 the MRS100 fork contributors
 
+## Branding
+
+- Display name: **Meross Local Cloud**.
+- Banner and logo: originals in `branding/`, generated brand assets in
+  `custom_components/meross_cloud/brand/`.
+
 ## Changed files
 
 | File | Change |
 |---|---|
 | `hacs.json` | Fork name; HACS custom-repository metadata |
-| `custom_components/meross_cloud/manifest.json` | Fork name, documentation/issue URLs, codeowner placeholder, version 1.3.13; requirements unchanged (`meross_iot==0.4.9.2`) |
+| `custom_components/meross_cloud/manifest.json` | Fork name, documentation/issue URLs, codeowner placeholder, version 1.3.14; requirements unchanged (`meross_iot==0.4.9.2`) |
 | `README.md`, `info.md` | Fork install/usage notes and attribution |
 | `CHANGELOG.md` | 1.3.11-1.3.13 fork entries |
 | `custom_components/meross_cloud/common.py` | Registered the `number` and `button` platforms |

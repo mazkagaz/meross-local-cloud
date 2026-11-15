@@ -1,3 +1,15 @@
+## 1.3.14
+
+- Rename the integration to **Meross Local Cloud** and make it local-only: the
+  broker-selection step is gone and the config flow goes straight to the local
+  broker. The official Meross cloud is no longer offered.
+- Config labels now ask for the **local login** (a username is enough, no email
+  required) and warn against using Meross cloud credentials.
+- Fix compatibility with Home Assistant 2026.11: use `ATTR_COLOR_TEMP_KELVIN`
+  and `color_temp_kelvin` instead of the removed mired-based color temperature
+  API.
+- Refresh the README/info and add the project banner and brand icon.
+
 ## 1.3.13
 
 - Add roller-shutter calibration buttons using `Appliance.RollerShutter.Adjust`:

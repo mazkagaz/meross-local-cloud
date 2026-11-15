@@ -76,15 +76,12 @@ def print_startup_message(http_devices: List[HttpDeviceInfo]):
     start_message = (
         f"\n"
         f"===============================\n"
-        f"Meross Cloud Custom component\n"
-        f"Developed by Alberto Geniola\n"
+        f"Meross Local Cloud\n"
+        f"Fork of Alberto Geniola's Meross Cloud component\n"
         f"Low level library version: {MEROSS_IOT_VERSION}\n"
         f"-------------------------------\n"
-        f"This custom component is under development and not yet ready for production use.\n"
-        f"In case of errors/misbehave, please report it here: \n"
-        f"https://github.com/albertogeniola/meross-homeassistant/issues\n"
-        f"\n"
-        f"If you like this extension and you want to support it, please consider donating.\n"
+        f"In case of errors or unexpected behavior, please report them here:\n"
+        f"https://github.com/mazkagaz/meross-cloud/issues\n"
         f"-------------------------------\n"
         f"List of devices reported by HTTP API:\n"
         f"{http_info}"
@@ -445,7 +442,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             "Too many tokens have been issued to this account. "
             "The Remote API refused to issue a new one."
         )
-        notify_error(hass, "http_connection", "Meross Cloud", msg)
+        notify_error(hass, "http_connection", "Meross Local Cloud", msg)
         log_exception(msg, logger=_LOGGER)
         raise ConfigEntryAuthFailed("Too many tokens have been issued")
 
@@ -458,13 +455,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         ):
             raise ConfigEntryAuthFailed("Invalid token or credentials")
         else:
-            msg = "Your Meross login credentials are invalid or the network could not be reached at the moment."
+            msg = "Your local broker login is invalid or the broker could not be reached at the moment."
             notify_error(
                 hass,
                 "http_connection",
-                "Meross Cloud",
-                "Could not connect to the Meross cloud. Please check"
-                " your internet connection and your Meross credentials",
+                "Meross Local Cloud",
+                "Could not connect to the local broker. Please check"
+                " the broker address and the local login",
             )
             log_exception(msg, logger=_LOGGER)
             raise ConfigEntryNotReady()
@@ -487,7 +484,7 @@ async def update_listener(hass, entry):
 async def async_unload_entry(hass, entry):
     """Unload a config entry."""
     # Unload entities first
-    _LOGGER.info("Removing Meross Cloud integration.")
+    _LOGGER.info("Removing Meross Local Cloud integration.")
     _LOGGER.info("Cleaning up resources...")
 
     for platform in MEROSS_PLATFORMS:
@@ -508,7 +505,7 @@ async def async_unload_entry(hass, entry):
     hass.data[DOMAIN].clear()
     del hass.data[DOMAIN]
 
-    _LOGGER.info("Meross cloud component removal done.")
+    _LOGGER.info("Meross Local Cloud component removal done.")
     return True
 
 

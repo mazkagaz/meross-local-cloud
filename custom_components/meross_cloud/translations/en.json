@@ -1,28 +1,25 @@
 {
   "config": {
     "abort": {
-      "single_instance_allowed": "Only a single configuration of Meross is allowed."
+      "single_instance_allowed": "Only a single configuration of Meross Local Cloud is allowed."
     },
     "error": {
-      "invalid_credentials": "Invalid credentials.",
-      "connection_error": "Unable to connect to Meross.",
-      "invalid_http_endpoint": "Invalid Meross HTTTP api endpoint",
+      "invalid_credentials": "Invalid local login or password.",
+      "connection_error": "Unable to connect to the local broker.",
+      "invalid_http_endpoint": "Invalid HTTP API endpoint",
       "api_invalid_ssl_code": "Invalid SSL response received by the server. Are you sure the server is exposed in HTTPS? Try plain http and see if this happens again.",
       "unknown_error": "An unexpected error occurred",
-      "api_connection_refused": "Cannot connect to HTTP(S) API server. Make sure the address is valid",
+      "api_connection_refused": "Cannot connect to the HTTP(S) API server. Make sure the address is valid",
       "client_connection_error": "An error occurred while connecting to the HTTP API",
-      "missing_credentials": "Please provide missing credentials",
-      "mdns_lookup_failed": "The discovery was unable to automatically find MQTT/API addresses. Default values have been selected."
+      "missing_credentials": "Please provide the missing credentials",
+      "mdns_lookup_failed": "The discovery was unable to automatically find the local MQTT/API addresses. Default values have been selected."
     },
     "step": {
-      "user": {
-        "title": "Chose broker",
-        "data": {}
-      },
       "configure_manager": {
-        "title": "Login to Meross Cloud",
+        "title": "Login to Meross Local Cloud",
+        "description": "Use the local account created in the Meross Local Broker add-on. Do not use your Meross cloud credentials; this integration only talks to the local broker.",
         "data": {
-          "username": "Email Address",
+          "username": "Local login",
           "password": "Password",
           "http_api_endpoint": "HTTP API Endpoint",
           "override_mqtt_endpoint": "MQTT Address (host:port)",
@@ -31,10 +28,10 @@
       },
       "reauth_confirm": {
         "title": "Reauthentication required",
-        "description": "The Meross integration needs to re-authenticate your account"
+        "description": "Meross Local Cloud needs to re-authenticate to your local broker"
       }
     },
-    "title": "Meross"
+    "title": "Meross Local Cloud"
   },
   "options": {
     "error": {},
@@ -44,7 +41,7 @@
           "custom_user_agent": "Custom HTTP User Agent header for API polling",
           "lan_transport_mode": "Device communication options"
         },
-        "title": "Meross Cloud Options"
+        "title": "Meross Local Cloud Options"
       }
     }
   }

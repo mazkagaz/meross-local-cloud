@@ -9,7 +9,7 @@ from zeroconf import ServiceStateChange, Zeroconf
 from zeroconf.asyncio import AsyncServiceBrowser, AsyncServiceInfo
 
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry, OptionsFlow, ConfigError
+from homeassistant.config_entries import ConfigEntry, OptionsFlow
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
@@ -20,10 +20,8 @@ from meross_iot.model.http.exception import UnauthorizedException, MissingMFA, B
 from requests.exceptions import ConnectTimeout
 from homeassistant.components import zeroconf
 
-from .common import DOMAIN, CONF_STORED_CREDS, CONF_WORKING_MODE, CONF_WORKING_MODE_LOCAL_MODE, \
-    CONF_WORKING_MODE_CLOUD_MODE, CONF_MFA_CODE, \
+from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
     CONF_HTTP_ENDPOINT, CONF_MQTT_SKIP_CERT_VALIDATION, CONF_OPT_CUSTOM_USER_AGENT, HTTP_API_RE, \
-    MEROSS_DEFAULT_CLOUD_API_URL, \
     MEROSS_LOCAL_API_URL, MEROSS_LOCAL_MDNS_SERVICE_TYPES, MEROSS_LOCAL_MDNS_MQTT_SERVICE_TYPE, \
     MEROSS_LOCAL_MDNS_API_SERVICE_TYPE, CONF_OVERRIDE_MQTT_ENDPOINT, MULTIPLE_APIS_FOUND, MULTIPLE_BROKERS_FOUND, \
     UNKNOWN_ERROR, \
@@ -56,7 +54,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._mqtt_boker: Optional[str] = None
         self._username: Optional[str] = None
         self._password: Optional[str] = None
-        self._local_mode: bool = False
+        self._local_mode: bool = True
         self._skip_cert_validation: Optional[bool] = None
         self._discovered_services: List[AsyncServiceInfo] = []
 
@@ -75,19 +73,12 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         password_default = password if password is not None else self._password
         skip_cert_validation_default = skip_cert_validation if skip_cert_validation is not None else self._skip_cert_validation
 
-        if self._local_mode:
-            schema_params = {
-                vol.Required(CONF_HTTP_ENDPOINT, default=http_endpoint_default): str,
-                vol.Required(CONF_OVERRIDE_MQTT_ENDPOINT, default=mqtt_endpoint_default): str,
-                vol.Required(CONF_USERNAME, default=username_default): str,
-                vol.Required(CONF_PASSWORD, default=password_default): str,
-            }
-        else:
-            schema_params = {
-                vol.Required(CONF_HTTP_ENDPOINT, default=http_endpoint_default): str,
-                vol.Required(CONF_USERNAME, default=username_default): str,
-                vol.Required(CONF_PASSWORD, default=password_default): str,
-            }
+        schema_params = {
+            vol.Required(CONF_HTTP_ENDPOINT, default=http_endpoint_default): str,
+            vol.Required(CONF_OVERRIDE_MQTT_ENDPOINT, default=mqtt_endpoint_default): str,
+            vol.Required(CONF_USERNAME, default=username_default): str,
+            vol.Required(CONF_PASSWORD, default=password_default): str,
+        }
 
         if requires_mfa:
             schema_params[vol.Required(CONF_MFA_CODE)] = str
@@ -166,64 +157,35 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         return api_endpoint, mqtt_endpoint
 
     async def async_step_user(self, user_input=None) -> Dict[str, Any]:
-        """Choose mode step handler"""
+        """Configure the local broker connection."""
         _LOGGER.debug("Starting STEP_USER")
-        if not user_input:
-            _LOGGER.debug("Empty user_input, showing mode selection form")
-            return self.async_show_form(
-                step_id="user",
-                data_schema=vol.Schema({
-                    vol.Required(CONF_WORKING_MODE, default=CONF_WORKING_MODE_CLOUD_MODE): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                {"value": CONF_WORKING_MODE_CLOUD_MODE,
-                                 "label": "Connect to Meross Official Cloud (requires internet)"},
-                                {"value": CONF_WORKING_MODE_LOCAL_MODE,
-                                 "label": "Connect to LAN-only broker (requires Meross Local Addon)"}],
-                            mode=SelectSelectorMode.LIST,
-                        ))}),
-                errors={})
+        self._local_mode = True
+        self._http_api = MEROSS_LOCAL_API_URL
+        self._mqtt_boker = MEROSS_LOCAL_MQTT_BROKER_URI
+        self._skip_cert_validation = True
 
-        mode = user_input.get(CONF_WORKING_MODE)
-        if mode == CONF_WORKING_MODE_CLOUD_MODE:
-            self._local_mode = False
-            self._http_api = MEROSS_DEFAULT_CLOUD_API_URL
-            self._skip_cert_validation = False
-            return self.async_show_form(
-                step_id="configure_manager",
-                data_schema=self._build_setup_schema(),
-                errors={},
-            )
-        elif mode == CONF_WORKING_MODE_LOCAL_MODE:
-            self._local_mode = True
-            self._http_api = MEROSS_LOCAL_API_URL
-            self._mqtt_boker = MEROSS_LOCAL_MQTT_BROKER_URI
-            self._skip_cert_validation = True
-
-            # Look for local brokers via zeroconf
-            api = None
-            mqtt = None
-            try:
-                api, mqtt = await self._discover_services()
-            except ConfigUiException as e:
-                return self.async_show_form(
-                    step_id="configure_manager",
-                    data_schema=self._build_setup_schema(http_endpoint=api, override_mqtt_endpoint=mqtt),
-                    errors={"base": e.code},
-                )
-
-            # If no service was found, set an error
-            errors = {}
-            if api is None or mqtt is None:
-                errors["base"] = "mdns_lookup_failed"
-
+        # Look for local brokers via zeroconf
+        api = None
+        mqtt = None
+        try:
+            api, mqtt = await self._discover_services()
+        except ConfigUiException as e:
             return self.async_show_form(
                 step_id="configure_manager",
                 data_schema=self._build_setup_schema(http_endpoint=api, override_mqtt_endpoint=mqtt),
-                errors=errors,
+                errors={"base": e.code},
             )
-        else:
-            raise ConfigError("Invalid selection")
+
+        # If no service was found, set an error
+        errors = {}
+        if api is None or mqtt is None:
+            errors["base"] = "mdns_lookup_failed"
+
+        return self.async_show_form(
+            step_id="configure_manager",
+            data_schema=self._build_setup_schema(http_endpoint=api, override_mqtt_endpoint=mqtt),
+            errors=errors,
+        )
 
     async def async_step_configure_manager(self, user_input=None) -> Dict[str, Any]:
         """Handle a flow initialized by the user interface"""
