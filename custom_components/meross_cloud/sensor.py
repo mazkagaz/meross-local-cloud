@@ -441,7 +441,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
 
         # Add Power Sensors
         for d in power_sensors:
-            channels = [c.index for c in d.channels] if len(d.channels) > 0 else [0]
+            channels = [c.index for c in (d.channels or [])] or [0]
             for channel_index in channels:
                 new_entities.append(
                     PowerSensorWrapper(device=d, device_list_coordinator=coordinator, channel=channel_index))
@@ -452,7 +452,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
 
         # Add Energy Sensors
         for d in energy_sensors:
-            channels = [c.index for c in d.channels] if len(d.channels) > 0 else [0]
+            channels = [c.index for c in (d.channels or [])] or [0]
             for channel_index in channels:
                 new_entities.append(
                      EnergySensorWrapper(device=d, device_list_coordinator=coordinator, channel=channel_index))
@@ -463,7 +463,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
 
         # Add roller-shutter calibration status sensors
         for d in roller_shutters:
-            channels = [c.index for c in d.channels] if len(d.channels) > 0 else [0]
+            channels = [c.index for c in (d.channels or [])] or [0]
             for channel_index in channels:
                 new_entities.append(
                     RollerShutterCalibrationSensorWrapper(

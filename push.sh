@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Initialize, tag and push this HACS integration repository.
-# Usage: ./push.sh <github-user>   (default branch: main, release tag: v1.3.16)
+# Usage: ./push.sh <github-user>   (default branch: main, release tag: v1.3.17)
 set -euo pipefail
 
 USER="${1:?usage: $0 <github-user>}"
@@ -23,13 +23,13 @@ git remote remove origin 2>/dev/null || true
 git remote add origin "github.com-meross-cloud:${USER}/meross-local-cloud.git"
 git push -u origin main
 
-if ! git rev-parse "v1.3.16" >/dev/null 2>&1; then
-  git tag -a v1.3.16 -m "Meross Local Cloud 1.3.16"
+if ! git rev-parse "v1.3.17" >/dev/null 2>&1; then
+  git tag -a v1.3.17 -m "Meross Local Cloud 1.3.17"
 fi
-git push origin v1.3.16
+git push origin v1.3.17
 
 if command -v gh >/dev/null 2>&1; then
-  gh release create v1.3.16 --title "Meross Local Cloud v1.3.16" \
+  gh release create v1.3.17 --title "Meross Local Cloud v1.3.17" \
     --notes "HACS-installable local-only integration for the Meross Local Broker add-on." \
     || true
 fi
@@ -37,9 +37,9 @@ fi
 cat <<EOF
 
 Pushed. Next:
-  1. Make sure https://github.com/${USER}/meross-cloud is public.
+  1. Make sure https://github.com/${USER}/meross-local-cloud is public.
   2. HACS -> Integrations -> three-dot menu -> Custom repositories
-     URL: https://github.com/${USER}/meross-cloud
+     URL: https://github.com/${USER}/meross-local-cloud
      Category: Integration
-  3. Install, restart Home Assistant, add the Meross Cloud integration.
+  3. Install, restart Home Assistant, add the Meross Local Cloud integration.
 EOF

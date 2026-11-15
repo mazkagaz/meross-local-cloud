@@ -269,7 +269,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         # Handle smart valves
         valves = filter(lambda d: isinstance(d, Mts100v3Valve), devices)
         for d in valves:
-            channels = [c.index for c in d.channels] if len(d.channels) > 0 else [0]
+            channels = [c.index for c in (d.channels or [])] or [0]
             for channel_index in channels:
                 w = ValveEntityWrapper(device=d, channel=channel_index, device_list_coordinator=coordinator)
                 if w.unique_id not in hass.data[DOMAIN]["ADDED_ENTITIES_IDS"]:
@@ -278,7 +278,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         # Handle classic thermostats
         thermostats = filter(lambda d: isinstance(d, ThermostatModeMixin), devices)
         for d in thermostats:
-            channels = [c.index for c in d.channels] if len(d.channels) > 0 else [0]
+            channels = [c.index for c in (d.channels or [])] or [0]
             for channel_index in channels:
                 w = ThermostatEntityWrapper(device=d, channel=channel_index, device_list_coordinator=coordinator)
                 if w.unique_id not in hass.data[DOMAIN]["ADDED_ENTITIES_IDS"]:
@@ -287,7 +287,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         # Handle ModeB thermostats
         thermostats = filter(lambda d: isinstance(d, ThermostatModeBMixin), devices)
         for d in thermostats:
-            channels = [c.index for c in d.channels] if len(d.channels) > 0 else [0]
+            channels = [c.index for c in (d.channels or [])] or [0]
             for channel_index in channels:
                 w = ThermostatEntityWrapper(device=d, channel=channel_index,
                                             device_list_coordinator=coordinator)

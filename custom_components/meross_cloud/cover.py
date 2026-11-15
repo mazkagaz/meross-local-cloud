@@ -188,8 +188,9 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
             # does not provide meaningful states. For this reason, we will ignore the "main channel"
             # of any cover device which has more than 1 channels. Of course, we will keep working with channel
             # 0 when dealing with dingle-door openers.
-            if len(d.channels) > 1:
-                channels = [c.index for c in d.channels if c.index > 0]
+            device_channels = d.channels or []
+            if len(device_channels) > 1:
+                channels = [c.index for c in device_channels if c.index > 0]
             else:
                 channels = [0]
             for channel_index in channels:

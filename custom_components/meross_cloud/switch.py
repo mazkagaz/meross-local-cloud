@@ -152,7 +152,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         devs = filter(lambda d: not (isinstance(d, GarageOpenerMixin) or isinstance(d, LightMixin)), devs)
 
         for d in devs:
-            channels = [c.index for c in d.channels] if len(d.channels) > 0 else [0]
+            channels = [c.index for c in (d.channels or [])] or [0]
             for channel_index in channels:
                 w = SwitchEntityWrapper(device=d, channel=channel_index,
                                         device_list_coordinator=coordinator)

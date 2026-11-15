@@ -217,7 +217,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
 
         light_devs = filter(lambda d: isinstance(d, LightMixin), devices)
         for d in light_devs:
-            channels = [c.index for c in d.channels] if len(d.channels) > 0 else [0]
+            channels = [c.index for c in (d.channels or [])] or [0]
             for channel_index in channels:
                 w = LightEntityWrapper(device=d, channel=channel_index, device_list_coordinator=coordinator)
                 if w.unique_id not in hass.data[DOMAIN]["ADDED_ENTITIES_IDS"]:
@@ -225,7 +225,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
 
         diffuser_devs = filter(lambda d: isinstance(d, DiffuserLightMixin), devices)
         for d in diffuser_devs:
-            channels = [c.index for c in d.channels] if len(d.channels) > 0 else [0]
+            channels = [c.index for c in (d.channels or [])] or [0]
             for channel_index in channels:
                 w = DiffuserLightEntityWrapper(device=d, channel=channel_index, device_list_coordinator=coordinator)
                 if w.unique_id not in hass.data[DOMAIN]["ADDED_ENTITIES_IDS"]:

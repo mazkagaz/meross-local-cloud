@@ -13,6 +13,7 @@ from custom_components.meross_cloud.common import (
     DOMAIN, MANAGER, DEVICE_LIST_COORDINATOR,
 )
 from custom_components.meross_cloud.sensor import async_setup_entry as setup_sensors
+from custom_components.meross_cloud.cover import async_setup_entry as setup_covers
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +30,16 @@ class FakeShutter(RollerShutterTimerMixin):
 
     async def async_update(self):
         pass
+
+    def check_full_update_done(self):
+        return True
+
+    def get_position(self, channel=0):
+        return 100
+
+    def get_status(self, channel=0):
+        from meross_iot.model.enums import RollerShutterState
+        return RollerShutterState.OPEN
 
     def register_push_notification_handler_coroutine(self, coro):
         pass
@@ -173,3 +184,58 @@ async def test_no_result_when_device_reports_nothing(hass, runtime, monkeypatch)
     await asyncio.sleep(0.15)
     await hass.async_block_till_done()
     assert runtime.sensor.state == "no_result"
+
+
+async def test_cover_entity_is_created(hass):
+    device = FakeShutter()
+    hass.data[DOMAIN] = {
+        MANAGER: FakeManager(device),
+        DEVICE_LIST_COORDINATOR: FakeCoordinator(device.uuid),
+        "ADDED_ENTITIES_IDS": set(),
+    }
+
+    from homeassistant.components.cover import CoverEntityFeature
+    import logging
+    from homeassistant.helpers.entity_component import EntityComponent
+
+    component = EntityComponent(logging.getLogger(__name__), "cover", hass)
+
+    def add_covers(entities, update_before_add=False):
+        hass.async_create_task(component.async_add_entities(entities, update_before_add=update_before_add))
+
+    await setup_covers(hass, None, add_covers)
+    await hass.async_block_till_done()
+
+    covers = list(component.entities)
+    assert len(covers) == 1
+    assert covers[0].supported_features & CoverEntityFeature.OPEN
+    assert covers[0].supported_features & CoverEntityFeature.CLOSE
+
+
+async def test_cover_and_sensor_support_missing_channel_list(hass):
+    device = FakeShutter()
+    device.channels = None
+    hass.data[DOMAIN] = {
+        MANAGER: FakeManager(device),
+        DEVICE_LIST_COORDINATOR: FakeCoordinator(device.uuid),
+        "ADDED_ENTITIES_IDS": set(),
+    }
+
+    import logging
+    from homeassistant.helpers.entity_component import EntityComponent
+
+    cover_component = EntityComponent(logging.getLogger(__name__), "cover", hass)
+    sensor_component = EntityComponent(logging.getLogger(__name__), "sensor", hass)
+
+    def add_covers(entities, update_before_add=False):
+        hass.async_create_task(cover_component.async_add_entities(entities, update_before_add=update_before_add))
+
+    def add_sensors(entities, update_before_add=False):
+        hass.async_create_task(sensor_component.async_add_entities(entities, update_before_add=update_before_add))
+
+    await setup_covers(hass, None, add_covers)
+    await setup_sensors(hass, None, add_sensors)
+    await hass.async_block_till_done()
+
+    assert len(list(cover_component.entities)) == 1
+    assert len(list(sensor_component.entities)) == 1

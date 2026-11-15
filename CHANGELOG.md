@@ -1,3 +1,11 @@
+## 1.3.17
+
+- Create cover entities even when the device reports no channel list, and
+  apply the same guard to every platform. This restores the open/close cover
+  controls for devices such as the MRS100.
+- Ship dark and 2x brand image variants so the old Meross logo is no longer
+  used in dark mode or on high-DPI screens.
+
 ## 1.3.16
 
 - Fix the 500 error when opening the initial configuration flow: mDNS
