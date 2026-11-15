@@ -13,7 +13,7 @@ local est proposé : aucun identifiant du cloud officiel n'est utilisé.
 2. Appairer l'appareil avec
    [Meross Local Pairer](https://github.com/mazkagaz/meross-local-pairer).
 3. Dans HACS : **Intégrations → ⋮ → Dépôts personnalisés**, ajouter
-   `https://github.com/mazkagaz/meross-cloud` en catégorie **Integration**.
+   `https://github.com/mazkagaz/meross-local-cloud` en catégorie **Integration**.
 4. Télécharger l'intégration, redémarrer Home Assistant.
 5. **Paramètres → Appareils et services → Ajouter une intégration →
    Meross Local Cloud**, puis saisir :
@@ -33,7 +33,7 @@ contacte que le broker local.
 - capteur de statut de calibration.
 
 La procédure détaillée, les entités et le dépannage sont dans le
-[README](https://github.com/mazkagaz/meross-cloud#readme).
+[README](https://github.com/mazkagaz/meross-local-cloud#readme).
 
 ## Licence
 

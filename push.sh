@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Initialize, tag and push this HACS integration repository.
-# Usage: ./push.sh <github-user>   (default branch: main, release tag: v1.3.13)
+# Usage: ./push.sh <github-user>   (default branch: main, release tag: v1.3.16)
 set -euo pipefail
 
 USER="${1:?usage: $0 <github-user>}"
@@ -18,18 +18,18 @@ if [ ! -d .git ]; then
   git config user.email ${EMAIL}
 fi
 git add .
-git commit -m "MRS100/local broker fork for HACS" || true
+git commit -m "Meross Local Cloud fork for HACS" || true
 git remote remove origin 2>/dev/null || true
-git remote add origin "github.com-meross-cloud:${USER}/meross-cloud.git"
+git remote add origin "github.com-meross-cloud:${USER}/meross-local-cloud.git"
 git push -u origin main
 
-if ! git rev-parse "v1.3.15" >/dev/null 2>&1; then
-  git tag -a v1.3.15 -m "Meross Local Cloud 1.3.15"
+if ! git rev-parse "v1.3.16" >/dev/null 2>&1; then
+  git tag -a v1.3.16 -m "Meross Local Cloud 1.3.16"
 fi
-git push origin v1.3.15
+git push origin v1.3.16
 
 if command -v gh >/dev/null 2>&1; then
-  gh release create v1.3.15 --title "Meross Local Cloud v1.3.15" \
+  gh release create v1.3.16 --title "Meross Local Cloud v1.3.16" \
     --notes "HACS-installable local-only integration for the Meross Local Broker add-on." \
     || true
 fi

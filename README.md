@@ -18,7 +18,7 @@ Ce fork ajoute le support MRS100 :
 | Brique | Rôle | Dépôt |
 |---|---|---|
 | **Meross Local Broker** | add-on : broker MQTT + API locale | [mazkagaz/meross-local-broker](https://github.com/mazkagaz/meross-local-broker) |
-| **Meross Local Cloud** | cette intégration Home Assistant (HACS) | [mazkagaz/meross-cloud](https://github.com/mazkagaz/meross-cloud) |
+| **Meross Local Cloud** | cette intégration Home Assistant (HACS) | [mazkagaz/meross-local-cloud](https://github.com/mazkagaz/meross-local-cloud) |
 | **Meross Local Pairer** | application Android d'appairage | [mazkagaz/meross-local-pairer](https://github.com/mazkagaz/meross-local-pairer) |
 
 ```
@@ -42,7 +42,7 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 1. Ouvrir **HACS → Intégrations**.
 2. Menu **⋮ → Dépôts personnalisés**.
 3. Ajouter :
-   - URL : `https://github.com/mazkagaz/meross-cloud`
+   - URL : `https://github.com/mazkagaz/meross-local-cloud`
    - Catégorie : **Integration**
 4. Ouvrir la fiche **Meross Local Cloud**, télécharger la dernière version.
 5. Redémarrer Home Assistant.

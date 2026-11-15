@@ -175,6 +175,12 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 data_schema=self._build_setup_schema(http_endpoint=api, override_mqtt_endpoint=mqtt),
                 errors={"base": e.code},
             )
+        except Exception as ex:
+            # mDNS is best-effort: never fail the whole flow if the discovery
+            # stack cannot start (network permissions, container networking, etc.).
+            _LOGGER.warning("Local mDNS discovery failed: %s", ex, exc_info=True)
+            api = None
+            mqtt = None
 
         # If no service was found, set an error
         errors = {}

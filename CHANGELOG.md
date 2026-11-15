@@ -1,3 +1,9 @@
+## 1.3.16
+
+- Fix the 500 error when opening the initial configuration flow: mDNS
+  discovery is best-effort and any discovery-stack failure now falls back to
+  the manual broker form instead of aborting the flow.
+
 ## 1.3.15
 
 - Fix remaining naming inconsistencies in logs and notices (**Meross Local

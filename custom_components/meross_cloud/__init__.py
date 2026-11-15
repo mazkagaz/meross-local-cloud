@@ -81,7 +81,7 @@ def print_startup_message(http_devices: List[HttpDeviceInfo]):
         f"Low level library version: {MEROSS_IOT_VERSION}\n"
         f"-------------------------------\n"
         f"In case of errors or unexpected behavior, please report them here:\n"
-        f"https://github.com/mazkagaz/meross-cloud/issues\n"
+        f"https://github.com/mazkagaz/meross-local-cloud/issues\n"
         f"-------------------------------\n"
         f"List of devices reported by HTTP API:\n"
         f"{http_info}"
