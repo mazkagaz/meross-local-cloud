@@ -253,17 +253,18 @@ class MerossDevice(Entity):
 
     @property
     def online(self) -> bool:
-        if not self._coordinator.last_update_success:
-            return False
+        # The MQTT transport state is live; the HTTP list is only a discovery
+        # aid and can transiently report a stale or unknown status (broker
+        # restart, newly paired device, failed poll). A connected device must
+        # stay available even if HTTP disagrees.
+        if getattr(self._device, "online_status", None) == OnlineStatus.ONLINE:
+            return True
         new_data = (self._coordinator.data or {}).get(self._device.uuid)
         if new_data is not None:
             return new_data.online_status == OnlineStatus.ONLINE
         if self._last_http_state is not None:
             return self._last_http_state.online_status == OnlineStatus.ONLINE
-        # The HTTP list can transiently omit a device (multi-device accounts);
-        # fall back to the MQTT transport state instead of crashing/marking it
-        # unavailable.
-        return self._device.online_status == OnlineStatus.ONLINE
+        return False
 
     @property
     def unique_id(self) -> str:
@@ -285,7 +286,9 @@ class MerossDevice(Entity):
 
     @property
     def available(self) -> bool:
-        return self._coordinator.last_update_success and self.online
+        # An HTTP polling failure only affects discovery; it must not hide
+        # entities whose state is still served over MQTT.
+        return self.online
 
     async def _async_push_notification_received(self, namespace: Namespace, data: dict, device_internal_id: str):
         update_state = False

@@ -1,3 +1,10 @@
+## 1.3.20
+
+- Keep entities available when the broker's HTTP device list reports a stale
+  `offline`/`unknown` status (for example after a broker restart or when a
+  second device is paired). The live MQTT state is now authoritative, and a
+  failed HTTP poll no longer hides entities that MQTT still serves.
+
 ## 1.3.19
 
 - Keep cover entities available when the HTTP device list transiently omits a
