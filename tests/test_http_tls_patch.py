@@ -25,3 +25,6 @@ def test_setup_schema_exposes_http_certificate_option():
     schema = handler._build_setup_schema()
     keys = {str(key.schema) for key in schema.schema}
     assert CONF_HTTP_SKIP_CERT_VALIDATION in keys
+    for key in schema.schema:
+        if str(key.schema) == CONF_HTTP_SKIP_CERT_VALIDATION:
+            assert key.default() is False

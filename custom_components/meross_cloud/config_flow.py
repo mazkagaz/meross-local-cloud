@@ -79,9 +79,9 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         skip_http_cert_validation_default = skip_http_cert_validation \
             if skip_http_cert_validation is not None else self._skip_http_cert_validation
         if skip_http_cert_validation_default is None:
-            # The local broker uses a self-signed certificate, so accepting it
-            # is the working default; HTTPS still encrypts the traffic.
-            skip_http_cert_validation_default = True
+            # Opt-in: certificate validation stays on unless the user accepts
+            # the local broker's self-signed certificate explicitly.
+            skip_http_cert_validation_default = False
 
         schema_params = {
             vol.Required(CONF_HTTP_ENDPOINT, default=http_endpoint_default): str,
@@ -224,7 +224,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         skip_cert_validation = user_input.get(CONF_MQTT_SKIP_CERT_VALIDATION)
         skip_http_cert_validation = user_input.get(CONF_HTTP_SKIP_CERT_VALIDATION)
         if skip_http_cert_validation is None:
-            skip_http_cert_validation = True
+            skip_http_cert_validation = False
         mfa_code = user_input.get(CONF_MFA_CODE)
 
         # The self-signed local certificate is only accepted when the user

@@ -62,7 +62,7 @@ CONFIG_SCHEMA = vol.Schema(
             {
                 vol.Required(CONF_HTTP_ENDPOINT): cv.string,
                 vol.Required(CONF_MQTT_SKIP_CERT_VALIDATION): cv.boolean,
-                vol.Optional(CONF_HTTP_SKIP_CERT_VALIDATION, default=True): cv.boolean,
+                vol.Optional(CONF_HTTP_SKIP_CERT_VALIDATION, default=False): cv.boolean,
                 vol.Optional(CONF_STORED_CREDS): cv.string,
                 vol.Optional(CONF_OVERRIDE_MQTT_ENDPOINT): cv.string
             }
@@ -380,7 +380,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     mqtt_skip_cert_validation = config_entry.data.get(CONF_MQTT_SKIP_CERT_VALIDATION, True)
     _LOGGER.info("Skip MQTT cert validation option set to: %s", mqtt_skip_cert_validation)
 
-    http_skip_cert_validation = config_entry.data.get(CONF_HTTP_SKIP_CERT_VALIDATION, True)
+    http_skip_cert_validation = config_entry.data.get(CONF_HTTP_SKIP_CERT_VALIDATION, False)
     _LOGGER.info("Skip HTTP cert validation option set to: %s", http_skip_cert_validation)
     set_http_cert_validation(http_skip_cert_validation)
 

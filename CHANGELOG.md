@@ -3,8 +3,9 @@
 - Support the broker HTTPS listener (`https://…:2004`, broker `alpha71`).
   The login step and every later HTTP call now accept the broker's
   self-signed certificate.
-- New login option **Skip HTTP certificate validation**, enabled by default
-  for the local broker. MQTT/TLS on port 2001 keeps its own skip option.
+- New login option **Skip HTTP certificate validation**, opt-in and disabled
+  by default. Check it only for the local broker's self-signed certificate;
+  MQTT/TLS on port 2001 keeps its own skip option.
 - The SSL error message now explains the option instead of suggesting plain
   HTTP only. Port 2003 remains available in plain HTTP.
 
