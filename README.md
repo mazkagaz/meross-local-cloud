@@ -35,7 +35,7 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
    N'utilisez pas votre compte Meross officiel : ce compte est indépendant.
 3. Le MRS100 a été appairé avec **Meross Local Pairer**.
 4. **HACS** est installé dans Home Assistant.
-5. Home Assistant 2025.6 ou plus récent.
+5. Home Assistant 2025.6 ou plus récent (testé avec 2026.11).
 
 ## Installation avec HACS
 
