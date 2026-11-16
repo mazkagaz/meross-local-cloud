@@ -17,9 +17,10 @@
 | File | Change |
 |---|---|
 | `hacs.json` | Fork name; HACS custom-repository metadata |
-| `custom_components/meross_cloud/manifest.json` | Fork name, documentation/issue URLs, codeowner placeholder, version 1.3.22; requirements unchanged (`meross_iot==0.4.9.2`) |
+| `custom_components/meross_cloud/manifest.json` | Fork name, documentation/issue URLs, codeowner placeholder, version 1.4.0; requirements unchanged (`meross_iot==0.4.9.2`) |
 | `README.md`, `info.md` | Fork install/usage notes and attribution |
-| `CHANGELOG.md` | 1.3.11-1.3.22 fork entries |
+| `CHANGELOG.md` | 1.3.11-1.4.0 fork entries |
+| `custom_components/meross_cloud/patches.py` | Runtime fixes plus an opt-in HTTP TLS bypass scoped to `meross_iot` |
 | `custom_components/meross_cloud/common.py` | Registered the `number` and `button` platforms |
 | `custom_components/meross_cloud/number.py` | **New**: roller-shutter open/close duration entities |
 | `custom_components/meross_cloud/button.py` | **New**: roller-shutter start/stop calibration buttons |
