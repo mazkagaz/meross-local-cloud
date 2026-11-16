@@ -21,12 +21,14 @@ from requests.exceptions import ConnectTimeout
 from homeassistant.components import zeroconf
 
 from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
-    CONF_HTTP_ENDPOINT, CONF_MQTT_SKIP_CERT_VALIDATION, CONF_OPT_CUSTOM_USER_AGENT, HTTP_API_RE, \
+    CONF_HTTP_ENDPOINT, CONF_MQTT_SKIP_CERT_VALIDATION, CONF_HTTP_SKIP_CERT_VALIDATION, \
+    CONF_OPT_CUSTOM_USER_AGENT, HTTP_API_RE, \
     MEROSS_LOCAL_API_URL, MEROSS_LOCAL_MDNS_SERVICE_TYPES, MEROSS_LOCAL_MDNS_MQTT_SERVICE_TYPE, \
     MEROSS_LOCAL_MDNS_API_SERVICE_TYPE, CONF_OVERRIDE_MQTT_ENDPOINT, MULTIPLE_APIS_FOUND, MULTIPLE_BROKERS_FOUND, \
     UNKNOWN_ERROR, \
     DIFFERENT_HOSTS_FOR_BROKER_AND_API, MEROSS_LOCAL_MQTT_BROKER_URI, CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, \
     CONF_OPT_LAN_HTTP_FIRST, CONF_OPT_LAN_HTTP_FIRST_ONLY_GET, DEFAULT_USER_AGENT
+from .patches import set_http_cert_validation
 
 _LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 1
@@ -56,6 +58,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._password: Optional[str] = None
         self._local_mode: bool = True
         self._skip_cert_validation: Optional[bool] = None
+        self._skip_http_cert_validation: Optional[bool] = None
         self._discovered_services: List[AsyncServiceInfo] = []
 
     def _build_setup_schema(
@@ -65,6 +68,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             password: str = None,
             override_mqtt_endpoint: str = None,
             skip_cert_validation: bool = None,
+            skip_http_cert_validation: bool = None,
             requires_mfa: bool = False
     ) -> vol.Schema:
         http_endpoint_default = http_endpoint if http_endpoint is not None else self._http_api
@@ -72,6 +76,12 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         username_default = username if username is not None else self._username
         password_default = password if password is not None else self._password
         skip_cert_validation_default = skip_cert_validation if skip_cert_validation is not None else self._skip_cert_validation
+        skip_http_cert_validation_default = skip_http_cert_validation \
+            if skip_http_cert_validation is not None else self._skip_http_cert_validation
+        if skip_http_cert_validation_default is None:
+            # The local broker uses a self-signed certificate, so accepting it
+            # is the working default; HTTPS still encrypts the traffic.
+            skip_http_cert_validation_default = True
 
         schema_params = {
             vol.Required(CONF_HTTP_ENDPOINT, default=http_endpoint_default): str,
@@ -83,6 +93,8 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if requires_mfa:
             schema_params[vol.Required(CONF_MFA_CODE)] = str
         schema_params[vol.Required(CONF_MQTT_SKIP_CERT_VALIDATION, default=skip_cert_validation_default)] = bool
+        schema_params[vol.Required(CONF_HTTP_SKIP_CERT_VALIDATION,
+                                   default=skip_http_cert_validation_default)] = bool
         return vol.Schema(schema_params)
 
     async def async_step_reauth(self, user_input=None):
@@ -210,13 +222,21 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         password = user_input.get(CONF_PASSWORD)
         mqtt_host = user_input.get(CONF_OVERRIDE_MQTT_ENDPOINT)
         skip_cert_validation = user_input.get(CONF_MQTT_SKIP_CERT_VALIDATION)
+        skip_http_cert_validation = user_input.get(CONF_HTTP_SKIP_CERT_VALIDATION)
+        if skip_http_cert_validation is None:
+            skip_http_cert_validation = True
         mfa_code = user_input.get(CONF_MFA_CODE)
+
+        # The self-signed local certificate is only accepted when the user
+        # opted in; this must be in place before the login test below.
+        set_http_cert_validation(skip_http_cert_validation)
 
         data_schema = self._build_setup_schema(
             http_endpoint=http_api_endpoint,
             username=username,
             password=password,
             override_mqtt_endpoint=mqtt_host,
+            skip_http_cert_validation=skip_http_cert_validation,
             requires_mfa=mfa_code is not None
         )
 
@@ -258,6 +278,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 username=username,
                 password=password,
                 override_mqtt_endpoint=mqtt_host,
+                skip_http_cert_validation=skip_http_cert_validation,
                 requires_mfa=True
             )
             return self.async_show_form(
@@ -322,7 +343,8 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 "user_email": creds.user_email,
                 "issued_on": creds.issued_on.isoformat()
             },
-            CONF_MQTT_SKIP_CERT_VALIDATION: skip_cert_validation
+            CONF_MQTT_SKIP_CERT_VALIDATION: skip_cert_validation,
+            CONF_HTTP_SKIP_CERT_VALIDATION: skip_http_cert_validation
         }
         entry = await self.async_set_unique_id(http_api_endpoint)
 

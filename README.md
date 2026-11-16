@@ -59,11 +59,12 @@ des modules complémentaires (lien ci-dessus).
 
 | Champ | Valeur |
 |---|---|
-| HTTP API Endpoint | `http://homeassistant.local:2003` |
+| HTTP API Endpoint | `https://homeassistant.local:2004` (broker `alpha71`) ou `http://homeassistant.local:2003` |
 | MQTT Address | `homeassistant.local:2001` |
 | Local login | le compte local de l'add-on, par exemple `meross-local` |
 | Password | le mot de passe local |
 | Skip MQTT certificate validation | **coché** (certificat auto-signé) |
+| Skip HTTP certificate validation | **coché** avec `https://` (certificat auto-signé) |
 
 Le login local n'est pas obligatoirement une adresse email : un simple nom
 d'utilisateur suffit. **N'utilisez jamais les identifiants du cloud Meross
@@ -72,8 +73,10 @@ officiel** ; l'intégration ne contacte que le broker local.
 4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
 
 Si Home Assistant n'est pas joignable via `homeassistant.local`, remplacer par
-son adresse IP (`http://192.168.x.x:2003` et `192.168.x.x:2001`). Dans ce cas,
-utiliser la configuration manuelle des identifiants dans Meross Local Pairer.
+son adresse IP (`https://192.168.x.x:2004` ou `http://192.168.x.x:2003`, et
+`192.168.x.x:2001`). En HTTPS, l'option **Skip HTTP certificate validation**
+doit rester cochée tant que le certificat local n'est pas importé dans Home
+Assistant.
 
 ## Entités créées
 
@@ -107,7 +110,8 @@ Home Assistant. Une nouvelle release GitHub est publiée pour chaque version.
 |---|---|
 | HACS ne trouve pas le dépôt | dépôt public, catégorie **Integration**, release publiée |
 | Aucun appareil découvert | add-on démarré, appareil ONLINE, compte local correct |
-| Erreur de connexion HTTP | adresse `http://…:2003`, pas HTTPS |
+| Erreur de connexion HTTP | adresse `https://…:2004` avec `Skip HTTP certificate validation` coché, ou `http://…:2003` |
+| Certificat HTTPS refusé | cocher `Skip HTTP certificate validation`, ou importer la CA `/ca.crt` du broker |
 | Erreur MQTT | adresse `…:2001`, `Skip MQTT certificate validation` coché |
 | Entités absentes | redémarrer HA après l'appairage, puis recharger l'intégration |
 | Statut de calibration bloqué | vérifier les logs de l'add-on et le capteur `Calibration status` |

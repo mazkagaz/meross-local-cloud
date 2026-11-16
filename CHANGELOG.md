@@ -1,3 +1,13 @@
+## 1.4.0
+
+- Support the broker HTTPS listener (`https://…:2004`, broker `alpha71`).
+  The login step and every later HTTP call now accept the broker's
+  self-signed certificate.
+- New login option **Skip HTTP certificate validation**, enabled by default
+  for the local broker. MQTT/TLS on port 2001 keeps its own skip option.
+- The SSL error message now explains the option instead of suggesting plain
+  HTTP only. Port 2003 remains available in plain HTTP.
+
 ## 1.3.22
 
 - Fix every MRS100 entity update failing with `AttributeError: 'list' object

@@ -43,13 +43,14 @@ from .common import (
     log_exception,
     CONF_STORED_CREDS,
     LIMITER,
-    CONF_HTTP_ENDPOINT, CONF_MQTT_SKIP_CERT_VALIDATION, HTTP_API_RE,
+    CONF_HTTP_ENDPOINT, CONF_MQTT_SKIP_CERT_VALIDATION, CONF_HTTP_SKIP_CERT_VALIDATION,
+    HTTP_API_RE,
     HTTP_UPDATE_INTERVAL, DEVICE_LIST_COORDINATOR, calculate_id, DEFAULT_USER_AGENT, CONF_OPT_CUSTOM_USER_AGENT,
     CONF_OVERRIDE_MQTT_ENDPOINT, CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, TRANSPORT_MODES_TO_ENUM,
     MEROSS_DEFAULT_CLOUD_API_URL
 )
 from .version import MEROSS_IOT_VERSION
-from .patches import apply_patches
+from .patches import apply_patches, set_http_cert_validation
 
 apply_patches()
 
@@ -61,6 +62,7 @@ CONFIG_SCHEMA = vol.Schema(
             {
                 vol.Required(CONF_HTTP_ENDPOINT): cv.string,
                 vol.Required(CONF_MQTT_SKIP_CERT_VALIDATION): cv.boolean,
+                vol.Optional(CONF_HTTP_SKIP_CERT_VALIDATION, default=True): cv.boolean,
                 vol.Optional(CONF_STORED_CREDS): cv.string,
                 vol.Optional(CONF_OVERRIDE_MQTT_ENDPOINT): cv.string
             }
@@ -377,6 +379,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
     mqtt_skip_cert_validation = config_entry.data.get(CONF_MQTT_SKIP_CERT_VALIDATION, True)
     _LOGGER.info("Skip MQTT cert validation option set to: %s", mqtt_skip_cert_validation)
+
+    http_skip_cert_validation = config_entry.data.get(CONF_HTTP_SKIP_CERT_VALIDATION, True)
+    _LOGGER.info("Skip HTTP cert validation option set to: %s", http_skip_cert_validation)
+    set_http_cert_validation(http_skip_cert_validation)
 
     mqtt_override_address = config_entry.data.get(CONF_OVERRIDE_MQTT_ENDPOINT)
     _LOGGER.info("Override MQTT address set to: %s", "no" if mqtt_override_address is None else "yes -> %s" % mqtt_override_address)

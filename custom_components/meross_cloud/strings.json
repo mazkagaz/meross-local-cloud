@@ -11,6 +11,7 @@
           "http_api_endpoint": "HTTP API Endpoint",
           "override_mqtt_endpoint": "MQTT Address (host:port)",
           "skip_mqtt_cert_validation": "Skip MQTT certificate validation checks",
+          "skip_http_cert_validation": "Skip HTTP certificate validation (self-signed local certificate)",
           "mfa_code": "MFA Code"
         }
       },
@@ -23,7 +24,7 @@
       "invalid_credentials": "Invalid local login or password.",
       "connection_error": "Unable to connect to the local broker.",
       "invalid_http_endpoint": "Invalid HTTP API endpoint",
-      "api_invalid_ssl_code": "Invalid SSL response received by the server. Are you sure the server is exposed in HTTPS? Try plain http and see if this happens again.",
+      "api_invalid_ssl_code": "The HTTPS certificate could not be validated. The local broker uses a self-signed certificate: enable \"Skip HTTP certificate validation\", or connect with plain http on port 2003.",
       "api_connection_refused": "Cannot connect to the HTTP(S) API server. Make sure the address is valid",
       "mdns_lookup_failed": "The discovery was unable to find the local MQTT/API service. Default values have been selected.",
       "missing_mfa": "Your account requires an MFA code to proceed. Please provide it."

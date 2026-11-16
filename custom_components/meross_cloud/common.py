@@ -39,6 +39,7 @@ CONNECTION_TIMEOUT_THRESHOLD = 5
 
 CONF_STORED_CREDS = "stored_credentials"
 CONF_MQTT_SKIP_CERT_VALIDATION = "skip_mqtt_cert_validation"
+CONF_HTTP_SKIP_CERT_VALIDATION = "skip_http_cert_validation"
 CONF_OVERRIDE_MQTT_ENDPOINT = "override_mqtt_endpoint"
 CONF_HTTP_ENDPOINT = "http_api_endpoint"
 CONF_WORKING_MODE = "working_mode"
