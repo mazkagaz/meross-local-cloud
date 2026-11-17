@@ -20,7 +20,7 @@ from meross_iot.model.http.exception import UnauthorizedException, MissingMFA, B
 from requests.exceptions import ConnectTimeout
 from homeassistant.components import zeroconf
 
-from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
+from .common import DOMAIN, CONF_STORED_CREDS, CONF_BROKER_CA, CONF_MFA_CODE, \
     CONF_HTTP_ENDPOINT, CONF_MQTT_SKIP_CERT_VALIDATION, CONF_HTTP_SKIP_CERT_VALIDATION, \
     CONF_OPT_CUSTOM_USER_AGENT, HTTP_API_RE, \
     MEROSS_LOCAL_API_URL, MEROSS_LOCAL_MDNS_SERVICE_TYPES, MEROSS_LOCAL_MDNS_MQTT_SERVICE_TYPE, \
@@ -29,6 +29,7 @@ from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
     DIFFERENT_HOSTS_FOR_BROKER_AND_API, MEROSS_LOCAL_MQTT_BROKER_URI, CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, \
     CONF_OPT_LAN_HTTP_FIRST, CONF_OPT_LAN_HTTP_FIRST_ONLY_GET, DEFAULT_USER_AGENT
 from .patches import set_http_cert_validation
+from .tls import async_fetch_broker_ca
 
 _LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 1
@@ -346,6 +347,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         # TODO: Test MQTT connection?
+        broker_ca = await async_fetch_broker_ca(http_api_endpoint)
         data = {
             CONF_HTTP_ENDPOINT: http_api_endpoint,
             CONF_OVERRIDE_MQTT_ENDPOINT: mqtt_host,
@@ -361,6 +363,8 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_MQTT_SKIP_CERT_VALIDATION: skip_cert_validation,
             CONF_HTTP_SKIP_CERT_VALIDATION: skip_http_cert_validation
         }
+        if broker_ca:
+            data[CONF_BROKER_CA] = broker_ca
 
         if self._is_reauth:
             entry = self._reauth_entry()

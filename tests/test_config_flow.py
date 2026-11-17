@@ -11,6 +11,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.meross_cloud.common import (
+    CONF_BROKER_CA,
     CONF_HTTP_ENDPOINT,
     CONF_HTTP_SKIP_CERT_VALIDATION,
     CONF_MQTT_SKIP_CERT_VALIDATION,
@@ -92,8 +93,15 @@ async def test_reauth_reuses_existing_entry(hass, monkeypatch):
             issued_on=datetime.now(),
         )
 
+    async def fake_fetch_ca(endpoint):
+        return "-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----"
+
     monkeypatch.setattr(
         MerossFlowHandler, "_test_authorization", staticmethod(fake_test_authorization)
+    )
+    monkeypatch.setattr(
+        "custom_components.meross_cloud.config_flow.async_fetch_broker_ca",
+        fake_fetch_ca,
     )
     monkeypatch.setattr(type(hass.config_entries), "async_reload", AsyncMock())
 
@@ -132,6 +140,7 @@ async def test_reauth_reuses_existing_entry(hass, monkeypatch):
     entries = hass.config_entries.async_entries(DOMAIN)
     assert len(entries) == 1
     assert entries[0].data[CONF_STORED_CREDS]["token"] == "new-token"
+    assert entries[0].data[CONF_BROKER_CA].startswith("-----BEGIN CERTIFICATE-----")
     assert entries[0].unique_id == endpoint
     assert entries[0].title == endpoint
 
