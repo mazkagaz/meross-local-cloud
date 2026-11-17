@@ -1,3 +1,14 @@
+## 1.4.10
+
+- When no broker is discovered, the setup flow now opens the explicit
+  endpoint/TLS form directly instead of showing a mode switch whose effect
+  was invisible. The explicit form is also used when mDNS announces a service
+  that cannot be resolved.
+- When no mDNS service is found at all, probe the Home Assistant host's local
+  IPv4 addresses on the default API ports (HTTPS 2004, then HTTP 2003).
+- Restore the simple **Advanced settings** checkbox on the detected-broker
+  form.
+
 ## 1.4.9
 
 - When an mDNS service is announced but resolves without SRV/TXT/A records,

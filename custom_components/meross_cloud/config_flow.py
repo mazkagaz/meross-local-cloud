@@ -14,12 +14,7 @@ from homeassistant.config_entries import ConfigEntry, OptionsFlow
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.selector import (
-    SelectOptionDict,
-    SelectSelector,
-    SelectSelectorConfig,
-    SelectSelectorMode,
-)
+from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
 from meross_iot.http_api import MerossHttpClient
 from meross_iot.model.credentials import MerossCloudCreds
 from meross_iot.model.http.exception import UnauthorizedException, MissingMFA, BadLoginException
@@ -27,7 +22,7 @@ from requests.exceptions import ConnectTimeout
 from homeassistant.components import network, zeroconf
 
 from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
-    CONF_BROKER_HOST, CONF_USE_HTTPS, CONF_ADVANCED, \
+    CONF_ADVANCED, \
     CONF_HTTP_ENDPOINT, CONF_MQTT_SKIP_CERT_VALIDATION, CONF_HTTP_SKIP_CERT_VALIDATION, \
     CONF_OPT_CUSTOM_USER_AGENT, HTTP_API_RE, \
     MEROSS_LOCAL_MDNS_SERVICE_TYPES, MEROSS_LOCAL_MDNS_MQTT_SERVICE_TYPE, \
@@ -39,9 +34,6 @@ from .version import MEROSS_INTEGRATION_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 1
-
-_ADVANCED_SIMPLE = "simple"
-_ADVANCED_ADVANCED = "advanced"
 
 
 class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -65,10 +57,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._discovered_api: Optional[str] = None
         self._discovered_mqtt: Optional[str] = None
         self._discovered_https: bool = False
-        self._simple_host: Optional[str] = None
-        self._simple_use_https: bool = True
-        self._include_simple_host: bool = False
-        self._requires_mfa: bool = False
+        self._form_errors: Dict[str, str] = {}
 
     def _build_setup_schema(
             self,
@@ -108,49 +97,23 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _build_simple_schema(self, username=None, password=None,
                              advanced=False) -> vol.Schema:
-        # Optional fields so the form can be submitted with empty values:
-        # otherwise the frontend blocks submission and "Advanced settings"
-        # can never be reached without a broker address and credentials.
-        params = {}
-        if self._include_simple_host:
-            params[vol.Optional(CONF_BROKER_HOST,
-                                default=self._simple_host or "")] = str
-            params[vol.Optional(CONF_USE_HTTPS,
-                                default=self._simple_use_https)] = bool
-        params[vol.Optional(
-            CONF_USERNAME,
-            default=(username if username is not None else self._username) or "")] = str
-        params[vol.Optional(
-            CONF_PASSWORD,
-            default=(password if password is not None else self._password) or "")] = str
-        # The option labels are defined here (not in translations) so the
-        # running integration version is visible in the form itself.
-        params[vol.Optional(
-            CONF_ADVANCED,
-            default=_ADVANCED_ADVANCED if advanced else _ADVANCED_SIMPLE,
-        )] = SelectSelector(
-            SelectSelectorConfig(
-                options=[
-                    SelectOptionDict(
-                        value=_ADVANCED_SIMPLE, label="Simple setup"),
-                    SelectOptionDict(
-                        value=_ADVANCED_ADVANCED,
-                        label=f"Advanced settings ({MEROSS_INTEGRATION_VERSION})",
-                    ),
-                ],
-                mode=SelectSelectorMode.LIST,
-            )
-        )
-        return vol.Schema(params)
+        # Optional fields so the form can still be submitted with empty
+        # values; the handler reports what is missing.
+        return vol.Schema({
+            vol.Optional(
+                CONF_USERNAME,
+                default=(username if username is not None else self._username) or "") : str,
+            vol.Optional(
+                CONF_PASSWORD,
+                default=(password if password is not None else self._password) or "") : str,
+            vol.Optional(CONF_ADVANCED, default=advanced): bool,
+        })
 
     def _broker_description(self) -> str:
         if self._discovered_api:
             return self._discovered_api
         if self._is_reauth:
             return self._http_api or ""
-        if self._simple_host:
-            scheme = "https" if self._simple_use_https else "http"
-            return f"{scheme}://{self._simple_host}"
         return ""
 
     def _show_simple_form(self, errors=None, username=None, password=None,
@@ -166,20 +129,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
-    @staticmethod
-    def _sanitize_host(raw: str) -> str:
-        """Accept a pasted URL and keep only the host part."""
-        host = (raw or "").strip()
-        if "://" in host:
-            host = host.split("://", 1)[1]
-        host = host.split("/", 1)[0]
-        if host.startswith("["):  # IPv6 literal
-            return host.split("]", 1)[0].lstrip("[")
-        if host.count(":") == 1:
-            host = host.split(":", 1)[0]
-        return host.strip()
-
-    def _simple_selection(self, user_input) -> Tuple[str, str, bool, bool]:
+    def _simple_selection(self) -> Tuple[str, str, bool, bool]:
         """Returns endpoint, MQTT endpoint, skip MQTT validation, skip HTTP validation."""
         if self._is_reauth:
             return (
@@ -190,15 +140,8 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 self._skip_http_cert_validation
                 if self._skip_http_cert_validation is not None else False,
             )
-        if self._discovered_api and not self._include_simple_host:
-            return (self._discovered_api, self._discovered_mqtt,
-                    True, self._discovered_https)
-        host = self._sanitize_host(user_input.get(CONF_BROKER_HOST))
-        use_https = bool(user_input.get(CONF_USE_HTTPS, True))
-        scheme = "https" if use_https else "http"
-        port = 2004 if use_https else 2003
-        return (f"{scheme}://{host}:{port}", f"{host}:2001",
-                True, use_https)
+        return (self._discovered_api, self._discovered_mqtt,
+                True, self._discovered_https)
 
     def _reauth_entry(self) -> ConfigEntry:
         entry_id = self.context.get("entry_id")
@@ -225,7 +168,6 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         """Reauthenticate against the existing broker configuration."""
         self._is_reauth = True
         self._load_reauth_defaults()
-        self._include_simple_host = False
         return self._show_simple_form()
 
     async def _resolve_service(self, zeroconf: Zeroconf, service_type: str, name: str):
@@ -259,13 +201,14 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     def _url_host(host: str) -> str:
         return f"[{host}]" if ":" in host else host
 
-    async def _probe_broker(self, host: str, port: int, scheme: str) -> bool:
+    async def _probe_broker(self, host: str, port: int, scheme: str,
+                            timeout: float = 3) -> bool:
         url = f"{scheme}://{self._url_host(host)}:{port}/ca.crt"
         connector = aiohttp.TCPConnector(ssl=False) if scheme == "https" else None
         try:
             async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.get(
-                        url, timeout=aiohttp.ClientTimeout(total=3)) as response:
+                        url, timeout=aiohttp.ClientTimeout(total=timeout)) as response:
                     return response.status < 500
         except Exception as err:  # noqa: BLE001 - discovery is best effort
             _LOGGER.debug("Broker probe failed for %s: %s", url, err)
@@ -291,16 +234,10 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         ]
         _LOGGER.info("Found %d API and %d MQTT mDNS services.",
                      len(api_infos), len(mqtt_infos))
-        if not api_infos:
-            return None
 
-        mqtt_port = 2001
-        if mqtt_infos and mqtt_infos[0].port:
-            mqtt_port = int(mqtt_infos[0].port)
-
-        # The broker add-on runs on this Home Assistant host. When the mDNS
-        # resolution is incomplete (no SRV/TXT/A record), probing the local
-        # interface addresses still finds it.
+        # The broker add-on runs on this Home Assistant host. When mDNS
+        # resolution is incomplete or unavailable, probing the local interface
+        # addresses still finds it.
         local_hosts: List[str] = []
         try:
             for adapter in await network.async_get_adapters(self.hass):
@@ -308,10 +245,36 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     continue
                 for ipv4 in adapter.get("ipv4", []):
                     address = ipv4.get("address")
-                    if address and address not in local_hosts:
+                    if address and not address.startswith("127.") \
+                            and address not in local_hosts:
                         local_hosts.append(address)
         except Exception as err:  # noqa: BLE001 - discovery is best effort
             _LOGGER.debug("Unable to list local network adapters: %s", err)
+
+        if not api_infos:
+            if not local_hosts:
+                return None
+            _LOGGER.info(
+                "No mDNS service found; probing the local addresses %s on the "
+                "default API ports.", local_hosts)
+            for scheme, port, use_https in (
+                    ("https", 2004, True), ("http", 2003, False)):
+                results = await asyncio.gather(*(
+                    self._probe_broker(host, port, scheme, timeout=1.5)
+                    for host in local_hosts
+                ))
+                for host, ok in zip(local_hosts, results):
+                    if not ok:
+                        continue
+                    _LOGGER.info("Discovered Meross broker at %s:%d (%s)",
+                                 host, port, scheme.upper())
+                    return (host, f"{scheme}://{self._url_host(host)}:{port}",
+                            f"{host}:2001", use_https)
+            return None
+
+        mqtt_port = 2001
+        if mqtt_infos and mqtt_infos[0].port:
+            mqtt_port = int(mqtt_infos[0].port)
 
         for api_info in api_infos:
             records = self._txt_records(api_info)
@@ -380,32 +343,31 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if discovery:
             (self._discovered_host, self._discovered_api,
              self._discovered_mqtt, self._discovered_https) = discovery
-            self._simple_host = self._discovered_host
-            self._simple_use_https = self._discovered_https
-            self._include_simple_host = False
             return self._show_simple_form()
 
         self._discovered_host = None
         self._discovered_api = None
         self._discovered_mqtt = None
         self._discovered_https = False
-        self._simple_host = ""
-        self._simple_use_https = True
-        self._include_simple_host = True
-        return self._show_simple_form(errors={"base": "mdns_lookup_failed"})
+        # Nothing was discovered: go straight to the explicit settings instead
+        # of showing a mode switch that would change nothing.
+        self._http_api = None
+        self._mqtt_boker = None
+        self._username = None
+        self._password = None
+        self._skip_cert_validation = True
+        self._skip_http_cert_validation = True
+        self._form_errors = {"base": "mdns_lookup_failed"}
+        return await self.async_step_configure_manager_advanced()
 
     async def async_step_configure_manager(self, user_input=None) -> Dict[str, Any]:
-        """Simple setup: only the local login and broker address when needed."""
+        """Simple setup: only the local login for a discovered broker."""
         if not user_input:
             return self._show_simple_form()
 
         username = user_input.get(CONF_USERNAME) or None
         password = user_input.get(CONF_PASSWORD) or None
-        if self._include_simple_host:
-            self._simple_host = self._sanitize_host(
-                user_input.get(CONF_BROKER_HOST))
-            self._simple_use_https = bool(user_input.get(CONF_USE_HTTPS, True))
-        endpoint, mqtt, skip_mqtt, skip_http = self._simple_selection(user_input)
+        endpoint, mqtt, skip_mqtt, skip_http = self._simple_selection()
         self._http_api = endpoint
         self._mqtt_boker = mqtt
         self._skip_cert_validation = skip_mqtt
@@ -413,19 +375,10 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._username = username
         self._password = password
 
-        if user_input.get(CONF_ADVANCED) == _ADVANCED_ADVANCED:
+        if user_input.get(CONF_ADVANCED):
             _LOGGER.info("Opening advanced broker settings from the simple form")
-            if not self._discovered_api and not self._simple_host:
-                # No broker discovered and no address typed yet: keep the
-                # explicit endpoint fields empty instead of a malformed URL.
-                self._http_api = None
-                self._mqtt_boker = None
             return await self.async_step_configure_manager_advanced()
 
-        if self._include_simple_host and not self._simple_host:
-            return self._show_simple_form(
-                errors={"base": "missing_broker_host"},
-                username=username, password=password, advanced=False)
         if not username or not password:
             return self._show_simple_form(
                 errors={"base": "missing_credentials"},
@@ -453,10 +406,12 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         _LOGGER.debug("Starting CONFIGURE_MANAGER_ADVANCED")
         if not user_input:
             _LOGGER.debug("Empty user_input, showing default prefilled form")
+            errors = self._form_errors
+            self._form_errors = {}
             return self.async_show_form(
                 step_id="configure_manager_advanced",
                 data_schema=self._build_setup_schema(),
-                errors={},
+                errors=errors,
             )
 
         _LOGGER.debug("UserInput was provided: form data will be populated with that")

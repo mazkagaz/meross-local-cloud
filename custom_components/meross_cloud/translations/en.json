@@ -12,8 +12,7 @@
       "api_connection_refused": "Cannot connect to the HTTP(S) API server. Make sure the address is valid",
       "client_connection_error": "An error occurred while connecting to the HTTP API",
       "missing_credentials": "Please provide the missing credentials",
-      "mdns_lookup_failed": "No broker was discovered automatically. Enter its address (or open Advanced settings).",
-      "missing_broker_host": "Enter the Home Assistant host or IP address.",
+      "mdns_lookup_failed": "No broker was discovered automatically. Enter the HTTP API endpoint and MQTT address below.",
       "missing_mfa": "Your account requires an MFA code to proceed. Please provide it."
     },
     "step": {
@@ -21,11 +20,9 @@
         "title": "Login to Meross Local Cloud",
         "description": "Use the local account created in the Meross Local Broker add-on. Do not use your Meross cloud credentials; this integration only talks to the local broker.\n\nBroker: {broker}\n\nIntegration version: {version}",
         "data": {
-          "broker_host": "Broker address (host or IP)",
-          "use_https": "Use HTTPS (port 2004)",
           "username": "Local login",
           "password": "Password",
-          "advanced": "Setup mode"
+          "advanced": "Advanced settings"
         }
       },
       "configure_manager_advanced": {

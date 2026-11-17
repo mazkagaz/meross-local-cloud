@@ -1,63 +1,60 @@
 {
-    "config": {
-        "abort": {
-            "single_instance_allowed": "Solo se permite una configuración de Meross Local Cloud."
-        },
-        "error": {
-            "invalid_credentials": "Inicio de sesión local o contraseña no válidos.",
-            "connection_error": "No se puede conectar con el broker local.",
-            "invalid_http_endpoint": "Punto de conexión de la API HTTP no válido",
-            "api_invalid_ssl_code": "No se ha podido validar el certificado HTTPS. El broker local utiliza un certificado autofirmado: activa \"Omitir la validación del certificado HTTP\" o conéctate con http sin cifrar en el puerto 2003.",
-            "unknown_error": "Ocurrió un error inesperado",
-            "api_connection_refused": "No se puede conectar al servidor de API HTTP(S). Asegúrate de que la dirección es correcta",
-            "client_connection_error": "Ha ocurrido un error mientras se conectaba a la API HTTP",
-            "missing_credentials": "Proporciona las credenciales que faltan",
-            "mdns_lookup_failed": "No se ha descubierto ningún broker automáticamente. Introduce su dirección (o abre la configuración avanzada).",
-            "missing_broker_host": "Introduce el host o la IP de Home Assistant.",
-            "missing_mfa": "Tu cuenta requiere un código MFA para continuar. Introdúcelo."
-        },
-        "step": {
-            "configure_manager": {
-                "title": "Iniciar sesión en Meross Local Cloud",
-                "description": "Utiliza la cuenta local creada en el add-on Meross Local Broker. No uses tus credenciales de la nube Meross; esta integración solo se comunica con el broker local.\n\nBroker: {broker}\n\nVersión de la integración: {version}",
-                "data": {
-                    "broker_host": "Dirección del broker (host o IP)",
-                    "use_https": "Usar HTTPS (puerto 2004)",
-                    "username": "Inicio de sesión local",
-                    "password": "Contraseña",
-                    "advanced": "Modo de configuración"
-                }
-            },
-            "configure_manager_advanced": {
-                "title": "Configuración avanzada del broker",
-                "description": "Endpoints explícitos y opciones TLS. Cámbialos solo si el broker no se descubre correctamente.",
-                "data": {
-                    "username": "Inicio de sesión local",
-                    "password": "Contraseña",
-                    "http_api_endpoint": "HTTP API Endpoint",
-                    "override_mqtt_endpoint": "Dirección MQTT (host:port)",
-                    "skip_mqtt_cert_validation": "Omitir la validación del certificado MQTT",
-                    "skip_http_cert_validation": "Omitir la validación del certificado HTTP (certificado local autofirmado)",
-                    "mfa_code": "Código MFA"
-                }
-            },
-            "reauth_confirm": {
-                "title": "Requiere volver a autenticarse",
-                "description": "Meross Local Cloud requiere volver a autenticarse con tu broker local"
-            }
-        },
-        "title": "Meross Local Cloud"
+  "config": {
+    "abort": {
+      "single_instance_allowed": "Solo se permite una configuración de Meross Local Cloud."
     },
-    "options": {
-        "error": {},
-        "step": {
-            "init": {
-                "data": {
-                    "custom_user_agent": "Cabecera User-Agent personalizada",
-                    "lan_transport_mode": "Opciones de comunicación con los dispositivos"
-                },
-                "title": "Opciones de Meross Local Cloud"
-            }
+    "error": {
+      "invalid_credentials": "Inicio de sesión local o contraseña no válidos.",
+      "connection_error": "No se puede conectar con el broker local.",
+      "invalid_http_endpoint": "Punto de conexión de la API HTTP no válido",
+      "api_invalid_ssl_code": "No se ha podido validar el certificado HTTPS. El broker local utiliza un certificado autofirmado: activa \"Omitir la validación del certificado HTTP\" o conéctate con http sin cifrar en el puerto 2003.",
+      "unknown_error": "Ocurrió un error inesperado",
+      "api_connection_refused": "No se puede conectar al servidor de API HTTP(S). Asegúrate de que la dirección es correcta",
+      "client_connection_error": "Ha ocurrido un error mientras se conectaba a la API HTTP",
+      "missing_credentials": "Proporciona las credenciales que faltan",
+      "mdns_lookup_failed": "No se ha descubierto ningún broker automáticamente. Introduce abajo el endpoint de la API HTTP y la dirección MQTT.",
+      "missing_mfa": "Tu cuenta requiere un código MFA para continuar. Introdúcelo."
+    },
+    "step": {
+      "configure_manager": {
+        "title": "Iniciar sesión en Meross Local Cloud",
+        "description": "Utiliza la cuenta local creada en el add-on Meross Local Broker. No uses tus credenciales de la nube Meross; esta integración solo se comunica con el broker local.\n\nBroker: {broker}\n\nVersión de la integración: {version}",
+        "data": {
+          "username": "Inicio de sesión local",
+          "password": "Contraseña",
+          "advanced": "Configuración avanzada"
         }
+      },
+      "configure_manager_advanced": {
+        "title": "Configuración avanzada del broker",
+        "description": "Endpoints explícitos y opciones TLS. Cámbialos solo si el broker no se descubre correctamente.",
+        "data": {
+          "username": "Inicio de sesión local",
+          "password": "Contraseña",
+          "http_api_endpoint": "HTTP API Endpoint",
+          "override_mqtt_endpoint": "Dirección MQTT (host:port)",
+          "skip_mqtt_cert_validation": "Omitir la validación del certificado MQTT",
+          "skip_http_cert_validation": "Omitir la validación del certificado HTTP (certificado local autofirmado)",
+          "mfa_code": "Código MFA"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Requiere volver a autenticarse",
+        "description": "Meross Local Cloud requiere volver a autenticarse con tu broker local"
+      }
+    },
+    "title": "Meross Local Cloud"
+  },
+  "options": {
+    "error": {},
+    "step": {
+      "init": {
+        "data": {
+          "custom_user_agent": "Cabecera User-Agent personalizada",
+          "lan_transport_mode": "Opciones de comunicación con los dispositivos"
+        },
+        "title": "Opciones de Meross Local Cloud"
+      }
     }
+  }
 }

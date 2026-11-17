@@ -65,27 +65,23 @@ des modules complémentaires (lien ci-dessus).
 |---|---|
 | Local login | le compte local de l'add-on, par exemple `meross-local` |
 | Password | le mot de passe local |
-| Advanced settings | à cocher, puis valider, pour ouvrir les réglages avancés |
+| Advanced settings | cocher, puis valider, pour ouvrir les réglages avancés |
 
 4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
 
-Si le broker n'est pas découvert, le formulaire demande en plus son adresse :
+Si le broker n'est pas découvert (mDNS indisponible, ou broker sur une autre
+machine), l'assistant ouvre directement les réglages explicites :
 
 | Champ | Valeur |
 |---|---|
-| Broker address | adresse IP ou nom d'hôte Home Assistant, par exemple `192.168.x.x` |
-| Use HTTPS | coché pour le port 2004, décoché pour le port 2003 |
-| Advanced settings | cocher puis valider pour saisir explicitement les ports et options TLS |
+| HTTP API Endpoint | `https://192.168.x.x:2004` ou `http://192.168.x.x:2003` |
+| MQTT Address | `192.168.x.x:2001` |
+| Local login / Password | le compte local de l'add-on |
+| Skip MQTT certificate validation | **coché** (certificat auto-signé) |
+| Skip HTTP certificate validation | **coché** en HTTPS (certificat auto-signé) |
 
-L'adresse accepte aussi un élément collé tel que `http://192.168.x.x:2003` ou
-`https://192.168.x.x:2004/ca.crt` : le schéma, le port et le chemin sont
-ignorés.
-
-Le mode **Advanced** expose l'endpoint HTTP(S) complet, l'adresse MQTT
-(`hôte:2001`) et les deux options d'omission de validation TLS. Il est utile
-si le broker utilise des ports personnalisés. En HTTPS, l'option **Skip HTTP
-certificate validation** doit rester cochée tant que le certificat local n'est
-pas importé dans Home Assistant.
+En HTTPS, l'option **Skip HTTP certificate validation** doit rester cochée
+tant que le certificat local n'est pas importé dans Home Assistant.
 
 Le login local n'est pas obligatoirement une adresse email : un simple nom
 d'utilisateur suffit. **N'utilisez jamais les identifiants du cloud Meross
