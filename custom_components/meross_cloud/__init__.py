@@ -370,10 +370,13 @@ async def get_or_test_creds(
         cloud_credentials=creds, ua_header=ua_header
     )
 
-    # The local addon api might not be able to provide the correct domain and mqtt values. In this case,
-    # we patch them here.
-    if http_api_url is not None and (http_client.cloud_credentials.domain is None or creds.domain.lower().strip() == MEROSS_DEFAULT_CLOUD_API_URL):
-        _LOGGER.warning("Returned/Stored DOMAIN within existing credentials is <%s>. Patching the stored credentials with the correct value right away.", http_client.cloud_credentials.domain)
+    # The local broker derives its advertised domain from the nginx backend
+    # scheme, so it can report http://…:2004 for an HTTPS listener. Always use
+    # the endpoint the user configured instead.
+    if http_api_url is not None and http_client.cloud_credentials.domain != http_api_url:
+        _LOGGER.warning(
+            "Stored credentials domain <%s> differs from the configured endpoint; "
+            "using %s.", http_client.cloud_credentials.domain, http_api_url)
         http_client.cloud_credentials.domain = http_api_url
         renewed = True
 

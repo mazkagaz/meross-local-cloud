@@ -18,7 +18,7 @@
     "step": {
       "configure_manager": {
         "title": "Iniciar sesión en Meross Local Cloud",
-        "description": "Utiliza la cuenta local creada en el add-on Meross Local Broker. No uses tus credenciales de la nube Meross; esta integración solo se comunica con el broker local.\n\nBroker: {broker}\n\nVersión de la integración: {version}",
+        "description": "Utiliza la cuenta local creada en el add-on Meross Local Broker. No uses tus credenciales de la nube Meross; esta integración solo se comunica con el broker local.\n\nBroker: {broker}\n\nVersión de la integración: {version}\n\nPara modificar el endpoint, los puertos u opciones TLS, marca \"Configuración avanzada\" y valida.",
         "data": {
           "username": "Inicio de sesión local",
           "password": "Contraseña",

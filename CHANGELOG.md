@@ -1,3 +1,14 @@
+## 1.4.11
+
+- Fix login against the broker HTTPS listener. `meross_iot` posts to
+  `/v1/log/user` using the domain returned by the broker; the broker derives
+  that domain from its nginx backend scheme and reports `http://…:2004`,
+  which nginx rejects with HTTP 400. The login test now uses `async_login`
+  and forces the configured endpoint, and stored credentials are migrated to
+  it at setup.
+- The simple form explains that **Advanced settings** must be checked and
+  submitted to edit the endpoint, ports or TLS options.
+
 ## 1.4.10
 
 - When no broker is discovered, the setup flow now opens the explicit

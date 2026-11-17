@@ -575,10 +575,16 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     async def _test_authorization(
             api_base_url: str, username: str, password: str, mfa_code: str = None
     ) -> MerossCloudCreds:
-        client = await MerossHttpClient.async_from_user_password(
-            api_base_url=api_base_url, email=username, password=password, mfa_code=mfa_code
+        # Use async_login instead of async_from_user_password: the latter also
+        # posts to the broker's /v1/log/user endpoint using the domain returned
+        # by the broker. That domain is derived from the nginx backend scheme
+        # and is http://…:2004 for HTTPS, which nginx rejects with HTTP 400.
+        creds = await MerossHttpClient.async_login(
+            api_base_url=api_base_url, email=username, password=password,
+            mfa_code=mfa_code,
         )
-        return client.cloud_credentials
+        creds.domain = api_base_url
+        return creds
 
     async def async_step_import(self, import_config):
         """Import a config entry from configuration.yaml."""
