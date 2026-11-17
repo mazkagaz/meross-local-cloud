@@ -1,3 +1,11 @@
+## 1.4.1
+
+- Reauthentication now reuses the existing broker configuration: HTTP API
+  endpoint, MQTT address and TLS options are prefilled, and the existing entry
+  is updated in place instead of creating a duplicate when the endpoint changes.
+- The reauthentication flow no longer resets the endpoint to
+  `homeassistant.local:2003`.
+
 ## 1.4.0
 
 - Support the broker HTTPS listener (`https://…:2004`, broker `alpha71`).
