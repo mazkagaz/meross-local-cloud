@@ -3,11 +3,13 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+import voluptuous_serialize
 
 from homeassistant import config_entries
 from homeassistant.config_entries import SOURCE_REAUTH
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import config_validation as cv
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.meross_cloud.common import (
@@ -22,6 +24,7 @@ from custom_components.meross_cloud.common import (
     DOMAIN,
 )
 from custom_components.meross_cloud.config_flow import MerossFlowHandler
+from custom_components.meross_cloud.version import MEROSS_INTEGRATION_VERSION
 
 
 @pytest.fixture(autouse=True)
@@ -113,7 +116,7 @@ async def test_reauth_reuses_existing_entry(hass, monkeypatch):
         for marker in result["data_schema"].schema
     }
     assert defaults[CONF_USERNAME] == "local-user"
-    assert defaults[CONF_ADVANCED] is False
+    assert defaults[CONF_ADVANCED] == "simple"
     assert CONF_HTTP_ENDPOINT not in defaults
     assert CONF_OVERRIDE_MQTT_ENDPOINT not in defaults
 
@@ -122,7 +125,7 @@ async def test_reauth_reuses_existing_entry(hass, monkeypatch):
         user_input={
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
-            CONF_ADVANCED: False,
+            CONF_ADVANCED: "simple",
         },
     )
 
@@ -173,14 +176,14 @@ async def test_discovery_prefills_simple_form_and_creates_entry(hass, monkeypatc
         for marker in result["data_schema"].schema
     }
     assert CONF_BROKER_HOST not in defaults
-    assert defaults[CONF_ADVANCED] is False
+    assert defaults[CONF_ADVANCED] == "simple"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         user_input={
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
-            CONF_ADVANCED: False,
+            CONF_ADVANCED: "simple",
         },
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
@@ -222,7 +225,7 @@ async def test_manual_address_is_used_when_discovery_fails(hass, monkeypatch):
             CONF_USE_HTTPS: False,
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
-            CONF_ADVANCED: False,
+            CONF_ADVANCED: "simple",
         },
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
@@ -272,7 +275,7 @@ async def test_manual_address_accepts_pasted_url(hass, monkeypatch):
             CONF_USE_HTTPS: False,
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
-            CONF_ADVANCED: False,
+            CONF_ADVANCED: "simple",
         },
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
@@ -299,11 +302,33 @@ async def test_advanced_toggle_opens_full_form_without_discovery(hass, monkeypat
             CONF_USE_HTTPS: True,
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
-            CONF_ADVANCED: True,
+            CONF_ADVANCED: "advanced",
         },
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "configure_manager_advanced"
+
+
+async def test_setup_mode_selector_exposes_running_version(hass, monkeypatch):
+    async def fake_discover(self):
+        return None
+
+    monkeypatch.setattr(MerossFlowHandler, "_discover_services", fake_discover)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    serialized = voluptuous_serialize.convert(
+        result["data_schema"], custom_serializer=cv.custom_serializer
+    )
+    advanced = next(
+        item for item in serialized if item["name"] == CONF_ADVANCED
+    )
+    options = advanced["selector"]["select"]["options"]
+    assert {option["value"] for option in options} == {"simple", "advanced"}
+    assert any(
+        MEROSS_INTEGRATION_VERSION in option["label"] for option in options
+    )
 
 
 async def test_advanced_toggle_works_without_any_value(hass, monkeypatch):
@@ -319,7 +344,7 @@ async def test_advanced_toggle_works_without_any_value(hass, monkeypatch):
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={CONF_ADVANCED: True},
+        user_input={CONF_ADVANCED: "advanced"},
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "configure_manager_advanced"
@@ -342,7 +367,7 @@ async def test_empty_simple_form_reports_missing_values(hass, monkeypatch):
     )
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={CONF_ADVANCED: False},
+        user_input={CONF_ADVANCED: "simple"},
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "configure_manager"
@@ -353,7 +378,7 @@ async def test_empty_simple_form_reports_missing_values(hass, monkeypatch):
         user_input={
             CONF_BROKER_HOST: "10.0.0.6",
             CONF_USE_HTTPS: True,
-            CONF_ADVANCED: False,
+            CONF_ADVANCED: "simple",
         },
     )
     assert result["type"] is FlowResultType.FORM
@@ -380,7 +405,7 @@ async def test_advanced_toggle_opens_full_form(hass, monkeypatch):
         user_input={
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
-            CONF_ADVANCED: True,
+            CONF_ADVANCED: "advanced",
         },
     )
     assert result["type"] is FlowResultType.FORM

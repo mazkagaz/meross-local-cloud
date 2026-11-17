@@ -25,7 +25,7 @@
           "use_https": "Usa HTTPS (porta 2004)",
           "username": "Nome utente locale",
           "password": "Password",
-          "advanced": "Configurazione avanzata"
+          "advanced": "Modalità di configurazione"
         }
       },
       "configure_manager_advanced": {

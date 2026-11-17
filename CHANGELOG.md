@@ -1,3 +1,12 @@
+## 1.4.8
+
+- Replace the **Advanced settings** checkbox with an explicit **Setup mode**
+  selector: `Simple setup` or `Advanced settings (<version>)`. The option
+  label comes from the integration code, not translations, so the running
+  version is visible directly in the form. Select the advanced option and
+  validate to open the explicit endpoint/TLS fields, even with empty values.
+- Field label renamed to **Setup mode** in English, Spanish and Italian.
+
 ## 1.4.7
 
 - The setup form now shows the running integration version and the detected

@@ -25,7 +25,7 @@
                     "use_https": "Usar HTTPS (puerto 2004)",
                     "username": "Inicio de sesión local",
                     "password": "Contraseña",
-                    "advanced": "Configuración avanzada"
+                    "advanced": "Modo de configuración"
                 }
             },
             "configure_manager_advanced": {

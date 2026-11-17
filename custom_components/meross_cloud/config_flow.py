@@ -14,7 +14,12 @@ from homeassistant.config_entries import ConfigEntry, OptionsFlow
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
+from homeassistant.helpers.selector import (
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 from meross_iot.http_api import MerossHttpClient
 from meross_iot.model.credentials import MerossCloudCreds
 from meross_iot.model.http.exception import UnauthorizedException, MissingMFA, BadLoginException
@@ -34,6 +39,9 @@ from .version import MEROSS_INTEGRATION_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 1
+
+_ADVANCED_SIMPLE = "simple"
+_ADVANCED_ADVANCED = "advanced"
 
 
 class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -115,7 +123,24 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         params[vol.Optional(
             CONF_PASSWORD,
             default=(password if password is not None else self._password) or "")] = str
-        params[vol.Optional(CONF_ADVANCED, default=advanced)] = bool
+        # The option labels are defined here (not in translations) so the
+        # running integration version is visible in the form itself.
+        params[vol.Optional(
+            CONF_ADVANCED,
+            default=_ADVANCED_ADVANCED if advanced else _ADVANCED_SIMPLE,
+        )] = SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    SelectOptionDict(
+                        value=_ADVANCED_SIMPLE, label="Simple setup"),
+                    SelectOptionDict(
+                        value=_ADVANCED_ADVANCED,
+                        label=f"Advanced settings ({MEROSS_INTEGRATION_VERSION})",
+                    ),
+                ],
+                mode=SelectSelectorMode.LIST,
+            )
+        )
         return vol.Schema(params)
 
     def _broker_description(self) -> str:
@@ -361,7 +386,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._username = username
         self._password = password
 
-        if user_input.get(CONF_ADVANCED):
+        if user_input.get(CONF_ADVANCED) == _ADVANCED_ADVANCED:
             _LOGGER.info("Opening advanced broker settings from the simple form")
             if not self._discovered_api and not self._simple_host:
                 # No broker discovered and no address typed yet: keep the

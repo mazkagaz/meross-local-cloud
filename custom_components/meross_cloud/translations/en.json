@@ -25,7 +25,7 @@
           "use_https": "Use HTTPS (port 2004)",
           "username": "Local login",
           "password": "Password",
-          "advanced": "Advanced settings"
+          "advanced": "Setup mode"
         }
       },
       "configure_manager_advanced": {
