@@ -5,6 +5,7 @@ from homeassistant.core import HomeAssistant
 from meross_iot.controller.device import BaseDevice
 from meross_iot.controller.mixins.light import LightMixin
 from meross_iot.controller.mixins.diffuser_light import DiffuserLightMixin
+from meross_iot.controller.mixins.toggle import ToggleMixin, ToggleXMixin
 from meross_iot.manager import MerossManager
 from meross_iot.model.http.device import HttpDeviceInfo
 from meross_iot.model.enums import DiffuserLightMode
@@ -155,8 +156,24 @@ class LightEntityWrapper(MerossDevice, LightEntity):
         await self._device.async_turn_off(channel=self._channel_id, skip_rate_limits=True)
 
     async def async_turn_on(self, **kwargs) -> None:
-        if not self.is_on:
-            await self._device.async_turn_on(channel=self._channel_id, skip_rate_limits=True)
+        device = self._device
+        toggled = isinstance(device, (ToggleXMixin, ToggleMixin))
+        if not kwargs and not toggled:
+            # Some devices keep reporting onoff=1 even when the light is off.
+            # meross_iot then omits the onoff field and sends nothing; include
+            # a luminance value so the CONTROL_LIGHT command is emitted.
+            try:
+                luminance = device.get_luminance(channel=self._channel_id)
+            except Exception:  # noqa: BLE001 - state may not be available yet
+                luminance = None
+            await device.async_set_light_color(
+                channel=self._channel_id,
+                onoff=True,
+                luminance=luminance if luminance else 100,
+                skip_rate_limits=True)
+            return
+
+        await device.async_turn_on(channel=self._channel_id, skip_rate_limits=True)
 
         # Color is taken from either of these 2 values, but not both.
         if ATTR_RGB_COLOR in kwargs:

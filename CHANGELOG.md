@@ -1,3 +1,11 @@
+## 1.4.14
+
+- Fix turning the MRS100 backlight back on. The light wrapper skipped the
+  command when it believed the light was already on (some devices keep
+  reporting `onoff=1`), and meross_iot then sent nothing. The turn-on command
+  is now always sent; for non-toggle devices an explicit luminance is added
+  so the `Appliance.Control.Light` payload is actually emitted.
+
 ## 1.4.13
 
 - Light entities now expose Home Assistant-valid color modes: a
