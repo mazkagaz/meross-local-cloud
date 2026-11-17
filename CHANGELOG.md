@@ -1,3 +1,19 @@
+## 1.4.5
+
+- Automatic broker discovery now reads the add-on's mDNS TXT records
+  (`host`, `http_port`, `https_port`) and probes HTTPS before HTTP, so the
+  integration no longer assumes `homeassistant.local`.
+- New simple setup: when a broker is discovered, only the local login and
+  password are requested. Otherwise the Home Assistant host or IP and an
+  HTTPS toggle are requested.
+- Explicit endpoints, MQTT address and TLS options remain available under
+  **Advanced settings**.
+- A pasted address such as `http://10.0.0.5:2003/ca.crt` is reduced to its
+  host before the endpoint is built.
+- Reauthentication uses the same simple form and keeps the stored endpoints
+  and TLS options.
+- Spanish and Italian translations updated for the new flow.
+
 ## 1.4.4
 
 - Climate entities use `native_temperature_unit`, `native_current_temperature`

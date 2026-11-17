@@ -12,19 +12,32 @@
       "api_connection_refused": "Cannot connect to the HTTP(S) API server. Make sure the address is valid",
       "client_connection_error": "An error occurred while connecting to the HTTP API",
       "missing_credentials": "Please provide the missing credentials",
-      "mdns_lookup_failed": "The discovery was unable to automatically find the local MQTT/API addresses. Default values have been selected."
+      "mdns_lookup_failed": "No broker was discovered automatically. Enter its address (or open Advanced settings).",
+      "missing_mfa": "Your account requires an MFA code to proceed. Please provide it."
     },
     "step": {
       "configure_manager": {
         "title": "Login to Meross Local Cloud",
-        "description": "Use the local account created in the Meross Local Broker add-on. Do not use your Meross cloud credentials; this integration only talks to the local broker.",
+        "description": "Use the local account created in the Meross Local Broker add-on. Do not use your Meross cloud credentials; this integration only talks to the local broker.\n\nBroker: {broker}",
+        "data": {
+          "broker_host": "Broker address (host or IP)",
+          "use_https": "Use HTTPS (port 2004)",
+          "username": "Local login",
+          "password": "Password",
+          "advanced": "Advanced settings"
+        }
+      },
+      "configure_manager_advanced": {
+        "title": "Advanced broker settings",
+        "description": "Explicit endpoints and TLS options. Change these only if the broker is not discovered correctly.",
         "data": {
           "username": "Local login",
           "password": "Password",
           "http_api_endpoint": "HTTP API Endpoint",
           "override_mqtt_endpoint": "MQTT Address (host:port)",
           "skip_mqtt_cert_validation": "Skip MQTT certificate validation checks",
-          "skip_http_cert_validation": "Skip HTTP certificate validation (self-signed local certificate)"
+          "skip_http_cert_validation": "Skip HTTP certificate validation (self-signed local certificate)",
+          "mfa_code": "MFA Code"
         }
       },
       "reauth_confirm": {

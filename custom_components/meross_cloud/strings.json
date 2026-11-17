@@ -4,7 +4,18 @@
     "step": {
       "configure_manager": {
         "title": "Login to Meross Local Cloud",
-        "description": "Use the local account created in the Meross Local Broker add-on. Do not use your Meross cloud credentials; this integration only talks to the local broker.",
+        "description": "Use the local account created in the Meross Local Broker add-on. Do not use your Meross cloud credentials; this integration only talks to the local broker.\n\nBroker: {broker}",
+        "data": {
+          "broker_host": "Broker address (host or IP)",
+          "use_https": "Use HTTPS (port 2004)",
+          "username": "Local login",
+          "password": "Password",
+          "advanced": "Advanced settings"
+        }
+      },
+      "configure_manager_advanced": {
+        "title": "Advanced broker settings",
+        "description": "Explicit endpoints and TLS options. Change these only if the broker is not discovered correctly.",
         "data": {
           "username": "Local login",
           "password": "Password",
@@ -26,8 +37,11 @@
       "invalid_http_endpoint": "Invalid HTTP API endpoint",
       "api_invalid_ssl_code": "The HTTPS certificate could not be validated. The local broker uses a self-signed certificate: enable \"Skip HTTP certificate validation\", or connect with plain http on port 2003.",
       "api_connection_refused": "Cannot connect to the HTTP(S) API server. Make sure the address is valid",
-      "mdns_lookup_failed": "The discovery was unable to find the local MQTT/API service. Default values have been selected.",
-      "missing_mfa": "Your account requires an MFA code to proceed. Please provide it."
+      "client_connection_error": "An error occurred while connecting to the HTTP API",
+      "mdns_lookup_failed": "No broker was discovered automatically. Enter its address (or open Advanced settings).",
+      "missing_credentials": "Please provide the missing credentials",
+      "missing_mfa": "Your account requires an MFA code to proceed. Please provide it.",
+      "unknown_error": "An unexpected error occurred"
     },
     "abort": {
       "single_instance_allowed": "Only a single configuration of Meross Local Cloud is allowed."

@@ -7,23 +7,37 @@
             "invalid_credentials": "Inicio de sesión local o contraseña no válidos.",
             "connection_error": "No se puede conectar con el broker local.",
             "invalid_http_endpoint": "Punto de conexión de la API HTTP no válido",
-            "api_invalid_ssl_code": "Respuesta SSL no válida recibida por el servidor. ¿Estás seguro de que el servidor está expuesto en HTTPS? Inténtalo con http y comprueba si esto sucede nuevamente.",
+            "api_invalid_ssl_code": "No se ha podido validar el certificado HTTPS. El broker local utiliza un certificado autofirmado: activa \"Omitir la validación del certificado HTTP\" o conéctate con http sin cifrar en el puerto 2003.",
             "unknown_error": "Ocurrió un error inesperado",
             "api_connection_refused": "No se puede conectar al servidor de API HTTP(S). Asegúrate de que la dirección es correcta",
             "client_connection_error": "Ha ocurrido un error mientras se conectaba a la API HTTP",
             "missing_credentials": "Proporciona las credenciales que faltan",
-            "mdns_lookup_failed": "La búsqueda automática no ha podido encontrar las direcciones locales de la API/MQTT. Se han seleccionado los valores predeterminados."
+            "mdns_lookup_failed": "No se ha descubierto ningún broker automáticamente. Introduce su dirección (o abre la configuración avanzada).",
+            "missing_mfa": "Tu cuenta requiere un código MFA para continuar. Introdúcelo."
         },
         "step": {
             "configure_manager": {
                 "title": "Iniciar sesión en Meross Local Cloud",
-                "description": "Utiliza la cuenta local creada en el add-on Meross Local Broker. No uses tus credenciales de la nube Meross; esta integración solo se comunica con el broker local.",
+                "description": "Utiliza la cuenta local creada en el add-on Meross Local Broker. No uses tus credenciales de la nube Meross; esta integración solo se comunica con el broker local.\n\nBroker: {broker}",
                 "data": {
-                    "password": "Contraseña",
+                    "broker_host": "Dirección del broker (host o IP)",
+                    "use_https": "Usar HTTPS (puerto 2004)",
                     "username": "Inicio de sesión local",
+                    "password": "Contraseña",
+                    "advanced": "Configuración avanzada"
+                }
+            },
+            "configure_manager_advanced": {
+                "title": "Configuración avanzada del broker",
+                "description": "Endpoints explícitos y opciones TLS. Cámbialos solo si el broker no se descubre correctamente.",
+                "data": {
+                    "username": "Inicio de sesión local",
+                    "password": "Contraseña",
                     "http_api_endpoint": "HTTP API Endpoint",
                     "override_mqtt_endpoint": "Dirección MQTT (host:port)",
-                    "skip_mqtt_cert_validation": "Omitir la validación del certificado MQTT"
+                    "skip_mqtt_cert_validation": "Omitir la validación del certificado MQTT",
+                    "skip_http_cert_validation": "Omitir la validación del certificado HTTP (certificado local autofirmado)",
+                    "mfa_code": "Código MFA"
                 }
             },
             "reauth_confirm": {
