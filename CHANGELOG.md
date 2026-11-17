@@ -1,3 +1,10 @@
+## 1.4.12
+
+- Build the MQTT TLS context in an executor and hand it to paho through
+  `tls_set_context`. This removes Home Assistant's
+  `Detected blocking call to load_verify_locations` warning emitted on every
+  setup; verification and skip-validation modes are unchanged.
+
 ## 1.4.11
 
 - Fix login against the broker HTTPS listener. `meross_iot` posts to

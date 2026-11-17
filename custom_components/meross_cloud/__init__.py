@@ -52,7 +52,12 @@ from .common import (
     MEROSS_DEFAULT_CLOUD_API_URL
 )
 from .version import MEROSS_IOT_VERSION
-from .patches import apply_patches, set_http_cert_validation
+from .patches import (
+    apply_patches,
+    create_mqtt_ssl_context,
+    patch_mqtt_client_ssl_context,
+    set_http_cert_validation,
+)
 
 apply_patches()
 
@@ -113,6 +118,8 @@ class MerossCoordinator(DataUpdateCoordinator):
         self._cached_creds = creds
         self._skip_cert_validation = mqtt_skip_cert_validation
         self._mqtt_override_address = mqtt_override_address
+        self._mqtt_ssl_context_verified: Optional[ssl.SSLContext] = None
+        self._mqtt_ssl_context_unverified: Optional[ssl.SSLContext] = None
         self._setup_done = False
         self._ua_header = ua_header
 
@@ -174,16 +181,28 @@ class MerossCoordinator(DataUpdateCoordinator):
                 },
             )
 
+        # Loading the CA bundle is blocking; do it in an executor so paho does
+        # not trigger Home Assistant's event-loop warning on every setup.
+        self._mqtt_ssl_context_verified = await self.hass.async_add_executor_job(
+            create_mqtt_ssl_context, certifi.where(), False)
+        self._mqtt_ssl_context_unverified = await self.hass.async_add_executor_job(
+            create_mqtt_ssl_context, None, True)
+        patch_mqtt_client_ssl_context()
+
         def _create_manager() -> MerossManager:
-            # certifi is passed explicitly so paho does not load the system CA
-            # bundle inside the event loop.
-            return MerossManager(
+            manager = MerossManager(
                 http_client=self._client,
                 mqtt_override_server=self._mqtt_override_address,
                 auto_reconnect=True,
                 mqtt_skip_cert_validation=self._skip_cert_validation,
                 ca_cert=certifi.where(),
             )
+            manager._ha_ssl_context = (
+                self._mqtt_ssl_context_unverified
+                if self._skip_cert_validation
+                else self._mqtt_ssl_context_verified
+            )
+            return manager
 
         # Now that we are logged in at HTTP api level, instantiate the manager.
         self._manager = _create_manager()

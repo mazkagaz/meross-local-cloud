@@ -1,11 +1,68 @@
 """Runtime fixes for bugs in the pinned meross_iot release."""
 
+import ssl
+
 import aiohttp
 import meross_iot.http_api as meross_http_api
+import paho.mqtt.client as mqtt
 from meross_iot.controller.mixins.light import LightMixin
 from meross_iot.model.enums import Namespace
 
 _PATCH_FLAG = "_meross_local_light_patch"
+_MQTT_SSL_PATCH_FLAG = "_meross_local_mqtt_ssl_patch"
+
+
+def create_mqtt_ssl_context(
+        ca_cert: str | None, skip_validation: bool) -> ssl.SSLContext:
+    """Build the MQTT TLS context outside the event loop.
+
+    paho's ``tls_set`` loads the CA bundle synchronously; Home Assistant flags
+    that as a blocking call when the manager connects from the event loop.
+    Loading the bundle here lets the caller run this in an executor.
+    """
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.check_hostname = False
+    if skip_validation:
+        context.verify_mode = ssl.CERT_NONE
+    else:
+        context.verify_mode = ssl.CERT_REQUIRED
+        if ca_cert:
+            context.load_verify_locations(ca_cert)
+    return context
+
+
+def patch_mqtt_client_ssl_context() -> None:
+    """Use a preloaded SSL context instead of paho's blocking ``tls_set``."""
+    from meross_iot.manager import MerossManager
+
+    if getattr(MerossManager, _MQTT_SSL_PATCH_FLAG, False):
+        return
+
+    original_new_mqtt_client = MerossManager._new_mqtt_client
+
+    def _new_mqtt_client(self):
+        context = getattr(self, "_ha_ssl_context", None)
+        if context is None:
+            return original_new_mqtt_client(self)
+        client = mqtt.Client(
+            client_id=self._client_id,
+            protocol=mqtt.MQTTv311,
+            clean_session=False,
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION1,
+        )
+        client.username_pw_set(
+            username=self._cloud_creds.user_id, password=self._mqtt_password
+        )
+        client.tls_set_context(context)
+        client.tls_insecure_set(self._mqtt_skip_validation)
+        client.on_connect = self._on_connect
+        client.on_message = self._on_message
+        client.on_disconnect = self._on_disconnect
+        client.on_subscribe = self._on_subscribe
+        return client
+
+    MerossManager._new_mqtt_client = _new_mqtt_client
+    setattr(MerossManager, _MQTT_SSL_PATCH_FLAG, True)
 
 
 def set_http_cert_validation(skip_validation: bool) -> None:
