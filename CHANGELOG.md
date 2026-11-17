@@ -1,3 +1,13 @@
+## 1.4.9
+
+- When an mDNS service is announced but resolves without SRV/TXT/A records,
+  the integration now probes the Home Assistant host's local IPv4 addresses
+  on the API ports instead of giving up. This covers the add-on topology where
+  the broker runs on the same host.
+- When the TXT `https_port` record is missing (incomplete resolution), probe
+  the broker default HTTPS port 2004 instead of assuming HTTPS is disabled.
+- Extend the mDNS resolution timeout and log the probed candidates.
+
 ## 1.4.8
 
 - Replace the **Advanced settings** checkbox with an explicit **Setup mode**

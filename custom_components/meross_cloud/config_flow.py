@@ -24,7 +24,7 @@ from meross_iot.http_api import MerossHttpClient
 from meross_iot.model.credentials import MerossCloudCreds
 from meross_iot.model.http.exception import UnauthorizedException, MissingMFA, BadLoginException
 from requests.exceptions import ConnectTimeout
-from homeassistant.components import zeroconf
+from homeassistant.components import network, zeroconf
 
 from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
     CONF_BROKER_HOST, CONF_USE_HTTPS, CONF_ADVANCED, \
@@ -231,7 +231,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     async def _resolve_service(self, zeroconf: Zeroconf, service_type: str, name: str):
         _LOGGER.debug("MDNS resolving service type: %s, name: %s", service_type, name)
         info = AsyncServiceInfo(service_type, name)
-        await info.async_request(zeroconf, 3000)
+        await info.async_request(zeroconf, 4000)
         if info:
             self._discovered_services.append(info)
 
@@ -298,6 +298,21 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if mqtt_infos and mqtt_infos[0].port:
             mqtt_port = int(mqtt_infos[0].port)
 
+        # The broker add-on runs on this Home Assistant host. When the mDNS
+        # resolution is incomplete (no SRV/TXT/A record), probing the local
+        # interface addresses still finds it.
+        local_hosts: List[str] = []
+        try:
+            for adapter in await network.async_get_adapters(self.hass):
+                if not adapter.get("enabled", True):
+                    continue
+                for ipv4 in adapter.get("ipv4", []):
+                    address = ipv4.get("address")
+                    if address and address not in local_hosts:
+                        local_hosts.append(address)
+        except Exception as err:  # noqa: BLE001 - discovery is best effort
+            _LOGGER.debug("Unable to list local network adapters: %s", err)
+
         for api_info in api_infos:
             records = self._txt_records(api_info)
             hosts: List[str] = []
@@ -316,9 +331,21 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             for address in api_info.parsed_addresses() or []:
                 _add_host(address)
             _add_host(api_info.server)
+            for host in local_hosts:
+                _add_host(host)
+            if not hosts:
+                _LOGGER.warning(
+                    "mDNS service %s was announced but could not be resolved "
+                    "to an address.", api_info.name)
+                continue
+            _LOGGER.debug("Probing broker candidates for %s: %s",
+                          api_info.name, hosts)
             try:
                 http_port = int(records.get("http_port") or api_info.port or 2003)
-                https_port = int(records.get("https_port") or 0)
+                https_raw = records.get("https_port")
+                # No TXT record means the service was not fully resolved:
+                # probe the broker default instead of assuming HTTPS is off.
+                https_port = int(https_raw) if https_raw else 2004
             except (TypeError, ValueError):
                 continue
             for host in hosts:
