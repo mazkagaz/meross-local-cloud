@@ -152,12 +152,24 @@ class LightEntityWrapper(MerossDevice, LightEntity):
             device_list_coordinator=device_list_coordinator,
             platform=HA_LIGHT)
 
+    def _debug_state(self) -> str:
+        try:
+            return f"is_on={self.is_on} luminance={self._device.get_luminance(channel=self._channel_id)}"
+        except Exception:  # noqa: BLE001 - diagnostic only
+            return "state unavailable"
+
     async def async_turn_off(self, **kwargs) -> None:
+        _LOGGER.debug("turn_off %s channel=%s %s",
+                      self._device.uuid, self._channel_id, self._debug_state())
         await self._device.async_turn_off(channel=self._channel_id, skip_rate_limits=True)
 
     async def async_turn_on(self, **kwargs) -> None:
         device = self._device
         toggled = isinstance(device, (ToggleXMixin, ToggleMixin))
+        _LOGGER.debug(
+            "turn_on %s channel=%s kwargs=%s toggled=%s %s",
+            device.uuid, self._channel_id, kwargs, toggled,
+            self._debug_state())
         if not kwargs and not toggled:
             # Some devices keep reporting onoff=1 even when the light is off.
             # meross_iot then omits the onoff field and sends nothing; include
@@ -256,6 +268,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         light_devs = filter(lambda d: isinstance(d, LightMixin), devices)
         for d in light_devs:
             channels = [c.index for c in (d.channels or [])] or [0]
+            _LOGGER.debug(
+                "Light device %s (%s): abilities=%s toggle=%s channels=%s",
+                d.name, d.uuid, sorted((d.abilities or {}).keys()),
+                isinstance(d, (ToggleXMixin, ToggleMixin)), channels)
             for channel_index in channels:
                 w = LightEntityWrapper(device=d, channel=channel_index, device_list_coordinator=coordinator)
                 if w.unique_id not in hass.data[DOMAIN]["ADDED_ENTITIES_IDS"]:

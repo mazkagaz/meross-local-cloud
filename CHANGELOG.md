@@ -1,3 +1,9 @@
+## 1.4.15
+
+- Add debug diagnostics for MRS100 lights: the device abilities, whether it is
+  ToggleX-controlled, the light state and the brightness on each turn on/off.
+  No behavior change.
+
 ## 1.4.14
 
 - Fix turning the MRS100 backlight back on. The light wrapper skipped the
