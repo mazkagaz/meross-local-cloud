@@ -1,3 +1,17 @@
+## 1.4.2
+
+- Verify the broker certificate chain with the CA served at `/ca.crt` for
+  both HTTP and MQTT. Hostname matching is skipped because the local
+  certificate may not contain the LAN IP. Existing entries fetch the CA during
+  setup.
+- Fall back to the configured skip options when the CA cannot be retrieved.
+- Avoid Home Assistant's blocking `load_default_certs` warning by passing an
+  explicit CA bundle to paho.
+- Log the startup summary at INFO instead of WARNING and link the upstream
+  project.
+- Consume the broker's integer `bindTime`, removing the `meross_iot` warning
+  for every device.
+
 ## 1.4.1
 
 - Reauthentication now reuses the existing broker configuration: HTTP API
