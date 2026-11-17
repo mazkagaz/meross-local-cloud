@@ -280,6 +280,86 @@ async def test_manual_address_accepts_pasted_url(hass, monkeypatch):
     assert result["data"][CONF_OVERRIDE_MQTT_ENDPOINT] == "10.0.0.6:2001"
 
 
+async def test_advanced_toggle_opens_full_form_without_discovery(hass, monkeypatch):
+    async def fake_discover(self):
+        return None
+
+    monkeypatch.setattr(MerossFlowHandler, "_discover_services", fake_discover)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["step_id"] == "configure_manager"
+    assert result["errors"]["base"] == "mdns_lookup_failed"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_BROKER_HOST: "10.0.0.6",
+            CONF_USE_HTTPS: True,
+            CONF_USERNAME: "local-user",
+            CONF_PASSWORD: "secret",
+            CONF_ADVANCED: True,
+        },
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "configure_manager_advanced"
+
+
+async def test_advanced_toggle_works_without_any_value(hass, monkeypatch):
+    async def fake_discover(self):
+        return None
+
+    monkeypatch.setattr(MerossFlowHandler, "_discover_services", fake_discover)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    assert result["step_id"] == "configure_manager"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={CONF_ADVANCED: True},
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "configure_manager_advanced"
+    defaults = {
+        str(marker.schema): marker.default()
+        for marker in result["data_schema"].schema
+    }
+    assert defaults[CONF_HTTP_ENDPOINT] is None
+    assert defaults[CONF_OVERRIDE_MQTT_ENDPOINT] is None
+
+
+async def test_empty_simple_form_reports_missing_values(hass, monkeypatch):
+    async def fake_discover(self):
+        return None
+
+    monkeypatch.setattr(MerossFlowHandler, "_discover_services", fake_discover)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={CONF_ADVANCED: False},
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "configure_manager"
+    assert result["errors"]["base"] == "missing_broker_host"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_BROKER_HOST: "10.0.0.6",
+            CONF_USE_HTTPS: True,
+            CONF_ADVANCED: False,
+        },
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"]["base"] == "missing_credentials"
+
+
 async def test_advanced_toggle_opens_full_form(hass, monkeypatch):
     async def fake_discover(self):
         return ("10.0.0.5", "https://10.0.0.5:2004", "10.0.0.5:2001", True)

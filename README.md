@@ -39,6 +39,10 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 
 ## Installation avec HACS
 
+[![Ouvrir votre instance Home Assistant et ajouter ce dépôt à HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mazkagaz&repository=meross-local-cloud&category=integration)
+
+Cliquer sur le badge ci-dessus, ou :
+
 1. Ouvrir **HACS → Intégrations**.
 2. Menu **⋮ → Dépôts personnalisés**.
 3. Ajouter :
@@ -54,29 +58,38 @@ des modules complémentaires (lien ci-dessus).
 
 1. **Paramètres → Appareils et services → Ajouter une intégration**.
 2. Chercher **Meross Local Cloud**.
-3. L'assistant lance directement la configuration du broker local et tente de
-   le découvrir en mDNS. Renseigner les champs :
+3. L'assistant découvre le broker en mDNS (TXT `host`, `http_port`,
+   `https_port`) et n'affiche que les champs suivants :
 
 | Champ | Valeur |
 |---|---|
-| HTTP API Endpoint | `https://homeassistant.local:2004` (broker `alpha71`) ou `http://homeassistant.local:2003` |
-| MQTT Address | `homeassistant.local:2001` |
 | Local login | le compte local de l'add-on, par exemple `meross-local` |
 | Password | le mot de passe local |
-| Skip MQTT certificate validation | **coché** (certificat auto-signé) |
-| Skip HTTP certificate validation | **coché** avec `https://` (certificat auto-signé) |
+| Advanced settings | à cocher, puis valider, pour ouvrir les réglages avancés |
+
+4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
+
+Si le broker n'est pas découvert, le formulaire demande en plus son adresse :
+
+| Champ | Valeur |
+|---|---|
+| Broker address | adresse IP ou nom d'hôte Home Assistant, par exemple `192.168.x.x` |
+| Use HTTPS | coché pour le port 2004, décoché pour le port 2003 |
+| Advanced settings | cocher puis valider pour saisir explicitement les ports et options TLS |
+
+L'adresse accepte aussi un élément collé tel que `http://192.168.x.x:2003` ou
+`https://192.168.x.x:2004/ca.crt` : le schéma, le port et le chemin sont
+ignorés.
+
+Le mode **Advanced** expose l'endpoint HTTP(S) complet, l'adresse MQTT
+(`hôte:2001`) et les deux options d'omission de validation TLS. Il est utile
+si le broker utilise des ports personnalisés. En HTTPS, l'option **Skip HTTP
+certificate validation** doit rester cochée tant que le certificat local n'est
+pas importé dans Home Assistant.
 
 Le login local n'est pas obligatoirement une adresse email : un simple nom
 d'utilisateur suffit. **N'utilisez jamais les identifiants du cloud Meross
 officiel** ; l'intégration ne contacte que le broker local.
-
-4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
-
-Si Home Assistant n'est pas joignable via `homeassistant.local`, remplacer par
-son adresse IP (`https://192.168.x.x:2004` ou `http://192.168.x.x:2003`, et
-`192.168.x.x:2001`). En HTTPS, l'option **Skip HTTP certificate validation**
-doit rester cochée tant que le certificat local n'est pas importé dans Home
-Assistant.
 
 ## Entités créées
 

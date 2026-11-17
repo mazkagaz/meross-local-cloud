@@ -13,6 +13,7 @@
       "client_connection_error": "Si è verificato un errore durante la connessione alle API HTTP",
       "missing_credentials": "Per favore inserire le credenziali di accesso mancanti",
       "mdns_lookup_failed": "Nessun broker rilevato automaticamente. Inserisci il suo indirizzo (oppure apri la configurazione avanzata).",
+      "missing_broker_host": "Inserisci l'host o l'IP di Home Assistant.",
       "missing_mfa": "Il tuo account richiede un codice MFA per procedere. Inseriscilo."
     },
     "step": {

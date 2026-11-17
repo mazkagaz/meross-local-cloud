@@ -39,6 +39,7 @@
       "api_connection_refused": "Cannot connect to the HTTP(S) API server. Make sure the address is valid",
       "client_connection_error": "An error occurred while connecting to the HTTP API",
       "mdns_lookup_failed": "No broker was discovered automatically. Enter its address (or open Advanced settings).",
+      "missing_broker_host": "Enter the Home Assistant host or IP address.",
       "missing_credentials": "Please provide the missing credentials",
       "missing_mfa": "Your account requires an MFA code to proceed. Please provide it.",
       "unknown_error": "An unexpected error occurred"

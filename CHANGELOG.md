@@ -1,3 +1,15 @@
+## 1.4.6
+
+- Discovery also probes the mDNS A/AAAA addresses, so a broker that does not
+  publish the TXT `host` entry can still be found. IPv6 literals are formatted
+  correctly in the derived URLs.
+- The simple form no longer blocks submission when the broker address or the
+  credentials are empty, so **Advanced settings** can be ticked and validated
+  to reach the explicit fields. Missing values now return dedicated
+  `missing_broker_host` / `missing_credentials` errors.
+- The broker address accepts a pasted URL and keeps only its host.
+- README: direct **Add to HACS** link.
+
 ## 1.4.5
 
 - Automatic broker discovery now reads the add-on's mDNS TXT records
