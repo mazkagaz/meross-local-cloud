@@ -60,6 +60,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._skip_cert_validation: Optional[bool] = None
         self._skip_http_cert_validation: Optional[bool] = None
         self._discovered_services: List[AsyncServiceInfo] = []
+        self._is_reauth: bool = False
 
     def _build_setup_schema(
             self,
@@ -97,18 +98,32 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                                    default=skip_http_cert_validation_default)] = bool
         return vol.Schema(schema_params)
 
-    async def async_step_reauth(self, user_input=None):
-        """Perform reauth upon an API authentication error."""
-        return await self.async_step_reauth_confirm()
+    def _reauth_entry(self) -> ConfigEntry:
+        entry_id = self.context.get("entry_id")
+        entry = self.hass.config_entries.async_get_entry(entry_id) if entry_id else None
+        if entry is None:
+            raise RuntimeError("Reauthentication entry not found")
+        return entry
 
-    async def async_step_reauth_confirm(self, user_input=None):
-        """Dialog that informs the user that reauth is required."""
-        if user_input is None:
-            return self.async_show_form(
-                step_id="reauth_confirm",
-                data_schema=vol.Schema({}),
-            )
-        return await self.async_step_user()
+    def _load_reauth_defaults(self) -> None:
+        """Reuse the stored broker settings instead of resetting to defaults."""
+        entry = self._reauth_entry()
+        data = entry.data
+        creds = data.get(CONF_STORED_CREDS)
+        if not isinstance(creds, dict):
+            creds = {}
+        self._http_api = data.get(CONF_HTTP_ENDPOINT)
+        self._mqtt_boker = data.get(CONF_OVERRIDE_MQTT_ENDPOINT)
+        self._username = creds.get("user_email")
+        self._password = None
+        self._skip_cert_validation = data.get(CONF_MQTT_SKIP_CERT_VALIDATION, True)
+        self._skip_http_cert_validation = data.get(CONF_HTTP_SKIP_CERT_VALIDATION, False)
+
+    async def async_step_reauth(self, entry_data=None):
+        """Reauthenticate against the existing broker configuration."""
+        self._is_reauth = True
+        self._load_reauth_defaults()
+        return await self.async_step_configure_manager()
 
     async def _resolve_service(self, zeroconf: Zeroconf, service_type: str, name: str):
         _LOGGER.debug("MDNS resolving service type: %s, name: %s", service_type, name)
@@ -346,6 +361,14 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_MQTT_SKIP_CERT_VALIDATION: skip_cert_validation,
             CONF_HTTP_SKIP_CERT_VALIDATION: skip_http_cert_validation
         }
+
+        if self._is_reauth:
+            entry = self._reauth_entry()
+            self.hass.config_entries.async_update_entry(
+                entry, data=data, title=http_api_endpoint)
+            await self.hass.config_entries.async_reload(entry.entry_id)
+            return self.async_abort(reason="reauth_successful")
+
         entry = await self.async_set_unique_id(http_api_endpoint)
 
         # If this is a re-auth for an existing entry, just update the entry configuration.
