@@ -30,6 +30,7 @@ from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
     CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, \
     CONF_OPT_LAN_HTTP_FIRST, CONF_OPT_LAN_HTTP_FIRST_ONLY_GET, DEFAULT_USER_AGENT
 from .patches import set_http_cert_validation
+from .version import MEROSS_INTEGRATION_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 1
@@ -136,6 +137,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors or {},
             description_placeholders={
                 "broker": self._broker_description() or "not discovered",
+                "version": MEROSS_INTEGRATION_VERSION,
             },
         )
 
@@ -310,7 +312,8 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None) -> Dict[str, Any]:
         """Configure the local broker connection."""
-        _LOGGER.debug("Starting STEP_USER")
+        _LOGGER.info("Starting local broker setup (integration %s)",
+                     MEROSS_INTEGRATION_VERSION)
         self._local_mode = True
         self._is_reauth = False
 
@@ -359,6 +362,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._password = password
 
         if user_input.get(CONF_ADVANCED):
+            _LOGGER.info("Opening advanced broker settings from the simple form")
             if not self._discovered_api and not self._simple_host:
                 # No broker discovered and no address typed yet: keep the
                 # explicit endpoint fields empty instead of a malformed URL.
@@ -375,6 +379,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 errors={"base": "missing_credentials"},
                 username=username, password=password, advanced=False)
 
+        _LOGGER.info("Simple setup selected endpoint %s (MQTT %s)", endpoint, mqtt)
         result = await self.async_step_configure_manager_advanced({
             CONF_HTTP_ENDPOINT: endpoint,
             CONF_OVERRIDE_MQTT_ENDPOINT: mqtt,

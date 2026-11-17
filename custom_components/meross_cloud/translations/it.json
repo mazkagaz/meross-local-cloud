@@ -19,7 +19,7 @@
     "step": {
       "configure_manager": {
         "title": "Accedi a Meross Local Cloud",
-        "description": "Usa l'account locale creato nell'add-on Meross Local Broker. Non usare le credenziali del cloud Meross: questa integrazione comunica solo con il broker locale.\n\nBroker: {broker}",
+        "description": "Usa l'account locale creato nell'add-on Meross Local Broker. Non usare le credenziali del cloud Meross: questa integrazione comunica solo con il broker locale.\n\nBroker: {broker}\n\nVersione dell'integrazione: {version}",
         "data": {
           "broker_host": "Indirizzo del broker (host o IP)",
           "use_https": "Usa HTTPS (porta 2004)",

@@ -1,3 +1,11 @@
+## 1.4.7
+
+- The setup form now shows the running integration version and the detected
+  broker, making it possible to confirm which code Home Assistant loaded
+  without reading logs.
+- Setup start, discovery results and the switch to advanced settings are
+  logged at INFO.
+
 ## 1.4.6
 
 - Discovery also probes the mDNS A/AAAA addresses, so a broker that does not
