@@ -32,6 +32,34 @@ def _kelvin_from_meross_temperature(value: float) -> int:
     return round(MIN_KELVIN + (value / 100) * (MAX_KELVIN - MIN_KELVIN))
 
 
+def _supported_color_modes(supports_rgb: bool, supports_luminance: bool,
+                           supports_temperature: bool) -> set[ColorMode]:
+    """Build a Home Assistant-valid color mode set.
+
+    ColorMode.WHITE is only legal alongside a color mode; a brightness-only
+    light must use ColorMode.BRIGHTNESS instead.
+    """
+    modes = set()
+    if supports_rgb:
+        modes.add(ColorMode.RGB)
+    if supports_temperature:
+        modes.add(ColorMode.COLOR_TEMP)
+    if not modes:
+        modes.add(ColorMode.BRIGHTNESS if supports_luminance else ColorMode.ONOFF)
+    return modes
+
+
+def _active_color_mode(supports_rgb: bool, supports_luminance: bool,
+                       supports_temperature: bool) -> ColorMode:
+    if supports_rgb:
+        return ColorMode.RGB
+    if supports_temperature:
+        return ColorMode.COLOR_TEMP
+    if supports_luminance:
+        return ColorMode.BRIGHTNESS
+    return ColorMode.ONOFF
+
+
 class MerossOilDiffuserLightDevice(DiffuserLightMixin, BaseDevice):
     """
     Type hints helper
@@ -152,16 +180,11 @@ class LightEntityWrapper(MerossDevice, LightEntity):
 
     @property
     def supported_color_modes(self) -> set[ColorMode] | set[str] | None:
-        res = set()
-        if self._device.get_supports_luminance(channel=self._channel_id):
-            res.add(ColorMode.WHITE)
-        if self._device.get_supports_rgb(channel=self._channel_id):
-            res.add(ColorMode.RGB)
-        if self._device.get_supports_temperature(channel=self._channel_id):
-            res.add(ColorMode.COLOR_TEMP)
-        if len(res) < 1:
-            res.add(ColorMode.ONOFF)
-        return res
+        return _supported_color_modes(
+            supports_rgb=self._device.get_supports_rgb(channel=self._channel_id),
+            supports_luminance=self._device.get_supports_luminance(channel=self._channel_id),
+            supports_temperature=self._device.get_supports_temperature(channel=self._channel_id),
+        )
 
     @property
     def is_on(self) -> Optional[bool]:
@@ -182,13 +205,11 @@ class LightEntityWrapper(MerossDevice, LightEntity):
     def color_mode(self) -> ColorMode | str | None:
         """Return the color mode of the light."""
         # TODO: we need support from low-level library in order to keep track of mode that haas been set.
-        if self._device.get_supports_rgb(channel=self._channel_id):
-            return ColorMode.RGB
-        elif self._device.get_supports_luminance(channel=self._channel_id):
-            return ColorMode.WHITE
-        if self._device.get_supports_temperature(channel=self._channel_id):
-            return ColorMode.COLOR_TEMP
-        return ColorMode.ONOFF
+        return _active_color_mode(
+            supports_rgb=self._device.get_supports_rgb(channel=self._channel_id),
+            supports_luminance=self._device.get_supports_luminance(channel=self._channel_id),
+            supports_temperature=self._device.get_supports_temperature(channel=self._channel_id),
+        )
 
     @property
     def hs_color(self):

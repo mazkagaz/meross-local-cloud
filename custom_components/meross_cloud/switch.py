@@ -13,6 +13,7 @@ from meross_iot.controller.mixins.toggle import ToggleXMixin, ToggleMixin
 from meross_iot.manager import MerossManager
 from meross_iot.model.http.device import HttpDeviceInfo
 from meross_iot.model.enums import DNDMode
+from meross_iot.model.exception import CommandTimeoutError
 
 # Conditional import for switch device
 from homeassistant.components.switch import SwitchEntity
@@ -59,12 +60,18 @@ class SwitchEntityWrapper(MerossDevice, SwitchEntity):
         if self.online:
             await super().async_update()
 
-            # If the device supports power reading, update it
-            if isinstance(self._device, ElectricityMixin):
-                self._last_power_sample = await self._device.async_get_instant_metrics(channel=self._channel_id)
+            # Power readings are secondary: a slow device must not fail the
+            # switch update during the reconnect burst after a restart.
+            try:
+                if isinstance(self._device, ElectricityMixin):
+                    self._last_power_sample = await self._device.async_get_instant_metrics(channel=self._channel_id)
 
-            if isinstance(self._device, ConsumptionXMixin):
-                self._daily_consumption = await self._device.async_get_daily_power_consumption(channel=self._channel_id)
+                if isinstance(self._device, ConsumptionXMixin):
+                    self._daily_consumption = await self._device.async_get_daily_power_consumption(channel=self._channel_id)
+            except CommandTimeoutError:
+                _LOGGER.debug(
+                    "Device %s did not answer the power request in time",
+                    self._device.uuid)
 
     @property
     def is_on(self) -> bool:
@@ -117,7 +124,14 @@ class DndEntityWrapper(MerossDevice, SwitchEntity):
     async def async_update(self):
         if self.online:
             await super().async_update()
-            self._dnd_mode = await self._device.async_get_dnd_mode()
+            try:
+                self._dnd_mode = await self._device.async_get_dnd_mode()
+            except CommandTimeoutError:
+                # Keep the previous mode; some devices report the DND ability
+                # but do not answer during the reconnect burst.
+                _LOGGER.debug(
+                    "Device %s did not answer the DND request in time",
+                    self._device.uuid)
 
     @property
     def is_on(self) -> bool | None:

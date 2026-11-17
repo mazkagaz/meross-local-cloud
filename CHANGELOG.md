@@ -1,3 +1,13 @@
+## 1.4.13
+
+- Light entities now expose Home Assistant-valid color modes: a
+  brightness-only device uses `ColorMode.BRIGHTNESS` instead of `WHITE`
+  (which the entity registry rejects), and the active mode always belongs to
+  the supported set.
+- Startup and reconnect log noise removed: `CommandTimeoutError` during
+  device, power or DND updates is logged at debug level instead of a full
+  traceback, and the last known state is kept.
+
 ## 1.4.12
 
 - Build the MQTT TLS context in an executor and hand it to paho through

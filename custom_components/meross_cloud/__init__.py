@@ -19,6 +19,7 @@ from meross_iot.http_api import MerossHttpClient, ErrorCodes
 from meross_iot.manager import MerossManager
 from meross_iot.model.credentials import MerossCloudCreds
 from meross_iot.model.enums import OnlineStatus, Namespace
+from meross_iot.model.exception import CommandTimeoutError
 from meross_iot.model.http.device import HttpDeviceInfo
 from meross_iot.model.http.exception import (
     TokenExpiredException,
@@ -285,6 +286,12 @@ class MerossDevice(Entity):
         if self.online:
             try:
                 await self._device.async_update()
+            except CommandTimeoutError:
+                # Devices reconnect progressively after a broker/HA restart.
+                # Keep the last known state instead of logging a full traceback.
+                _LOGGER.debug(
+                    "Device %s did not answer the state request in time",
+                    self._device.uuid)
             except Exception:
                 # A failing third-party device update must not prevent the
                 # entity from being added or kept in Home Assistant.
