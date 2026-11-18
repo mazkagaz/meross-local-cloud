@@ -1,3 +1,10 @@
+## 1.4.20
+
+- Accept command ACKs delivered on `/app/<userId>/subscribe`. The broker agent
+  forwards every device publish there, including GETACK/SETACK replies;
+  meross_iot only matched ACKs on the app-specific response topic, so those
+  replies were ignored and commands timed out (System.All, DNDMode, light).
+
 ## 1.4.19
 
 - Align the MRS100 light entity with meross_lan: a plain on/off sends

@@ -56,6 +56,7 @@ from .version import MEROSS_IOT_VERSION
 from .patches import (
     apply_patches,
     create_mqtt_ssl_context,
+    patch_mqtt_acks_on_user_topic,
     patch_mqtt_client_ssl_context,
     set_http_cert_validation,
 )
@@ -189,6 +190,7 @@ class MerossCoordinator(DataUpdateCoordinator):
         self._mqtt_ssl_context_unverified = await self.hass.async_add_executor_job(
             create_mqtt_ssl_context, None, True)
         patch_mqtt_client_ssl_context()
+        patch_mqtt_acks_on_user_topic()
 
         def _create_manager() -> MerossManager:
             manager = MerossManager(

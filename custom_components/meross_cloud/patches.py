@@ -1,5 +1,6 @@
 """Runtime fixes for bugs in the pinned meross_iot release."""
 
+import json
 import ssl
 
 import aiohttp
@@ -10,6 +11,58 @@ from meross_iot.model.enums import Namespace
 
 _PATCH_FLAG = "_meross_local_light_patch"
 _MQTT_SSL_PATCH_FLAG = "_meross_local_mqtt_ssl_patch"
+_MQTT_ACK_PATCH_FLAG = "_meross_local_mqtt_ack_patch"
+
+
+def patch_mqtt_acks_on_user_topic() -> None:
+    """Resolve command ACKs delivered on the user topic.
+
+    The local broker agent forwards every device publish to
+    ``/app/<userId>/subscribe``, including GETACK/SETACK replies. meross_iot
+    only matches ACKs on the app-specific response topic, so those replies were
+    ignored and every command ended in CommandTimeoutError.
+    """
+    from meross_iot.manager import MerossManager, _handle_future
+    from meross_iot.model.exception import CommandError
+    from meross_iot.utilities.mqtt import (
+        build_client_user_topic,
+        verify_message_signature,
+    )
+
+    if getattr(MerossManager, _MQTT_ACK_PATCH_FLAG, False):
+        return
+
+    original_on_message = MerossManager._on_message
+
+    def _on_message(self, client, userdata, msg):
+        try:
+            if msg.topic == build_client_user_topic(self._cloud_creds.user_id):
+                raw = msg.payload
+                text = raw.decode("utf8") if isinstance(raw, (bytes, bytearray)) else raw
+                message = json.loads(text)
+                header = message.get("header") or {}
+                method = header.get("method")
+                if method in ("SETACK", "GETACK", "ERROR") and \
+                        verify_message_signature(header, self._cloud_creds.key):
+                    message_id = header.get("messageId")
+                    future = self._pending_messages_futures.get(message_id)
+                    if future is not None:
+                        if method == "ERROR":
+                            error = CommandError(
+                                error_payload=message.get("payload"))
+                            self._loop.call_soon_threadsafe(
+                                _handle_future, future, None, error)
+                        else:
+                            self._loop.call_soon_threadsafe(
+                                _handle_future, future, message, None)
+                        del self._pending_messages_futures[message_id]
+                        return
+        except Exception:  # noqa: BLE001 - fall back to the library handler
+            pass
+        return original_on_message(self, client, userdata, msg)
+
+    MerossManager._on_message = _on_message
+    setattr(MerossManager, _MQTT_ACK_PATCH_FLAG, True)
 
 
 def create_mqtt_ssl_context(
