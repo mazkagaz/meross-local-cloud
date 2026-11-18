@@ -15,7 +15,8 @@
       "missing_mfa": "Tu cuenta requiere un código MFA para continuar. Introdúcelo.",
       "ca_unavailable": "No se ha podido obtener un certificado CA válido del broker. Actualiza el broker (alpha99 o posterior).",
       "missing_broker_host": "Introduce la dirección del Meross Local Broker.",
-      "invalid_port": "Los puertos deben ser números entre 1 y 65535."
+      "invalid_port": "Los puertos deben ser números entre 1 y 65535.",
+      "port_reserved": "El puerto 2003 está reservado."
     },
     "step": {
       "configure_manager": {

@@ -1,3 +1,9 @@
+## 2.2.0
+
+- Reject port 2003 in the HTTPS and MQTT port fields: it is reserved. The
+  form returns the standard “Port 2003 is reserved.” error and blocks
+  validation.
+
 ## 2.1.3
 
 - Correct the exposed-ports note: the port mappings are configured in

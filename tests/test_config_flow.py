@@ -150,6 +150,30 @@ async def test_invalid_port_is_rejected(hass, monkeypatch):
     assert result["errors"]["base"] == "invalid_port"
 
 
+async def test_port_2003_is_reserved(hass, monkeypatch):
+    async def fake_discover(self):
+        return None
+
+    monkeypatch.setattr(MerossFlowHandler, "_discover_services", fake_discover)
+
+    for field in (CONF_HTTPS_PORT, CONF_MQTT_PORT):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+        user_input = {
+            CONF_BROKER_HOST: "10.0.0.6",
+            CONF_HTTPS_PORT: "2004",
+            CONF_MQTT_PORT: "2001",
+            CONF_USERNAME: "local-user",
+            CONF_PASSWORD: "secret",
+        }
+        user_input[field] = "2003"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], user_input=user_input)
+        assert result["type"] is FlowResultType.FORM
+        assert result["errors"]["base"] == "port_reserved"
+
+
 async def test_host_accepts_pasted_url(hass, monkeypatch, fake_ca):
     async def fake_discover(self):
         return None

@@ -382,6 +382,11 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 errors={"base": "invalid_port"},
                 username=username, password=password,
                 requires_mfa=requires_mfa)
+        if 2003 in (https_port, mqtt_port):
+            return self._show_form(
+                errors={"base": "port_reserved"},
+                username=username, password=password,
+                requires_mfa=requires_mfa)
         if not username or not password:
             return self._show_form(
                 errors={"base": "missing_credentials"},

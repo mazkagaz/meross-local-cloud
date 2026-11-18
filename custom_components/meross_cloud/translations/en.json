@@ -15,7 +15,8 @@
       "missing_mfa": "Your account requires an MFA code to proceed. Please provide it.",
       "ca_unavailable": "Unable to retrieve a valid CA certificate from the broker. Update the broker (alpha99 or later).",
       "missing_broker_host": "Enter the Meross Local Broker address.",
-      "invalid_port": "Ports must be numbers between 1 and 65535."
+      "invalid_port": "Ports must be numbers between 1 and 65535.",
+      "port_reserved": "Port 2003 is reserved."
     },
     "step": {
       "configure_manager": {
