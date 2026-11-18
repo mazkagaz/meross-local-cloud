@@ -1,3 +1,8 @@
+## 1.4.18
+
+- Light and DND diagnostics are logged at INFO, so they appear without any
+  logger configuration. The setup line carries the integration version.
+
 ## 1.4.17
 
 - More debug diagnostics for the MRS100 light: the cover light SET payload,
