@@ -20,7 +20,7 @@
     "step": {
       "configure_manager": {
         "title": "Iniciar sesión en Meross Local Cloud",
-        "description": "<span style=\"color:#2e7d32\">Broker detectado automáticamente.</span>\n\nUsa la cuenta local creada en el add-on Meross Local Broker. No uses tus credenciales del cloud Meross; esta integración solo se comunica con el broker local.\n\nEjemplo: 192.168.1.10 — HTTPS 2004, MQTT 2001.",
+        "description": "**Broker detectado automáticamente.**\n\nUsa la cuenta local creada en el add-on Meross Local Broker. No uses tus credenciales del cloud Meross; esta integración solo se comunica con el broker local.\n\nEjemplo: 192.168.1.10 — HTTPS 2004, MQTT 2001.",
         "data": {
           "broker_host": "Dirección del Meross Local Broker",
           "https_port": "Puerto HTTPS",

@@ -1,3 +1,10 @@
+## 2.1.1
+
+- Remove HTML from the config flow description. Home Assistant formats these
+  strings as ICU messages and rejects rich-text tags (`INVALID_TAG`). The
+  detected-broker status is now bold; the missing-broker state keeps the
+  native red error banner.
+
 ## 2.1.0
 
 - Replace the simple/advanced flow with a single form: Meross Local Broker
