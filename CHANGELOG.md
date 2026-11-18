@@ -1,3 +1,10 @@
+## 1.4.19
+
+- Align the MRS100 light entity with meross_lan: a plain on/off sends
+  `Appliance.Control.Light` with only `channel` and `onoff`; luminance and the
+  luminance capacity are added only when an actual brightness is requested.
+  The entity state still follows the light digest and the last command.
+
 ## 1.4.18
 
 - Light and DND diagnostics are logged at INFO, so they appear without any

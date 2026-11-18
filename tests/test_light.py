@@ -33,25 +33,22 @@ def test_on_off_fallback():
     assert _active_color_mode(False, False, False) == ColorMode.ONOFF
 
 
-def test_cover_light_payload_on_uses_capacity_and_luminance():
-    payload = _cover_light_payload(0, True, luminance=42)
-    light = payload["light"]
+def test_cover_light_payload_plain_on_carries_only_onoff():
+    light = _cover_light_payload(0, True)["light"]
+    assert light == {"channel": 0, "onoff": 1}
+
+
+def test_cover_light_payload_on_with_brightness_adds_capacity():
+    light = _cover_light_payload(0, True, luminance=42)["light"]
     assert light["onoff"] == 1
     assert light["luminance"] == 42
     assert light["capacity"] == 4
     assert light["channel"] == 0
 
 
-def test_cover_light_payload_on_defaults_to_full_luminance():
-    assert _cover_light_payload(0, True, luminance=0)["light"]["luminance"] == 100
-    assert _cover_light_payload(0, True, luminance=None)["light"]["luminance"] == 100
-
-
 def test_cover_light_payload_off_carries_only_onoff():
     light = _cover_light_payload(1, False)["light"]
-    assert light["onoff"] == 0
-    assert "luminance" not in light
-    assert "capacity" not in light
+    assert light == {"channel": 1, "onoff": 0}
 
 
 def test_cover_devices_are_detected():

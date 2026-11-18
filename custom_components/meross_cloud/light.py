@@ -76,16 +76,17 @@ def _is_cover_light(device) -> bool:
 
 def _cover_light_payload(channel: int, onoff: bool,
                          luminance: Optional[int] = None) -> Dict:
-    """Build a CONTROL_LIGHT payload accepted by cover panels (mrs100)."""
+    """Build the CONTROL_LIGHT payload used by meross_lan for covers.
+
+    A plain on/off is sent with the onoff field only. Luminance and the
+    luminance capacity are added only when an actual brightness is requested.
+    """
     light = {
         "channel": channel,
         "onoff": 1 if onoff else 0,
-        "gradual": 0,
     }
-    if onoff:
-        # The firmware expects a non-zero luminance together with the
-        # luminance capacity; sending onoff alone is ignored.
-        light["luminance"] = max(1, min(100, int(luminance or 100)))
+    if onoff and luminance is not None:
+        light["luminance"] = max(1, min(100, int(luminance)))
         light["capacity"] = LightMode.MODE_LUMINANCE.value
     return {"light": light}
 
@@ -204,14 +205,9 @@ class LightEntityWrapper(MerossDevice, LightEntity):
 
     async def _async_set_cover_light(self, onoff: bool,
                                      brightness: Optional[int] = None) -> None:
-        luminance = None
-        if brightness is not None:
-            luminance = round(brightness * 100 / 255)
-        else:
-            try:
-                luminance = self._device.get_luminance(channel=self._channel_id)
-            except Exception:  # noqa: BLE001 - state may not be available yet
-                luminance = None
+        luminance = (
+            round(brightness * 100 / 255) if brightness is not None else None
+        )
         payload = _cover_light_payload(self._channel_id, onoff, luminance)
         _LOGGER.info("cover light SET %s: %s", self._device.uuid, payload)
         try:
