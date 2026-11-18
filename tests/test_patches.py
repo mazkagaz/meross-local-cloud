@@ -22,9 +22,17 @@ def test_context_without_validation():
 
 
 def test_context_verified_with_ca():
-    context = create_mqtt_ssl_context(certifi.where(), False)
+    with open(certifi.where(), encoding="utf8") as ca_file:
+        context = create_mqtt_ssl_context(ca_file.read(), False)
     assert context.verify_mode == ssl.CERT_REQUIRED
     assert context.check_hostname is False
+
+
+def test_context_can_check_hostname():
+    with open(certifi.where(), encoding="utf8") as ca_file:
+        context = create_mqtt_ssl_context(ca_file.read(), False, True)
+    assert context.verify_mode == ssl.CERT_REQUIRED
+    assert context.check_hostname is True
 
 
 def test_patched_client_uses_preloaded_context(monkeypatch):

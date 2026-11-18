@@ -1,3 +1,15 @@
+## 1.5.0
+
+- Trust the broker CA for HTTP and MQTT. The CA is downloaded from `/ca.crt`,
+  validated (`CA:TRUE`) and pinned by SHA-256 in the config entry; a change is
+  logged and the new CA is trusted automatically.
+- HTTP and MQTT TLS contexts are built from that CA, with hostname
+  verification enabled when the server certificate covers the configured host
+  (the broker now publishes LAN IP SANs).
+- The silent fallback to disabled verification is removed. When a valid CA is
+  available it is used even if the old skip option is stored; the skip option
+  remains a fallback for brokers without a valid CA.
+
 ## 1.4.23
 
 - Revert 1.4.22: turning on the panel light no longer modifies the DND mode.

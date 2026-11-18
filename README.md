@@ -77,11 +77,15 @@ machine), l'assistant ouvre directement les réglages explicites :
 | HTTP API Endpoint | `https://192.168.x.x:2004` ou `http://192.168.x.x:2003` |
 | MQTT Address | `192.168.x.x:2001` |
 | Local login / Password | le compte local de l'add-on |
-| Skip MQTT certificate validation | **coché** (certificat auto-signé) |
-| Skip HTTP certificate validation | **coché** en HTTPS (certificat auto-signé) |
+| Skip MQTT certificate validation | facultatif (voir ci-dessous) |
+| Skip HTTP certificate validation | facultatif (voir ci-dessous) |
 
-En HTTPS, l'option **Skip HTTP certificate validation** doit rester cochée
-tant que le certificat local n'est pas importé dans Home Assistant.
+Avec un broker **alpha99 ou plus récent**, la CA locale est valide : elle est
+téléchargée depuis `/ca.crt`, vérifiée et épinglée par l'intégration, puis
+utilisée pour HTTP et MQTT (vérification du nom d'hôte incluse lorsque le
+certificat couvre l'adresse configurée). Les options « Skip … certificate
+validation » ne servent plus que de repli pour un broker ancien dont la CA
+n'est pas valide ; elles ne sont plus nécessaires.
 
 Le login local n'est pas obligatoirement une adresse email : un simple nom
 d'utilisateur suffit. **N'utilisez jamais les identifiants du cloud Meross
@@ -120,8 +124,8 @@ Home Assistant. Une nouvelle release GitHub est publiée pour chaque version.
 | HACS ne trouve pas le dépôt | dépôt public, catégorie **Integration**, release publiée |
 | Aucun appareil découvert | add-on démarré, appareil ONLINE, compte local correct |
 | Erreur de connexion HTTP | adresse `https://…:2004` avec `Skip HTTP certificate validation` coché, ou `http://…:2003` |
-| Certificat HTTPS refusé | cocher `Skip HTTP certificate validation`, ou importer la CA `/ca.crt` du broker |
-| Erreur MQTT | adresse `…:2001`, `Skip MQTT certificate validation` coché |
+| Certificat HTTPS refusé | broker alpha99+ (CA valide) ; sinon cocher `Skip HTTP certificate validation` |
+| Erreur MQTT | adresse `…:2001` ; avec un broker ancien, cocher `Skip MQTT certificate validation` |
 | Entités absentes | redémarrer HA après l'appairage, puis recharger l'intégration |
 | Statut de calibration bloqué | vérifier les logs de l'add-on et le capteur `Calibration status` |
 
