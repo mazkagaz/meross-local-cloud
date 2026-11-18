@@ -209,14 +209,14 @@ class LightEntityWrapper(MerossDevice, LightEntity):
             round(brightness * 100 / 255) if brightness is not None else None
         )
         payload = _cover_light_payload(self._channel_id, onoff, luminance)
-        _LOGGER.info("cover light SET %s: %s", self._device.uuid, payload)
+        _LOGGER.debug("cover light SET %s: %s", self._device.uuid, payload)
         try:
             result = await self._device._execute_command(
                 method="SET", namespace=Namespace.CONTROL_LIGHT, payload=payload)
         except Exception as err:
-            _LOGGER.info("cover light SET %s failed: %s", self._device.uuid, err)
+            _LOGGER.debug("cover light SET %s failed: %s", self._device.uuid, err)
             raise
-        _LOGGER.info("cover light SET %s ack: %s", self._device.uuid, result)
+        _LOGGER.debug("cover light SET %s ack: %s", self._device.uuid, result)
         self._last_onoff = onoff
         self._device._update_channel_status(
             channel=self._channel_id,
@@ -224,8 +224,8 @@ class LightEntityWrapper(MerossDevice, LightEntity):
             onoff=payload["light"]["onoff"])
 
     async def async_turn_off(self, **kwargs) -> None:
-        _LOGGER.info("turn_off %s channel=%s %s",
-                     self._device.uuid, self._channel_id, self._debug_state())
+        _LOGGER.debug("turn_off %s channel=%s %s",
+                      self._device.uuid, self._channel_id, self._debug_state())
         if _is_cover_light(self._device):
             await self._async_set_cover_light(False)
             return
@@ -234,7 +234,7 @@ class LightEntityWrapper(MerossDevice, LightEntity):
     async def async_turn_on(self, **kwargs) -> None:
         device = self._device
         toggled = isinstance(device, (ToggleXMixin, ToggleMixin))
-        _LOGGER.info(
+        _LOGGER.debug(
             "turn_on %s channel=%s kwargs=%s toggled=%s %s",
             device.uuid, self._channel_id, kwargs, toggled,
             self._debug_state())
@@ -344,7 +344,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         light_devs = filter(lambda d: isinstance(d, LightMixin), devices)
         for d in light_devs:
             channels = [c.index for c in (d.channels or [])] or [0]
-            _LOGGER.info(
+            _LOGGER.debug(
                 "Light device %s (%s) [integration %s]: abilities=%s toggle=%s channels=%s",
                 d.name, d.uuid, MEROSS_INTEGRATION_VERSION,
                 sorted((d.abilities or {}).keys()),

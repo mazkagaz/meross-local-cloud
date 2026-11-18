@@ -1,3 +1,8 @@
+## 1.4.21
+
+- Move the MRS100 light/DND diagnostics back to DEBUG. They were raised to
+  INFO only to bypass the logger configuration while troubleshooting.
+
 ## 1.4.20
 
 - Accept command ACKs delivered on `/app/<userId>/subscribe`. The broker agent
