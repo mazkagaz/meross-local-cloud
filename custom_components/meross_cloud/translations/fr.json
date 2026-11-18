@@ -69,5 +69,15 @@
         "title": "Options de Meross Local Cloud"
       }
     }
+  },
+  "issues": {
+    "remove_missing_device": {
+      "title": "Appareil Meross plus appairé",
+      "description": "**{name}** (`{uuid}`) n'est plus signalé par le broker depuis plus de 48 heures. Si l'appareil a été dissocié ou supprimé volontairement, corrigez ce problème pour retirer son appareil et ses entités de Home Assistant."
+    },
+    "confirm": {
+      "title": "Retirer l'appareil ?",
+      "description": "Supprimer **{name}** et ses entités Home Assistant ? Un nouvel appairage recréera les entités avec la même identité."
+    }
   }
 }

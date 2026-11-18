@@ -1,3 +1,14 @@
+## 2.3.0
+
+- Device removals no longer leave ghost entities. When the broker announces an
+  `Appliance.Control.Unbind` (broker alpha101 or later), the integration
+  removes the corresponding entity as before and stops tracking the device.
+- A device that has not been reported by a successful HTTP poll for 48 hours
+  raises a fixable repair issue. Confirming it deletes the device and its
+  entities from Home Assistant; re-pairing with the same UUID recreates them.
+  Failed polls never start or reset the countdown, and a returning device
+  clears the issue automatically.
+
 ## 2.2.0
 
 - Reject port 2003 in the HTTPS and MQTT port fields: it is reserved. The

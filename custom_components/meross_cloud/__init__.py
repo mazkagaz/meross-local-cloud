@@ -50,8 +50,9 @@ from .common import (
     HTTP_API_RE,
     HTTP_UPDATE_INTERVAL, DEVICE_LIST_COORDINATOR, calculate_id, DEFAULT_USER_AGENT, CONF_OPT_CUSTOM_USER_AGENT,
     CONF_OVERRIDE_MQTT_ENDPOINT, CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, TRANSPORT_MODES_TO_ENUM,
-    MEROSS_DEFAULT_CLOUD_API_URL, CONF_CA_PEM, CONF_CA_FINGERPRINT
+    MEROSS_DEFAULT_CLOUD_API_URL, CONF_CA_PEM, CONF_CA_FINGERPRINT, MISSING_TRACKER
 )
+from .missing_devices import MissingDeviceTracker
 from .version import MEROSS_INTEGRATION_VERSION, MEROSS_IOT_VERSION
 from .patches import (
     apply_patches,
@@ -133,6 +134,7 @@ class MerossCoordinator(DataUpdateCoordinator):
         self._mqtt_ssl_context_verified: Optional[ssl.SSLContext] = None
         self._setup_done = False
         self._ua_header = ua_header
+        self._missing_tracker = MissingDeviceTracker(hass, config_entry.entry_id)
 
         # Objects not to be initialized here
         self._client = None
@@ -146,7 +148,10 @@ class MerossCoordinator(DataUpdateCoordinator):
             async with asyncio.timeout(10):
                 # Fetch devices and compose a quick-access dictionary
                 devices = await self._client.async_list_devices()
-                return {device.uuid: device for device in devices}
+                data = {device.uuid: device for device in devices}
+                # Only a successful poll may start or clear a 48 h countdown.
+                await self._missing_tracker.async_update(data.values())
+                return data
 
         except (BadLoginException, TokenExpiredException, UnauthorizedException) as err:
             # Raising ConfigEntryAuthFailed will cancel future updates
@@ -232,6 +237,9 @@ class MerossCoordinator(DataUpdateCoordinator):
             raise ConfigEntryNotReady(
                 "The broker TLS certificate could not be verified. Check the "
                 "broker CA or enable the certificate-skip option.") from err
+
+        await self._missing_tracker.async_update(http_devices)
+        self.hass.data[DOMAIN][MISSING_TRACKER] = self._missing_tracker
 
         # If no exception is thrown so far, it means setup was successful
         self._setup_done = True
@@ -352,6 +360,11 @@ class MerossDevice(Entity):
 
         if namespace == Namespace.CONTROL_UNBIND:
             _LOGGER.warning(f"Received unbind event. Removing device %s from HA", self.name)
+            tracker = self.hass.data.get(DOMAIN, {}).get(MISSING_TRACKER)
+            if tracker is not None:
+                # The broker announced the removal: do not later propose the
+                # same cleanup through a repair issue.
+                await tracker.async_forget(self._device.uuid)
             await self.platform.async_remove_entity(self.entity_id)
         elif namespace == Namespace.SYSTEM_ONLINE:
             _LOGGER.info(f"Device %s reported online event.", self.name)

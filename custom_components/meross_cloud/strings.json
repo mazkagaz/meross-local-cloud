@@ -69,5 +69,15 @@
         "title": "Meross Local Cloud Options"
       }
     }
+  },
+  "issues": {
+    "remove_missing_device": {
+      "title": "Meross device no longer paired",
+      "description": "**{name}** (`{uuid}`) has not been reported by the broker for more than 48 hours. If it was unpaired or deleted on purpose, fix this issue to remove its device and entities from Home Assistant."
+    },
+    "confirm": {
+      "title": "Remove the device?",
+      "description": "Delete **{name}** and its Home Assistant entities? Re-pairing the device later recreates them with the same identity."
+    }
   }
 }

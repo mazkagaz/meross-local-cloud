@@ -1,8 +1,10 @@
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
-from meross_iot.model.enums import OnlineStatus
+from meross_iot.model.enums import Namespace, OnlineStatus
 
 from custom_components.meross_cloud import MerossDevice
+from custom_components.meross_cloud.common import DOMAIN, MISSING_TRACKER
 
 UUID = "mrs100-test"
 
@@ -68,3 +70,18 @@ def test_entity_unavailable_when_every_source_is_offline():
         last_http_status=OnlineStatus.OFFLINE,
     )
     assert wrapper.available is False
+
+
+async def test_unbind_stops_missing_tracking(hass):
+    wrapper = make_device(OnlineStatus.ONLINE, OnlineStatus.ONLINE)
+    tracker = SimpleNamespace(async_forget=AsyncMock())
+    hass.data[DOMAIN] = {MISSING_TRACKER: tracker}
+    wrapper.hass = hass
+    wrapper.platform = SimpleNamespace(async_remove_entity=AsyncMock())
+    wrapper.entity_id = "cover.test"
+
+    await wrapper._async_push_notification_received(
+        Namespace.CONTROL_UNBIND, {}, UUID)
+
+    tracker.async_forget.assert_awaited_once_with(UUID)
+    wrapper.platform.async_remove_entity.assert_awaited_once_with("cover.test")

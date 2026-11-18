@@ -21,6 +21,7 @@ DOMAIN = "meross_cloud"
 ATTR_CONFIG = "config"
 MANAGER = "manager"
 DEVICE_LIST_COORDINATOR = "device_list_coordinator"
+MISSING_TRACKER = "missing_device_tracker"
 LIMITER = "limiter"
 CLOUD_HANDLER = "cloud_handler"
 MEROSS_MANAGER = "%s.%s" % (DOMAIN, MANAGER)

@@ -69,5 +69,15 @@
         "title": "Opciones de Meross Local Cloud"
       }
     }
+  },
+  "issues": {
+    "remove_missing_device": {
+      "title": "Dispositivo Meross ya no está emparejado",
+      "description": "**{name}** (`{uuid}`) no ha sido notificado por el broker durante más de 48 horas. Si se desemparejó o eliminó a propósito, corrija este problema para quitar su dispositivo y entidades de Home Assistant."
+    },
+    "confirm": {
+      "title": "¿Quitar el dispositivo?",
+      "description": "¿Eliminar **{name}** y sus entidades de Home Assistant? Volver a emparejarlo recreará las entidades con la misma identidad."
+    }
   }
 }
