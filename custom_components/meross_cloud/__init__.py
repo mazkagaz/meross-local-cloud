@@ -467,7 +467,9 @@ async def _async_prepare_tls(
     host = parsed.hostname
     http_check = False
     mqtt_check = False
-    if ca_pem and not skip_http_validation and host:
+    # The SAN lookup is independent from the stored skip option: a valid CA
+    # enables verification anyway, and hostname checks must be evaluated too.
+    if ca_pem and host:
         ports = []
         if parsed.scheme == "https":
             ports.append(parsed.port or 443)

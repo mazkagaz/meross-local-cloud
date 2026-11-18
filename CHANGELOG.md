@@ -1,3 +1,10 @@
+## 1.5.3
+
+- Evaluate the server certificate SANs even when the stored skip option is
+  true, so hostname verification is enabled as soon as the broker CA is
+  trusted. Previously the skip flag prevented the SAN lookup and left
+  `ca_check_hostname` false.
+
 ## 1.5.2
 
 - Add diagnostics support: the downloaded diagnostics include the integration
