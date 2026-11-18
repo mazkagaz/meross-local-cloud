@@ -52,7 +52,7 @@ from .common import (
     CONF_OVERRIDE_MQTT_ENDPOINT, CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, TRANSPORT_MODES_TO_ENUM,
     MEROSS_DEFAULT_CLOUD_API_URL, CONF_CA_PEM, CONF_CA_FINGERPRINT
 )
-from .version import MEROSS_IOT_VERSION
+from .version import MEROSS_INTEGRATION_VERSION, MEROSS_IOT_VERSION
 from .patches import (
     apply_patches,
     create_mqtt_ssl_context,
@@ -533,6 +533,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         await _async_prepare_tls(
             hass, config_entry, http_api_endpoint, mqtt_host,
             http_skip_cert_validation)
+    _LOGGER.info(
+        "Meross Local Cloud %s: %s, hostname verification %s",
+        MEROSS_INTEGRATION_VERSION,
+        f"broker CA pinned (SHA-256 {ca_fingerprint[:16]}…)"
+        if ca_fingerprint else "broker CA unavailable",
+        "enabled" if ca_check_hostname else "disabled")
     set_http_cert_validation(
         http_skip_cert_validation and http_ssl_context is None,
         http_ssl_context)

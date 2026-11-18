@@ -1,3 +1,10 @@
+## 1.5.1
+
+- Declare the integration logger in the manifest so the Home Assistant log
+  page filtered on Meross Local Cloud shows its messages.
+- Log an unconditional INFO line at setup with the integration version, the
+  pinned CA fingerprint and whether hostname verification is enabled.
+
 ## 1.5.0
 
 - Trust the broker CA for HTTP and MQTT. The CA is downloaded from `/ca.crt`,
