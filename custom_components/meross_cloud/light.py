@@ -6,6 +6,7 @@ from meross_iot.controller.device import BaseDevice
 from meross_iot.controller.mixins.light import LightMixin
 from meross_iot.controller.mixins.diffuser_light import DiffuserLightMixin
 from meross_iot.controller.mixins.toggle import ToggleMixin, ToggleXMixin
+from meross_iot.model.enums import Namespace, LightMode
 from meross_iot.manager import MerossManager
 from meross_iot.model.http.device import HttpDeviceInfo
 from meross_iot.model.enums import DiffuserLightMode
@@ -59,6 +60,33 @@ def _active_color_mode(supports_rgb: bool, supports_luminance: bool,
     if supports_luminance:
         return ColorMode.BRIGHTNESS
     return ColorMode.ONOFF
+
+
+def _is_cover_light(device) -> bool:
+    """Covers report ToggleX in their ability, but its payload is not usable.
+
+    meross_lan ignores ToggleX for roller shutters/garage openers for the same
+    reason; their light must be driven through Appliance.Control.Light.
+    """
+    abilities = getattr(device, "abilities", {}) or {}
+    return (Namespace.ROLLER_SHUTTER_STATE.value in abilities
+            or Namespace.GARAGE_DOOR_STATE.value in abilities)
+
+
+def _cover_light_payload(channel: int, onoff: bool,
+                         luminance: Optional[int] = None) -> Dict:
+    """Build a CONTROL_LIGHT payload accepted by cover panels (mrs100)."""
+    light = {
+        "channel": channel,
+        "onoff": 1 if onoff else 0,
+        "gradual": 0,
+    }
+    if onoff:
+        # The firmware expects a non-zero luminance together with the
+        # luminance capacity; sending onoff alone is ignored.
+        light["luminance"] = max(1, min(100, int(luminance or 100)))
+        light["capacity"] = LightMode.MODE_LUMINANCE.value
+    return {"light": light}
 
 
 class MerossOilDiffuserLightDevice(DiffuserLightMixin, BaseDevice):
@@ -151,6 +179,7 @@ class LightEntityWrapper(MerossDevice, LightEntity):
             channel=channel,
             device_list_coordinator=device_list_coordinator,
             platform=HA_LIGHT)
+        self._last_onoff: Optional[bool] = None
 
     def _debug_state(self) -> str:
         try:
@@ -158,9 +187,31 @@ class LightEntityWrapper(MerossDevice, LightEntity):
         except Exception:  # noqa: BLE001 - diagnostic only
             return "state unavailable"
 
+    async def _async_set_cover_light(self, onoff: bool,
+                                     brightness: Optional[int] = None) -> None:
+        luminance = None
+        if brightness is not None:
+            luminance = round(brightness * 100 / 255)
+        else:
+            try:
+                luminance = self._device.get_luminance(channel=self._channel_id)
+            except Exception:  # noqa: BLE001 - state may not be available yet
+                luminance = None
+        payload = _cover_light_payload(self._channel_id, onoff, luminance)
+        await self._device._execute_command(
+            method="SET", namespace=Namespace.CONTROL_LIGHT, payload=payload)
+        self._last_onoff = onoff
+        self._device._update_channel_status(
+            channel=self._channel_id,
+            luminance=payload["light"].get("luminance"),
+            onoff=payload["light"]["onoff"])
+
     async def async_turn_off(self, **kwargs) -> None:
         _LOGGER.debug("turn_off %s channel=%s %s",
                       self._device.uuid, self._channel_id, self._debug_state())
+        if _is_cover_light(self._device):
+            await self._async_set_cover_light(False)
+            return
         await self._device.async_turn_off(channel=self._channel_id, skip_rate_limits=True)
 
     async def async_turn_on(self, **kwargs) -> None:
@@ -170,6 +221,9 @@ class LightEntityWrapper(MerossDevice, LightEntity):
             "turn_on %s channel=%s kwargs=%s toggled=%s %s",
             device.uuid, self._channel_id, kwargs, toggled,
             self._debug_state())
+        if _is_cover_light(device):
+            await self._async_set_cover_light(True, kwargs.get(ATTR_BRIGHTNESS))
+            return
         if not kwargs and not toggled:
             # Some devices keep reporting onoff=1 even when the light is off.
             # meross_iot then omits the onoff field and sends nothing; include
@@ -217,6 +271,11 @@ class LightEntityWrapper(MerossDevice, LightEntity):
 
     @property
     def is_on(self) -> Optional[bool]:
+        if _is_cover_light(self._device):
+            info = self._device._channel_light_status.get(self._channel_id)
+            if info is not None and info.is_on is not None:
+                return info.is_on
+            return self._last_onoff
         return self._device.get_light_is_on(channel=self._channel_id)
 
     @property

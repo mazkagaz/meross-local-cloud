@@ -1,3 +1,12 @@
+## 1.4.16
+
+- Drive the light of roller shutters and garage openers (MRS100) through
+  `Appliance.Control.Light` instead of ToggleX, like meross_lan does: the
+  ToggleX payload reported by covers is not standard and its state follows
+  the motor activity. Turn-on sends `onoff=1` with a non-zero luminance and
+  the luminance capacity; turn-off sends `onoff=0`. The light state prefers
+  the light digest and falls back to the last command.
+
 ## 1.4.15
 
 - Add debug diagnostics for MRS100 lights: the device abilities, whether it is
