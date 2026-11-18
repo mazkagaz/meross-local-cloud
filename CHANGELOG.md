@@ -1,3 +1,11 @@
+## 1.4.22
+
+- Turning on the MRS100 panel light now disables Do Not Disturb first (mode
+  `DND_DISABLED`) and waits briefly before sending the light command. DND
+  gates the panel LEDs, so the light command was ignored while it was enabled
+  — matching the manual sequence of toggling both entities that occasionally
+  worked.
+
 ## 1.4.21
 
 - Move the MRS100 light/DND diagnostics back to DEBUG. They were raised to
