@@ -126,6 +126,8 @@ class DndEntityWrapper(MerossDevice, SwitchEntity):
             await super().async_update()
             try:
                 self._dnd_mode = await self._device.async_get_dnd_mode()
+                _LOGGER.debug("dnd %s current mode=%s",
+                              self._device.uuid, self._dnd_mode)
             except CommandTimeoutError:
                 # Keep the previous mode; some devices report the DND ability
                 # but do not answer during the reconnect burst.
@@ -141,11 +143,13 @@ class DndEntityWrapper(MerossDevice, SwitchEntity):
 
     async def async_turn_off(self, **kwargs) -> None:
         dev = self._device
+        _LOGGER.debug("dnd %s SET enabled (switch off)", dev.uuid)
         await dev.set_dnd_mode(mode=DNDMode.DND_ENABLED, skip_rate_limits=True)
         self._dnd_mode = DNDMode.DND_ENABLED
 
     async def async_turn_on(self, **kwargs) -> None:
         dev = self._device
+        _LOGGER.debug("dnd %s SET disabled (switch on)", dev.uuid)
         await dev.set_dnd_mode(mode=DNDMode.DND_DISABLED, skip_rate_limits=True)
         self._dnd_mode = DNDMode.DND_DISABLED
 

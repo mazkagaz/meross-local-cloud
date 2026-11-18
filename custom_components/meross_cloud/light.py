@@ -182,10 +182,24 @@ class LightEntityWrapper(MerossDevice, LightEntity):
         self._last_onoff: Optional[bool] = None
 
     def _debug_state(self) -> str:
+        parts = []
         try:
-            return f"is_on={self.is_on} luminance={self._device.get_luminance(channel=self._channel_id)}"
+            parts.append(f"is_on={self.is_on}")
         except Exception:  # noqa: BLE001 - diagnostic only
-            return "state unavailable"
+            parts.append("is_on=?")
+        try:
+            parts.append(f"luminance={self._device.get_luminance(channel=self._channel_id)}")
+        except Exception:  # noqa: BLE001 - diagnostic only
+            parts.append("luminance=?")
+        info = self._device._channel_light_status.get(self._channel_id)
+        if info is None:
+            parts.append("light_info=none")
+        else:
+            parts.append(
+                f"light_info(onoff={info._onoff},lum={info._luminance},"
+                f"rgb={info._rgb},temp={info._temperature})")
+        parts.append(f"last_onoff={self._last_onoff}")
+        return " ".join(parts)
 
     async def _async_set_cover_light(self, onoff: bool,
                                      brightness: Optional[int] = None) -> None:
@@ -198,8 +212,14 @@ class LightEntityWrapper(MerossDevice, LightEntity):
             except Exception:  # noqa: BLE001 - state may not be available yet
                 luminance = None
         payload = _cover_light_payload(self._channel_id, onoff, luminance)
-        await self._device._execute_command(
-            method="SET", namespace=Namespace.CONTROL_LIGHT, payload=payload)
+        _LOGGER.debug("cover light SET %s: %s", self._device.uuid, payload)
+        try:
+            result = await self._device._execute_command(
+                method="SET", namespace=Namespace.CONTROL_LIGHT, payload=payload)
+        except Exception as err:
+            _LOGGER.debug("cover light SET %s failed: %s", self._device.uuid, err)
+            raise
+        _LOGGER.debug("cover light SET %s ack: %s", self._device.uuid, result)
         self._last_onoff = onoff
         self._device._update_channel_status(
             channel=self._channel_id,

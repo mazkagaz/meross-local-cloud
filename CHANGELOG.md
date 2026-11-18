@@ -1,3 +1,9 @@
+## 1.4.17
+
+- More debug diagnostics for the MRS100 light: the cover light SET payload,
+  acknowledgment and error, plus the raw light status and DND mode reads and
+  writes. No behavior change.
+
 ## 1.4.16
 
 - Drive the light of roller shutters and garage openers (MRS100) through
