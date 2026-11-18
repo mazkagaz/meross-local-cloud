@@ -20,7 +20,7 @@
     "step": {
       "configure_manager": {
         "title": "Connexion à Meross Local Cloud",
-        "description": "**Broker détecté automatiquement.**\n\nUtilisez le compte local créé dans l'add-on Meross Local Broker. N'utilisez pas vos identifiants du cloud Meross ; cette intégration ne contacte que le broker local.\n\nExemple : 192.168.1.10 — HTTPS 2004, MQTT 2001.",
+        "description": "**Broker détecté automatiquement.**\n\nUtilisez le compte local créé dans l'add-on Meross Local Broker. N'utilisez pas vos identifiants du cloud Meross ; cette intégration ne contacte que le broker local.\n\nSi les ports exposés par l'add-on ont été modifiés (onglet Réseau de Home Assistant), renseignez manuellement l'adresse et les ports.\n\nExemple : 192.168.1.10 — HTTPS 2004, MQTT 2001.",
         "data": {
           "broker_host": "Adresse du Meross Local Broker",
           "https_port": "Port HTTPS",
@@ -32,7 +32,7 @@
       },
       "configure_manager_missing": {
         "title": "Connexion à Meross Local Cloud",
-        "description": "Le broker n'a pas été détecté automatiquement. Vérifiez que l'add-on Meross Local Broker est installé et démarré : [Installer ou vérifier l'installation de l'add-on Meross Local Broker](https://github.com/mazkagaz/meross-local-broker#readme).\n\nExemple : 192.168.1.10 — HTTPS 2004, MQTT 2001.",
+        "description": "Le broker n'a pas été détecté automatiquement. Vérifiez que l'add-on Meross Local Broker est installé et démarré : [Installer ou vérifier l'installation de l'add-on Meross Local Broker](https://github.com/mazkagaz/meross-local-broker#readme).\n\nSi les ports exposés par l'add-on ont été modifiés (onglet Réseau de Home Assistant), renseignez manuellement l'adresse et les ports.\n\nExemple : 192.168.1.10 — HTTPS 2004, MQTT 2001.",
         "data": {
           "broker_host": "Adresse du Meross Local Broker",
           "https_port": "Port HTTPS",

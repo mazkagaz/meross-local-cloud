@@ -1,3 +1,9 @@
+## 2.1.2
+
+- Add a note to the setup form, in both the detected and not-detected states:
+  if the add-on's exposed ports were changed (Home Assistant Network tab),
+  enter the address and ports manually.
+
 ## 2.1.1
 
 - Remove HTML from the config flow description. Home Assistant formats these
