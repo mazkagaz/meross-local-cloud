@@ -20,7 +20,7 @@
     "step": {
       "configure_manager": {
         "title": "Accedi a Meross Local Cloud",
-        "description": "**Broker rilevato automaticamente.**\n\nUsa l'account locale creato nell'add-on Meross Local Broker. Non usare le credenziali del cloud Meross: questa integrazione comunica solo con il broker locale.\n\nSe le porte esposte dell'add-on sono state modificate (scheda Rete di Home Assistant), inserisci manualmente l'indirizzo e le porte.\n\nEsempio: 192.168.1.10 — HTTPS 2004, MQTT 2001.",
+        "description": "**Broker rilevato automaticamente.**\n\nUsa l'account locale creato nell'add-on Meross Local Broker. Non usare le credenziali del cloud Meross: questa integrazione comunica solo con il broker locale.\n\nSe le porte esposte dell'add-on sono state modificate (Impostazioni → App → Meross Local Broker → Configurazione), inserisci manualmente l'indirizzo e le porte.\n\nEsempio: 192.168.1.10 — HTTPS 2004, MQTT 2001.",
         "data": {
           "broker_host": "Indirizzo del Meross Local Broker",
           "https_port": "Porta HTTPS",
@@ -32,7 +32,7 @@
       },
       "configure_manager_missing": {
         "title": "Accedi a Meross Local Cloud",
-        "description": "Il broker non è stato rilevato automaticamente. Verifica che l'add-on Meross Local Broker sia installato e in esecuzione: [Installa o verifica l'installazione dell'add-on Meross Local Broker](https://github.com/mazkagaz/meross-local-broker#readme).\n\nSe le porte esposte dell'add-on sono state modificate (scheda Rete di Home Assistant), inserisci manualmente l'indirizzo e le porte.\n\nEsempio: 192.168.1.10 — HTTPS 2004, MQTT 2001.",
+        "description": "Il broker non è stato rilevato automaticamente. Verifica che l'add-on Meross Local Broker sia installato e in esecuzione: [Installa o verifica l'installazione dell'add-on Meross Local Broker](https://github.com/mazkagaz/meross-local-broker#readme).\n\nSe le porte esposte dell'add-on sono state modificate (Impostazioni → App → Meross Local Broker → Configurazione), inserisci manualmente l'indirizzo e le porte.\n\nEsempio: 192.168.1.10 — HTTPS 2004, MQTT 2001.",
         "data": {
           "broker_host": "Indirizzo del Meross Local Broker",
           "https_port": "Porta HTTPS",

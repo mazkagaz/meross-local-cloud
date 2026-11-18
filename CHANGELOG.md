@@ -1,3 +1,9 @@
+## 2.1.3
+
+- Correct the exposed-ports note: the port mappings are configured in
+  Settings → Apps → Meross Local Broker → Configuration, not in a Home
+  Assistant Network tab.
+
 ## 2.1.2
 
 - Add a note to the setup form, in both the detected and not-detected states:
