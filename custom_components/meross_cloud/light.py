@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from typing import Optional, Dict
 
@@ -7,7 +6,7 @@ from meross_iot.controller.device import BaseDevice
 from meross_iot.controller.mixins.light import LightMixin
 from meross_iot.controller.mixins.diffuser_light import DiffuserLightMixin
 from meross_iot.controller.mixins.toggle import ToggleMixin, ToggleXMixin
-from meross_iot.model.enums import Namespace, LightMode, DNDMode
+from meross_iot.model.enums import Namespace, LightMode
 from meross_iot.manager import MerossManager
 from meross_iot.model.http.device import HttpDeviceInfo
 from meross_iot.model.enums import DiffuserLightMode
@@ -204,29 +203,8 @@ class LightEntityWrapper(MerossDevice, LightEntity):
         parts.append(f"last_onoff={self._last_onoff}")
         return " ".join(parts)
 
-    async def _async_clear_dnd(self) -> None:
-        """Disable DND before turning the panel light on.
-
-        On the MRS100 the DND mode gates the panel LEDs: while it is enabled,
-        the light command is ignored. Turning both entities in the right order
-        was the only way to light them up.
-        """
-        device = self._device
-        if not hasattr(device, "set_dnd_mode"):
-            return
-        try:
-            await device.set_dnd_mode(
-                mode=DNDMode.DND_DISABLED, skip_rate_limits=True)
-            _LOGGER.debug("cover light %s: DND disabled first", device.uuid)
-            await asyncio.sleep(0.5)
-        except Exception as err:  # noqa: BLE001 - best effort
-            _LOGGER.debug("cover light %s: DND reset failed: %s",
-                          device.uuid, err)
-
     async def _async_set_cover_light(self, onoff: bool,
                                      brightness: Optional[int] = None) -> None:
-        if onoff:
-            await self._async_clear_dnd()
         luminance = (
             round(brightness * 100 / 255) if brightness is not None else None
         )

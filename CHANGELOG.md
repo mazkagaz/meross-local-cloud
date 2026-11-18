@@ -1,4 +1,10 @@
-## 1.4.22
+## 1.4.23
+
+- Revert 1.4.22: turning on the panel light no longer modifies the DND mode.
+  This restores the meross_lan-aligned behavior of 1.4.21, with the ACK
+  handling fix from 1.4.20.
+
+## 1.4.22 (reverted in 1.4.23)
 
 - Turning on the MRS100 panel light now disables Do Not Disturb first (mode
   `DND_DISABLED`) and waits briefly before sending the light command. DND

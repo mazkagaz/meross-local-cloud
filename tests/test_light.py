@@ -1,68 +1,14 @@
-from unittest.mock import AsyncMock
-
 from homeassistant.components.light import (
     ColorMode,
     valid_supported_color_modes,
 )
 
 from custom_components.meross_cloud.light import (
-    LightEntityWrapper,
     _active_color_mode,
     _cover_light_payload,
     _is_cover_light,
     _supported_color_modes,
 )
-
-
-class _FakeLightDevice:
-    uuid = "test-device"
-
-    def __init__(self):
-        self.calls = []
-
-    async def set_dnd_mode(self, **kwargs):
-        self.calls.append(("dnd", kwargs))
-
-    async def _execute_command(self, **kwargs):
-        self.calls.append(("light", kwargs))
-        return {}
-
-    def _update_channel_status(self, **kwargs):
-        return None
-
-    def get_luminance(self, channel=0):
-        return 50
-
-
-def _make_wrapper(device):
-    wrapper = LightEntityWrapper.__new__(LightEntityWrapper)
-    wrapper._device = device
-    wrapper._channel_id = 0
-    wrapper._last_onoff = None
-    return wrapper
-
-
-async def test_cover_light_on_disables_dnd_first(monkeypatch):
-    monkeypatch.setattr(
-        "custom_components.meross_cloud.light.asyncio.sleep", AsyncMock())
-    device = _FakeLightDevice()
-    wrapper = _make_wrapper(device)
-
-    await wrapper._async_set_cover_light(True)
-
-    assert [call[0] for call in device.calls] == ["dnd", "light"]
-    assert device.calls[1][1]["payload"]["light"]["onoff"] == 1
-
-
-async def test_cover_light_off_does_not_touch_dnd(monkeypatch):
-    monkeypatch.setattr(
-        "custom_components.meross_cloud.light.asyncio.sleep", AsyncMock())
-    device = _FakeLightDevice()
-    wrapper = _make_wrapper(device)
-
-    await wrapper._async_set_cover_light(False)
-
-    assert [call[0] for call in device.calls] == ["light"]
 
 
 def test_brightness_only_uses_brightness_not_white():
