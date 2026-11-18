@@ -1,3 +1,11 @@
+## 2.3.1
+
+- Unbind: the device and its entities are now really deleted from the Home
+  Assistant registries. Calling `entity.async_remove()` alone kept a disabled
+  entity-registry entry and wrote an unavailable "restored" state, so the
+  device stayed visible after a broker-side removal. The integration now
+  removes the entity entry, the state, and the device entry.
+
 ## 2.3.0
 
 - Device removals no longer leave ghost entities. When the broker announces an

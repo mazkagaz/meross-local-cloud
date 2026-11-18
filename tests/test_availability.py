@@ -3,6 +3,10 @@ from unittest.mock import AsyncMock
 
 from meross_iot.model.enums import Namespace, OnlineStatus
 
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
 from custom_components.meross_cloud import MerossDevice
 from custom_components.meross_cloud.common import DOMAIN, MISSING_TRACKER
 
@@ -18,6 +22,8 @@ def make_device(mqtt_status, http_status, http_present=True,
         internal_id=UUID,
         channels=[SimpleNamespace(index=0, name="Main")],
         online_status=mqtt_status,
+        register_push_notification_handler_coroutine=lambda cb: None,
+        unregister_push_notification_handler_coroutine=lambda cb: None,
     )
     data = {}
     if http_present:
@@ -72,16 +78,38 @@ def test_entity_unavailable_when_every_source_is_offline():
     assert wrapper.available is False
 
 
-async def test_unbind_stops_missing_tracking(hass):
+async def test_unbind_stops_tracking_and_removes_registries(hass):
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.add_to_hass(hass)
     wrapper = make_device(OnlineStatus.ONLINE, OnlineStatus.ONLINE)
     tracker = SimpleNamespace(async_forget=AsyncMock())
-    hass.data[DOMAIN] = {MISSING_TRACKER: tracker}
+    hass.data[DOMAIN] = {
+        MISSING_TRACKER: tracker,
+        "ADDED_ENTITIES_IDS": {wrapper.unique_id},
+    }
     wrapper.hass = hass
     wrapper.platform = SimpleNamespace(async_remove_entity=AsyncMock())
-    wrapper.entity_id = "cover.test"
+    wrapper.entity_id = "cover.test_shutter"
+    wrapper.async_remove = AsyncMock()
+
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, UUID)},
+        name="Test Shutter",
+    )
+    er.async_get(hass).async_get_or_create(
+        domain="cover",
+        platform=DOMAIN,
+        unique_id=wrapper.unique_id,
+        suggested_object_id="test_shutter",
+        config_entry=entry,
+        device_id=device.id,
+    )
 
     await wrapper._async_push_notification_received(
         Namespace.CONTROL_UNBIND, {}, UUID)
 
     tracker.async_forget.assert_awaited_once_with(UUID)
-    wrapper.platform.async_remove_entity.assert_awaited_once_with("cover.test")
+    assert er.async_get(hass).async_get("cover.test_shutter") is None
+    assert dr.async_get(hass).async_get_device(
+        identifiers={(DOMAIN, UUID)}) is None

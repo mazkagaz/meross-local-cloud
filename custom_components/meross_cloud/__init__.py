@@ -12,6 +12,8 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from meross_iot.controller.device import BaseDevice
@@ -365,7 +367,18 @@ class MerossDevice(Entity):
                 # The broker announced the removal: do not later propose the
                 # same cleanup through a repair issue.
                 await tracker.async_forget(self._device.uuid)
-            await self.platform.async_remove_entity(self.entity_id)
+            # Entity.async_remove() alone keeps a disabled registry entry and
+            # writes an unavailable "restored" state: drop the entries so the
+            # entities really disappear.
+            entity_registry = er.async_get(self.hass)
+            if entity_registry.async_get(self.entity_id) is not None:
+                entity_registry.async_remove(self.entity_id)
+            await self.async_remove(force_remove=True)
+            device_registry = dr.async_get(self.hass)
+            device_entry = device_registry.async_get_device(
+                {(DOMAIN, self._device.internal_id)})
+            if device_entry is not None:
+                device_registry.async_remove_device(device_entry.id)
         elif namespace == Namespace.SYSTEM_ONLINE:
             _LOGGER.info(f"Device %s reported online event.", self.name)
             online = OnlineStatus(int(data.get('online').get('status')))
