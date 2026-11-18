@@ -58,25 +58,27 @@ des modules complémentaires (lien ci-dessus).
 
 1. **Paramètres → Appareils et services → Ajouter une intégration**.
 2. Chercher **Meross Local Cloud**.
-3. L'assistant découvre le broker en mDNS (TXT `host`, `http_port`,
-   `https_port`) et n'affiche que les champs suivants :
+3. L'assistant découvre le broker en mDNS et affiche un formulaire unique :
 
 | Champ | Valeur |
 |---|---|
-| Local login | le compte local de l'add-on, par exemple `meross-local` |
+| Meross Local Broker address | hôte ou IP, sans `https://` (prérempli si détecté) |
+| HTTPS port | `2004` (prérempli si détecté) |
+| MQTT port | `2001` (prérempli si détecté) |
+| Local login | le compte local de l'add-on |
 | Password | le mot de passe local |
-| Advanced settings | cocher, puis valider, pour ouvrir les réglages avancés |
+
+Au-dessus des champs, un exemple générique est affiché :
+`Exemple : 192.168.1.10 — HTTPS 2004, MQTT 2001`.
+
+- Broker détecté : les champs sont préremplis et la mention
+  « Broker détecté automatiquement » est affichée en vert.
+- Broker non détecté : les champs sont vides et le message « Broker non
+  détecté » s'affiche en rouge, suivi du lien
+  **Installer ou vérifier l'installation de l'add-on Meross Local Broker**
+  vers `https://github.com/mazkagaz/meross-local-broker#readme`.
 
 4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
-
-Si le broker n'est pas découvert (mDNS indisponible, ou broker sur une autre
-machine), l'assistant ouvre directement les réglages explicites :
-
-| Champ | Valeur |
-|---|---|
-| HTTP API Endpoint | `https://192.168.x.x:2004` (HTTPS obligatoire) |
-| MQTT Address | `192.168.x.x:2001` |
-| Local login / Password | le compte local de l'add-on |
 
 Le broker doit être en **alpha99 ou plus récent**. Sa CA locale est valide :
 elle est téléchargée depuis `/ca.crt`, vérifiée et épinglée par l'intégration,

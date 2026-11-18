@@ -6,41 +6,53 @@
     "error": {
       "invalid_credentials": "Inicio de sesión local o contraseña no válidos.",
       "connection_error": "No se puede conectar con el broker local.",
-      "invalid_http_endpoint": "Punto de conexión de la API HTTP no válido",
       "api_invalid_ssl_code": "No se ha podido validar el certificado HTTPS. Actualiza el broker (alpha99 o posterior) para que sirva una CA válida.",
       "unknown_error": "Ocurrió un error inesperado",
       "api_connection_refused": "No se puede conectar al servidor de API HTTP(S). Asegúrate de que la dirección es correcta",
       "client_connection_error": "Ha ocurrido un error mientras se conectaba a la API HTTP",
       "missing_credentials": "Proporciona las credenciales que faltan",
-      "mdns_lookup_failed": "No se ha descubierto ningún broker automáticamente. Introduce abajo el endpoint de la API HTTP y la dirección MQTT.",
+      "mdns_lookup_failed": "Broker no detectado.",
       "missing_mfa": "Tu cuenta requiere un código MFA para continuar. Introdúcelo.",
-      "https_required": "HTTP sin cifrar ya no es compatible. Usa el endpoint HTTPS (https://…:2004) y actualiza el broker (alpha99 o posterior).",
-      "ca_unavailable": "No se ha podido obtener un certificado CA válido del broker. Actualiza el broker (alpha99 o posterior)."
+      "ca_unavailable": "No se ha podido obtener un certificado CA válido del broker. Actualiza el broker (alpha99 o posterior).",
+      "missing_broker_host": "Introduce la dirección del Meross Local Broker.",
+      "invalid_port": "Los puertos deben ser números entre 1 y 65535."
     },
     "step": {
       "configure_manager": {
         "title": "Iniciar sesión en Meross Local Cloud",
-        "description": "Utiliza la cuenta local creada en el add-on Meross Local Broker. No uses tus credenciales de la nube Meross; esta integración solo se comunica con el broker local.\n\nBroker: {broker}\n\nVersión de la integración: {version}\n\nPara modificar el endpoint, los puertos u opciones TLS, marca \"Configuración avanzada\" y valida.",
+        "description": "<span style=\"color:#2e7d32\">Broker detectado automáticamente.</span>\n\nUsa la cuenta local creada en el add-on Meross Local Broker. No uses tus credenciales del cloud Meross; esta integración solo se comunica con el broker local.\n\nEjemplo: 192.168.1.10 — HTTPS 2004, MQTT 2001.",
         "data": {
+          "broker_host": "Dirección del Meross Local Broker",
+          "https_port": "Puerto HTTPS",
+          "mqtt_port": "Puerto MQTT",
           "username": "Inicio de sesión local",
           "password": "Contraseña",
-          "advanced": "Configuración avanzada"
-        }
-      },
-      "configure_manager_advanced": {
-        "title": "Configuración avanzada del broker",
-        "description": "Endpoints explícitos y opciones TLS. Cámbialos solo si el broker no se descubre correctamente.",
-        "data": {
-          "username": "Inicio de sesión local",
-          "password": "Contraseña",
-          "http_api_endpoint": "HTTP API Endpoint",
-          "override_mqtt_endpoint": "Dirección MQTT (host:port)",
           "mfa_code": "Código MFA"
         }
       },
-      "reauth_confirm": {
+      "configure_manager_missing": {
+        "title": "Iniciar sesión en Meross Local Cloud",
+        "description": "El broker no se ha detectado automáticamente. Comprueba que el add-on Meross Local Broker está instalado y en ejecución: [Instalar o verificar la instalación del add-on Meross Local Broker](https://github.com/mazkagaz/meross-local-broker#readme).\n\nEjemplo: 192.168.1.10 — HTTPS 2004, MQTT 2001.",
+        "data": {
+          "broker_host": "Dirección del Meross Local Broker",
+          "https_port": "Puerto HTTPS",
+          "mqtt_port": "Puerto MQTT",
+          "username": "Inicio de sesión local",
+          "password": "Contraseña",
+          "mfa_code": "Código MFA"
+        }
+      },
+      "configure_manager_reauth": {
         "title": "Requiere volver a autenticarse",
-        "description": "Meross Local Cloud requiere volver a autenticarse con tu broker local"
+        "description": "Configuración existente del broker. Ajusta la dirección o los puertos si es necesario.\n\nEjemplo: 192.168.1.10 — HTTPS 2004, MQTT 2001.",
+        "data": {
+          "broker_host": "Dirección del Meross Local Broker",
+          "https_port": "Puerto HTTPS",
+          "mqtt_port": "Puerto MQTT",
+          "username": "Inicio de sesión local",
+          "password": "Contraseña",
+          "mfa_code": "Código MFA"
+        }
       }
     },
     "title": "Meross Local Cloud"

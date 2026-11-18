@@ -11,9 +11,11 @@ from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.meross_cloud.common import (
-    CONF_ADVANCED,
+    CONF_BROKER_HOST,
     CONF_CA_PEM,
     CONF_HTTP_ENDPOINT,
+    CONF_HTTPS_PORT,
+    CONF_MQTT_PORT,
     CONF_OVERRIDE_MQTT_ENDPOINT,
     CONF_STORED_CREDS,
     DOMAIN,
@@ -48,7 +50,14 @@ def _creds(endpoint, username, token="new-token"):
     )
 
 
-async def test_discovery_failure_opens_advanced_form(hass, monkeypatch):
+def _defaults(result):
+    return {
+        str(marker.schema): marker.default()
+        for marker in result["data_schema"].schema
+    }
+
+
+async def test_discovery_failure_opens_empty_form(hass, monkeypatch):
     async def fake_discover(self):
         return None
 
@@ -59,14 +68,12 @@ async def test_discovery_failure_opens_advanced_form(hass, monkeypatch):
     )
 
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "configure_manager_advanced"
+    assert result["step_id"] == "configure_manager_missing"
     assert result["errors"]["base"] == "mdns_lookup_failed"
-    defaults = {
-        str(marker.schema): marker.default()
-        for marker in result["data_schema"].schema
-    }
-    assert defaults[CONF_HTTP_ENDPOINT] is None
-    assert defaults[CONF_OVERRIDE_MQTT_ENDPOINT] is None
+    defaults = _defaults(result)
+    assert defaults[CONF_BROKER_HOST] == ""
+    assert defaults[CONF_HTTPS_PORT] == ""
+    assert defaults[CONF_MQTT_PORT] == ""
 
 
 async def test_initial_flow_survives_discovery_exception(hass, monkeypatch):
@@ -80,7 +87,7 @@ async def test_initial_flow_survives_discovery_exception(hass, monkeypatch):
     )
 
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "configure_manager_advanced"
+    assert result["step_id"] == "configure_manager_missing"
     assert result["errors"]["base"] == "mdns_lookup_failed"
 
 
@@ -103,8 +110,9 @@ async def test_manual_settings_create_entry_when_discovery_fails(
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         user_input={
-            CONF_HTTP_ENDPOINT: "https://10.0.0.6:2004",
-            CONF_OVERRIDE_MQTT_ENDPOINT: "10.0.0.6:2001",
+            CONF_BROKER_HOST: "10.0.0.6",
+            CONF_HTTPS_PORT: "2004",
+            CONF_MQTT_PORT: "2001",
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
         },
@@ -117,7 +125,7 @@ async def test_manual_settings_create_entry_when_discovery_fails(
     assert data[CONF_CA_PEM] == fake_ca
 
 
-async def test_plain_http_is_rejected(hass, monkeypatch):
+async def test_invalid_port_is_rejected(hass, monkeypatch):
     async def fake_discover(self):
         return None
 
@@ -129,16 +137,47 @@ async def test_plain_http_is_rejected(hass, monkeypatch):
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         user_input={
-            CONF_HTTP_ENDPOINT: "http://10.0.0.6:2003",
-            CONF_OVERRIDE_MQTT_ENDPOINT: "10.0.0.6:2001",
+            CONF_BROKER_HOST: "10.0.0.6",
+            CONF_HTTPS_PORT: "0",
+            CONF_MQTT_PORT: "2001",
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
         },
     )
 
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "configure_manager_advanced"
-    assert result["errors"]["base"] == "https_required"
+    assert result["step_id"] == "configure_manager_missing"
+    assert result["errors"]["base"] == "invalid_port"
+
+
+async def test_host_accepts_pasted_url(hass, monkeypatch, fake_ca):
+    async def fake_discover(self):
+        return None
+
+    async def fake_test_authorization(api_base_url, username, password, mfa_code=None):
+        return _creds(api_base_url, username)
+
+    monkeypatch.setattr(MerossFlowHandler, "_discover_services", fake_discover)
+    monkeypatch.setattr(
+        MerossFlowHandler, "_test_authorization", staticmethod(fake_test_authorization)
+    )
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_BROKER_HOST: "https://10.0.0.6:2004",
+            CONF_HTTPS_PORT: "2004",
+            CONF_MQTT_PORT: "2001",
+            CONF_USERNAME: "local-user",
+            CONF_PASSWORD: "secret",
+        },
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_HTTP_ENDPOINT] == "https://10.0.0.6:2004"
 
 
 async def test_reauth_reuses_existing_entry(hass, monkeypatch):
@@ -179,23 +218,22 @@ async def test_reauth_reuses_existing_entry(hass, monkeypatch):
         data=entry.data,
     )
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "configure_manager"
+    assert result["step_id"] == "configure_manager_reauth"
 
-    defaults = {
-        str(marker.schema): marker.default()
-        for marker in result["data_schema"].schema
-    }
+    defaults = _defaults(result)
     assert defaults[CONF_USERNAME] == "local-user"
-    assert defaults[CONF_ADVANCED] is False
-    assert CONF_HTTP_ENDPOINT not in defaults
-    assert CONF_OVERRIDE_MQTT_ENDPOINT not in defaults
+    assert defaults[CONF_BROKER_HOST] == "10.0.0.5"
+    assert defaults[CONF_HTTPS_PORT] == "2004"
+    assert defaults[CONF_MQTT_PORT] == "2001"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         user_input={
+            CONF_BROKER_HOST: "10.0.0.5",
+            CONF_HTTPS_PORT: "2004",
+            CONF_MQTT_PORT: "2001",
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
-            CONF_ADVANCED: False,
         },
     )
 
@@ -210,7 +248,7 @@ async def test_reauth_reuses_existing_entry(hass, monkeypatch):
     assert entries[0].title == endpoint
 
 
-async def test_discovery_prefills_simple_form_and_creates_entry(
+async def test_discovery_prefills_form_and_creates_entry(
         hass, monkeypatch, fake_ca):
     async def fake_discover(self):
         return ("10.0.0.5", "https://10.0.0.5:2004", "10.0.0.5:2001", True)
@@ -228,18 +266,16 @@ async def test_discovery_prefills_simple_form_and_creates_entry(
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "configure_manager"
-    defaults = {
-        str(marker.schema): marker.default()
-        for marker in result["data_schema"].schema
-    }
-    assert defaults[CONF_ADVANCED] is False
+    defaults = _defaults(result)
+    assert defaults[CONF_BROKER_HOST] == "10.0.0.5"
+    assert defaults[CONF_HTTPS_PORT] == "2004"
+    assert defaults[CONF_MQTT_PORT] == "2001"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         user_input={
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
-            CONF_ADVANCED: False,
         },
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
@@ -249,7 +285,7 @@ async def test_discovery_prefills_simple_form_and_creates_entry(
     assert data[CONF_CA_PEM] == fake_ca
 
 
-async def test_discovered_simple_form_requires_credentials(hass, monkeypatch):
+async def test_discovered_form_requires_credentials(hass, monkeypatch):
     async def fake_discover(self):
         return ("10.0.0.5", "https://10.0.0.5:2004", "10.0.0.5:2001", True)
 
@@ -260,56 +296,11 @@ async def test_discovered_simple_form_requires_credentials(hass, monkeypatch):
     )
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        user_input={CONF_ADVANCED: False},
+        user_input={},
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "configure_manager"
     assert result["errors"]["base"] == "missing_credentials"
-
-
-async def test_advanced_toggle_opens_full_form(hass, monkeypatch, fake_ca):
-    async def fake_discover(self):
-        return ("10.0.0.5", "https://10.0.0.5:2004", "10.0.0.5:2001", True)
-
-    async def fake_test_authorization(api_base_url, username, password, mfa_code=None):
-        return _creds(api_base_url, username)
-
-    monkeypatch.setattr(MerossFlowHandler, "_discover_services", fake_discover)
-    monkeypatch.setattr(
-        MerossFlowHandler, "_test_authorization", staticmethod(fake_test_authorization)
-    )
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        user_input={
-            CONF_USERNAME: "local-user",
-            CONF_PASSWORD: "secret",
-            CONF_ADVANCED: True,
-        },
-    )
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "configure_manager_advanced"
-    defaults = {
-        str(marker.schema): marker.default()
-        for marker in result["data_schema"].schema
-    }
-    assert defaults[CONF_HTTP_ENDPOINT] == "https://10.0.0.5:2004"
-    assert defaults[CONF_OVERRIDE_MQTT_ENDPOINT] == "10.0.0.5:2001"
-    assert defaults[CONF_USERNAME] == "local-user"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        user_input={
-            CONF_HTTP_ENDPOINT: "https://10.0.0.5:2004",
-            CONF_OVERRIDE_MQTT_ENDPOINT: "10.0.0.5:2001",
-            CONF_USERNAME: "local-user",
-            CONF_PASSWORD: "secret",
-        },
-    )
-    assert result["type"] is FlowResultType.CREATE_ENTRY
 
 
 async def test_options_flow_loads(hass):

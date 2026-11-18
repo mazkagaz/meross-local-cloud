@@ -1,3 +1,15 @@
+## 2.1.0
+
+- Replace the simple/advanced flow with a single form: Meross Local Broker
+  address (host only), HTTPS port and MQTT port, all prefilled from mDNS
+  discovery, plus a single example line above the fields.
+- A detected broker shows “Broker detected automatically” in green; an
+  undetected broker shows “Broker not detected” in red with a link to the
+  broker installation documentation.
+- The Advanced settings checkbox and step are removed; the MFA field is shown
+  only when the broker requires it.
+- Add a French translation.
+
 ## 2.0.0
 
 - **Breaking:** the broker must be reached over HTTPS with a valid CA (broker

@@ -39,6 +39,9 @@ CONNECTION_TIMEOUT_THRESHOLD = 5
 
 CONF_STORED_CREDS = "stored_credentials"
 CONF_BROKER_HOST = "broker_host"
+CONF_HTTPS_PORT = "https_port"
+CONF_MQTT_PORT = "mqtt_port"
+CONF_BROKER_HOST = "broker_host"
 CONF_USE_HTTPS = "use_https"
 CONF_ADVANCED = "advanced"
 CONF_OVERRIDE_MQTT_ENDPOINT = "override_mqtt_endpoint"
