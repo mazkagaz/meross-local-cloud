@@ -66,8 +66,7 @@ def patch_mqtt_acks_on_user_topic() -> None:
 
 
 def create_mqtt_ssl_context(
-        ca_pem: str | None, skip_validation: bool,
-        check_hostname: bool = False) -> ssl.SSLContext:
+        ca_pem: str, check_hostname: bool = False) -> ssl.SSLContext:
     """Build the MQTT TLS context outside the event loop.
 
     paho's ``tls_set`` loads the CA bundle synchronously; Home Assistant flags
@@ -75,14 +74,9 @@ def create_mqtt_ssl_context(
     Loading the PEM here lets the caller run this in an executor.
     """
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    if skip_validation:
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_NONE
-        return context
     context.verify_mode = ssl.CERT_REQUIRED
     context.check_hostname = check_hostname
-    if ca_pem:
-        context.load_verify_locations(cadata=ca_pem)
+    context.load_verify_locations(cadata=ca_pem)
     return context
 
 
@@ -120,9 +114,7 @@ def patch_mqtt_client_ssl_context() -> None:
     setattr(MerossManager, _MQTT_SSL_PATCH_FLAG, True)
 
 
-def set_http_cert_validation(
-        skip_validation: bool,
-        ssl_context: ssl.SSLContext | None = None) -> None:
+def set_http_cert_validation(ssl_context: ssl.SSLContext) -> None:
     """Make meross_iot trust the local broker certificate.
 
     meross_iot creates a bare aiohttp.ClientSession for every API call and
@@ -130,19 +122,8 @@ def set_http_cert_validation(
     keeps the change local to that library: Home Assistant's own sessions and
     other integrations are untouched.
     """
-    if skip_validation:
-        meross_http_api.ClientSession = _unverified_client_session
-    elif ssl_context is not None:
-        meross_http_api.ClientSession = _verified_client_session_factory(
-            ssl_context)
-    else:
-        meross_http_api.ClientSession = aiohttp.ClientSession
-
-
-def _unverified_client_session(*args, **kwargs):
-    """Build an aiohttp session that does not validate the server chain."""
-    kwargs.setdefault("connector", aiohttp.TCPConnector(ssl=False))
-    return aiohttp.ClientSession(*args, **kwargs)
+    meross_http_api.ClientSession = _verified_client_session_factory(
+        ssl_context)
 
 
 def _verified_client_session_factory(ssl_context: ssl.SSLContext):

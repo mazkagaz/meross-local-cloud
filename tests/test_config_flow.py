@@ -12,9 +12,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.meross_cloud.common import (
     CONF_ADVANCED,
+    CONF_CA_PEM,
     CONF_HTTP_ENDPOINT,
-    CONF_HTTP_SKIP_CERT_VALIDATION,
-    CONF_MQTT_SKIP_CERT_VALIDATION,
     CONF_OVERRIDE_MQTT_ENDPOINT,
     CONF_STORED_CREDS,
     DOMAIN,
@@ -25,6 +24,16 @@ from custom_components.meross_cloud.config_flow import MerossFlowHandler
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
     yield
+
+
+@pytest.fixture(autouse=True)
+def fake_ca(monkeypatch, ca_pem):
+    async def _fetch(endpoint):
+        return ca_pem
+
+    monkeypatch.setattr(
+        "custom_components.meross_cloud.config_flow.async_fetch_ca", _fetch)
+    return ca_pem
 
 
 def _creds(endpoint, username, token="new-token"):
@@ -75,7 +84,8 @@ async def test_initial_flow_survives_discovery_exception(hass, monkeypatch):
     assert result["errors"]["base"] == "mdns_lookup_failed"
 
 
-async def test_manual_settings_create_entry_when_discovery_fails(hass, monkeypatch):
+async def test_manual_settings_create_entry_when_discovery_fails(
+        hass, monkeypatch, fake_ca):
     async def fake_discover(self):
         return None
 
@@ -93,25 +103,46 @@ async def test_manual_settings_create_entry_when_discovery_fails(hass, monkeypat
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         user_input={
-            CONF_HTTP_ENDPOINT: "http://10.0.0.6:2003",
+            CONF_HTTP_ENDPOINT: "https://10.0.0.6:2004",
             CONF_OVERRIDE_MQTT_ENDPOINT: "10.0.0.6:2001",
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
-            CONF_MQTT_SKIP_CERT_VALIDATION: True,
-            CONF_HTTP_SKIP_CERT_VALIDATION: False,
         },
     )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     data = result["data"]
-    assert data[CONF_HTTP_ENDPOINT] == "http://10.0.0.6:2003"
+    assert data[CONF_HTTP_ENDPOINT] == "https://10.0.0.6:2004"
     assert data[CONF_OVERRIDE_MQTT_ENDPOINT] == "10.0.0.6:2001"
-    assert data[CONF_MQTT_SKIP_CERT_VALIDATION] is True
-    assert data[CONF_HTTP_SKIP_CERT_VALIDATION] is False
+    assert data[CONF_CA_PEM] == fake_ca
+
+
+async def test_plain_http_is_rejected(hass, monkeypatch):
+    async def fake_discover(self):
+        return None
+
+    monkeypatch.setattr(MerossFlowHandler, "_discover_services", fake_discover)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_HTTP_ENDPOINT: "http://10.0.0.6:2003",
+            CONF_OVERRIDE_MQTT_ENDPOINT: "10.0.0.6:2001",
+            CONF_USERNAME: "local-user",
+            CONF_PASSWORD: "secret",
+        },
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "configure_manager_advanced"
+    assert result["errors"]["base"] == "https_required"
 
 
 async def test_reauth_reuses_existing_entry(hass, monkeypatch):
-    endpoint = "http://10.0.0.5:2003"
+    endpoint = "https://10.0.0.5:2004"
     mqtt_endpoint = "10.0.0.5:2001"
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -129,8 +160,6 @@ async def test_reauth_reuses_existing_entry(hass, monkeypatch):
                 "user_email": "local-user",
                 "issued_on": datetime.now().isoformat(),
             },
-            CONF_MQTT_SKIP_CERT_VALIDATION: True,
-            CONF_HTTP_SKIP_CERT_VALIDATION: False,
         },
     )
     entry.add_to_hass(hass)
@@ -177,13 +206,12 @@ async def test_reauth_reuses_existing_entry(hass, monkeypatch):
     assert entries[0].data[CONF_STORED_CREDS]["token"] == "new-token"
     assert entries[0].data[CONF_HTTP_ENDPOINT] == endpoint
     assert entries[0].data[CONF_OVERRIDE_MQTT_ENDPOINT] == mqtt_endpoint
-    assert entries[0].data[CONF_MQTT_SKIP_CERT_VALIDATION] is True
-    assert entries[0].data[CONF_HTTP_SKIP_CERT_VALIDATION] is False
     assert entries[0].unique_id == endpoint
     assert entries[0].title == endpoint
 
 
-async def test_discovery_prefills_simple_form_and_creates_entry(hass, monkeypatch):
+async def test_discovery_prefills_simple_form_and_creates_entry(
+        hass, monkeypatch, fake_ca):
     async def fake_discover(self):
         return ("10.0.0.5", "https://10.0.0.5:2004", "10.0.0.5:2001", True)
 
@@ -218,8 +246,7 @@ async def test_discovery_prefills_simple_form_and_creates_entry(hass, monkeypatc
     data = result["data"]
     assert data[CONF_HTTP_ENDPOINT] == "https://10.0.0.5:2004"
     assert data[CONF_OVERRIDE_MQTT_ENDPOINT] == "10.0.0.5:2001"
-    assert data[CONF_MQTT_SKIP_CERT_VALIDATION] is True
-    assert data[CONF_HTTP_SKIP_CERT_VALIDATION] is True
+    assert data[CONF_CA_PEM] == fake_ca
 
 
 async def test_discovered_simple_form_requires_credentials(hass, monkeypatch):
@@ -240,7 +267,7 @@ async def test_discovered_simple_form_requires_credentials(hass, monkeypatch):
     assert result["errors"]["base"] == "missing_credentials"
 
 
-async def test_advanced_toggle_opens_full_form(hass, monkeypatch):
+async def test_advanced_toggle_opens_full_form(hass, monkeypatch, fake_ca):
     async def fake_discover(self):
         return ("10.0.0.5", "https://10.0.0.5:2004", "10.0.0.5:2001", True)
 
@@ -272,8 +299,6 @@ async def test_advanced_toggle_opens_full_form(hass, monkeypatch):
     assert defaults[CONF_HTTP_ENDPOINT] == "https://10.0.0.5:2004"
     assert defaults[CONF_OVERRIDE_MQTT_ENDPOINT] == "10.0.0.5:2001"
     assert defaults[CONF_USERNAME] == "local-user"
-    assert defaults[CONF_MQTT_SKIP_CERT_VALIDATION] is True
-    assert defaults[CONF_HTTP_SKIP_CERT_VALIDATION] is True
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -282,8 +307,6 @@ async def test_advanced_toggle_opens_full_form(hass, monkeypatch):
             CONF_OVERRIDE_MQTT_ENDPOINT: "10.0.0.5:2001",
             CONF_USERNAME: "local-user",
             CONF_PASSWORD: "secret",
-            CONF_MQTT_SKIP_CERT_VALIDATION: True,
-            CONF_HTTP_SKIP_CERT_VALIDATION: True,
         },
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY

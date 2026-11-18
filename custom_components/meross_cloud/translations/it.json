@@ -7,13 +7,15 @@
       "connection_error": "Impossibile connettersi al broker locale.",
       "invalid_credentials": "Nome utente locale o password non validi.",
       "invalid_http_endpoint": "Endpoint HTTP non valido",
-      "api_invalid_ssl_code": "Non è stato possibile validare il certificato HTTPS. Il broker locale usa un certificato autofirmato: abilita \"Salta la validazione del certificato HTTP\" oppure connettiti con http non cifrato sulla porta 2003.",
+      "api_invalid_ssl_code": "Non è stato possibile validare il certificato HTTPS. Aggiorna il broker (alpha99 o successivo) affinché serva una CA valida.",
       "unknown_error": "Si è verificato un errore inatteso",
       "api_connection_refused": "Impossibile connettersi al server API. Controlla l'indirizzo del server.",
       "client_connection_error": "Si è verificato un errore durante la connessione alle API HTTP",
       "missing_credentials": "Per favore inserire le credenziali di accesso mancanti",
       "mdns_lookup_failed": "Nessun broker rilevato automaticamente. Inserisci qui sotto l'endpoint API HTTP e l'indirizzo MQTT.",
-      "missing_mfa": "Il tuo account richiede un codice MFA per procedere. Inseriscilo."
+      "missing_mfa": "Il tuo account richiede un codice MFA per procedere. Inseriscilo.",
+      "https_required": "HTTP non cifrato non è più supportato. Usa l'endpoint HTTPS (https://…:2004) e aggiorna il broker (alpha99 o successivo).",
+      "ca_unavailable": "Impossibile ottenere un certificato CA valido dal broker. Aggiorna il broker (alpha99 o successivo)."
     },
     "step": {
       "configure_manager": {
@@ -33,8 +35,6 @@
           "password": "Password",
           "http_api_endpoint": "Endpoint HTTP",
           "override_mqtt_endpoint": "Indirizzo MQTT (host:port)",
-          "skip_mqtt_cert_validation": "Salta la validazione SSL per MQTT",
-          "skip_http_cert_validation": "Salta la validazione del certificato HTTP (certificato locale autofirmato)",
           "mfa_code": "Codice MFA"
         }
       },

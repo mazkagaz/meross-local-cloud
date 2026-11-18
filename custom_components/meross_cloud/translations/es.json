@@ -7,13 +7,15 @@
       "invalid_credentials": "Inicio de sesión local o contraseña no válidos.",
       "connection_error": "No se puede conectar con el broker local.",
       "invalid_http_endpoint": "Punto de conexión de la API HTTP no válido",
-      "api_invalid_ssl_code": "No se ha podido validar el certificado HTTPS. El broker local utiliza un certificado autofirmado: activa \"Omitir la validación del certificado HTTP\" o conéctate con http sin cifrar en el puerto 2003.",
+      "api_invalid_ssl_code": "No se ha podido validar el certificado HTTPS. Actualiza el broker (alpha99 o posterior) para que sirva una CA válida.",
       "unknown_error": "Ocurrió un error inesperado",
       "api_connection_refused": "No se puede conectar al servidor de API HTTP(S). Asegúrate de que la dirección es correcta",
       "client_connection_error": "Ha ocurrido un error mientras se conectaba a la API HTTP",
       "missing_credentials": "Proporciona las credenciales que faltan",
       "mdns_lookup_failed": "No se ha descubierto ningún broker automáticamente. Introduce abajo el endpoint de la API HTTP y la dirección MQTT.",
-      "missing_mfa": "Tu cuenta requiere un código MFA para continuar. Introdúcelo."
+      "missing_mfa": "Tu cuenta requiere un código MFA para continuar. Introdúcelo.",
+      "https_required": "HTTP sin cifrar ya no es compatible. Usa el endpoint HTTPS (https://…:2004) y actualiza el broker (alpha99 o posterior).",
+      "ca_unavailable": "No se ha podido obtener un certificado CA válido del broker. Actualiza el broker (alpha99 o posterior)."
     },
     "step": {
       "configure_manager": {
@@ -33,8 +35,6 @@
           "password": "Contraseña",
           "http_api_endpoint": "HTTP API Endpoint",
           "override_mqtt_endpoint": "Dirección MQTT (host:port)",
-          "skip_mqtt_cert_validation": "Omitir la validación del certificado MQTT",
-          "skip_http_cert_validation": "Omitir la validación del certificado HTTP (certificado local autofirmado)",
           "mfa_code": "Código MFA"
         }
       },

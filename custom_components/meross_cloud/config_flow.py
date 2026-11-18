@@ -23,13 +23,20 @@ from homeassistant.components import network, zeroconf
 
 from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
     CONF_ADVANCED, \
-    CONF_HTTP_ENDPOINT, CONF_MQTT_SKIP_CERT_VALIDATION, CONF_HTTP_SKIP_CERT_VALIDATION, \
+    CONF_HTTP_ENDPOINT, CONF_CA_PEM, CONF_CA_FINGERPRINT, \
     CONF_OPT_CUSTOM_USER_AGENT, HTTP_API_RE, \
     MEROSS_LOCAL_MDNS_SERVICE_TYPES, MEROSS_LOCAL_MDNS_MQTT_SERVICE_TYPE, \
     MEROSS_LOCAL_MDNS_API_SERVICE_TYPE, CONF_OVERRIDE_MQTT_ENDPOINT, \
     CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, \
     CONF_OPT_LAN_HTTP_FIRST, CONF_OPT_LAN_HTTP_FIRST_ONLY_GET, DEFAULT_USER_AGENT
 from .patches import set_http_cert_validation
+from .tls import (
+    async_fetch_ca,
+    build_client_ssl_context,
+    fingerprint,
+    is_ca,
+    parse_certificate,
+)
 from .version import MEROSS_INTEGRATION_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,8 +56,6 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._username: Optional[str] = None
         self._password: Optional[str] = None
         self._local_mode: bool = True
-        self._skip_cert_validation: Optional[bool] = None
-        self._skip_http_cert_validation: Optional[bool] = None
         self._discovered_services: List[AsyncServiceInfo] = []
         self._is_reauth: bool = False
         self._discovered_host: Optional[str] = None
@@ -65,21 +70,12 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             username: str = None,
             password: str = None,
             override_mqtt_endpoint: str = None,
-            skip_cert_validation: bool = None,
-            skip_http_cert_validation: bool = None,
             requires_mfa: bool = False
     ) -> vol.Schema:
         http_endpoint_default = http_endpoint if http_endpoint is not None else self._http_api
         mqtt_endpoint_default = override_mqtt_endpoint if override_mqtt_endpoint is not None else self._mqtt_boker
         username_default = username if username is not None else self._username
         password_default = password if password is not None else self._password
-        skip_cert_validation_default = skip_cert_validation if skip_cert_validation is not None else self._skip_cert_validation
-        skip_http_cert_validation_default = skip_http_cert_validation \
-            if skip_http_cert_validation is not None else self._skip_http_cert_validation
-        if skip_http_cert_validation_default is None:
-            # Opt-in: certificate validation stays on unless the user accepts
-            # the local broker's self-signed certificate explicitly.
-            skip_http_cert_validation_default = False
 
         schema_params = {
             vol.Required(CONF_HTTP_ENDPOINT, default=http_endpoint_default): str,
@@ -90,9 +86,6 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
         if requires_mfa:
             schema_params[vol.Required(CONF_MFA_CODE)] = str
-        schema_params[vol.Required(CONF_MQTT_SKIP_CERT_VALIDATION, default=skip_cert_validation_default)] = bool
-        schema_params[vol.Required(CONF_HTTP_SKIP_CERT_VALIDATION,
-                                   default=skip_http_cert_validation_default)] = bool
         return vol.Schema(schema_params)
 
     def _build_simple_schema(self, username=None, password=None,
@@ -129,19 +122,11 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             },
         )
 
-    def _simple_selection(self) -> Tuple[str, str, bool, bool]:
-        """Returns endpoint, MQTT endpoint, skip MQTT validation, skip HTTP validation."""
+    def _simple_selection(self) -> Tuple[str, str]:
+        """Returns the HTTPS endpoint and the MQTT endpoint."""
         if self._is_reauth:
-            return (
-                self._http_api,
-                self._mqtt_boker,
-                self._skip_cert_validation
-                if self._skip_cert_validation is not None else True,
-                self._skip_http_cert_validation
-                if self._skip_http_cert_validation is not None else False,
-            )
-        return (self._discovered_api, self._discovered_mqtt,
-                True, self._discovered_https)
+            return (self._http_api, self._mqtt_boker)
+        return (self._discovered_api, self._discovered_mqtt)
 
     def _reauth_entry(self) -> ConfigEntry:
         entry_id = self.context.get("entry_id")
@@ -161,8 +146,6 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._mqtt_boker = data.get(CONF_OVERRIDE_MQTT_ENDPOINT)
         self._username = creds.get("user_email")
         self._password = None
-        self._skip_cert_validation = data.get(CONF_MQTT_SKIP_CERT_VALIDATION, True)
-        self._skip_http_cert_validation = data.get(CONF_HTTP_SKIP_CERT_VALIDATION, False)
 
     async def async_step_reauth(self, entry_data=None):
         """Reauthenticate against the existing broker configuration."""
@@ -257,19 +240,17 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.info(
                 "No mDNS service found; probing the local addresses %s on the "
                 "default API ports.", local_hosts)
-            for scheme, port, use_https in (
-                    ("https", 2004, True), ("http", 2003, False)):
-                results = await asyncio.gather(*(
-                    self._probe_broker(host, port, scheme, timeout=1.5)
-                    for host in local_hosts
-                ))
-                for host, ok in zip(local_hosts, results):
-                    if not ok:
-                        continue
-                    _LOGGER.info("Discovered Meross broker at %s:%d (%s)",
-                                 host, port, scheme.upper())
-                    return (host, f"{scheme}://{self._url_host(host)}:{port}",
-                            f"{host}:2001", use_https)
+            results = await asyncio.gather(*(
+                self._probe_broker(host, 2004, "https", timeout=1.5)
+                for host in local_hosts
+            ))
+            for host, ok in zip(local_hosts, results):
+                if not ok:
+                    continue
+                _LOGGER.info("Discovered Meross broker at %s:2004 (HTTPS)",
+                             host)
+                return (host, f"https://{self._url_host(host)}:2004",
+                        f"{host}:2001", True)
             return None
 
         mqtt_port = 2001
@@ -304,24 +285,23 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.debug("Probing broker candidates for %s: %s",
                           api_info.name, hosts)
             try:
-                http_port = int(records.get("http_port") or api_info.port or 2003)
                 https_raw = records.get("https_port")
                 # No TXT record means the service was not fully resolved:
-                # probe the broker default instead of assuming HTTPS is off.
+                # probe the broker default HTTPS port.
                 https_port = int(https_raw) if https_raw else 2004
             except (TypeError, ValueError):
                 continue
+            if not https_port:
+                _LOGGER.info(
+                    "Broker %s advertises HTTPS as disabled; TLS is required.",
+                    api_info.name)
+                continue
             for host in hosts:
-                if https_port and await self._probe_broker(host, https_port, "https"):
+                if await self._probe_broker(host, https_port, "https"):
                     _LOGGER.info("Discovered Meross broker at %s:%d (HTTPS)",
                                  host, https_port)
                     return (host, f"https://{self._url_host(host)}:{https_port}",
                             f"{host}:{mqtt_port}", True)
-                if await self._probe_broker(host, http_port, "http"):
-                    _LOGGER.info("Discovered Meross broker at %s:%d (HTTP)",
-                                 host, http_port)
-                    return (host, f"http://{self._url_host(host)}:{http_port}",
-                            f"{host}:{mqtt_port}", False)
         _LOGGER.info("Meross mDNS services found but no API endpoint responded.")
         return None
 
@@ -355,8 +335,6 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._mqtt_boker = None
         self._username = None
         self._password = None
-        self._skip_cert_validation = True
-        self._skip_http_cert_validation = True
         self._form_errors = {"base": "mdns_lookup_failed"}
         return await self.async_step_configure_manager_advanced()
 
@@ -367,11 +345,9 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
         username = user_input.get(CONF_USERNAME) or None
         password = user_input.get(CONF_PASSWORD) or None
-        endpoint, mqtt, skip_mqtt, skip_http = self._simple_selection()
+        endpoint, mqtt = self._simple_selection()
         self._http_api = endpoint
         self._mqtt_boker = mqtt
-        self._skip_cert_validation = skip_mqtt
-        self._skip_http_cert_validation = skip_http
         self._username = username
         self._password = password
 
@@ -390,8 +366,6 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_OVERRIDE_MQTT_ENDPOINT: mqtt,
             CONF_USERNAME: username,
             CONF_PASSWORD: password,
-            CONF_MQTT_SKIP_CERT_VALIDATION: skip_mqtt,
-            CONF_HTTP_SKIP_CERT_VALIDATION: skip_http,
         })
         if (isinstance(result, dict)
                 and result.get("step_id") == "configure_manager_advanced"
@@ -419,22 +393,13 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         username = user_input.get(CONF_USERNAME)
         password = user_input.get(CONF_PASSWORD)
         mqtt_host = user_input.get(CONF_OVERRIDE_MQTT_ENDPOINT)
-        skip_cert_validation = user_input.get(CONF_MQTT_SKIP_CERT_VALIDATION)
-        skip_http_cert_validation = user_input.get(CONF_HTTP_SKIP_CERT_VALIDATION)
-        if skip_http_cert_validation is None:
-            skip_http_cert_validation = False
         mfa_code = user_input.get(CONF_MFA_CODE)
-
-        # The self-signed local certificate is only accepted when the user
-        # opted in; this must be in place before the login test below.
-        set_http_cert_validation(skip_http_cert_validation)
 
         data_schema = self._build_setup_schema(
             http_endpoint=http_api_endpoint,
             username=username,
             password=password,
             override_mqtt_endpoint=mqtt_host,
-            skip_http_cert_validation=skip_http_cert_validation,
             requires_mfa=mfa_code is not None
         )
 
@@ -460,9 +425,30 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.debug("Meross HTTP API endpoint looks good: %s.", http_api_endpoint)
 
         schema, domain, colonport, port = match.groups()
-        if schema is None:
-            _LOGGER.warning("No schema specified, assuming http")
-            http_api_endpoint = "http://" + http_api_endpoint
+        if schema is None or schema.lower() != "https://":
+            _LOGGER.error(
+                "Plain HTTP is no longer supported; use https://…:2004.")
+            return self.async_show_form(
+                step_id="configure_manager_advanced",
+                data_schema=data_schema,
+                errors={"base": "https_required"}
+            )
+
+        ca_pem = await async_fetch_ca(http_api_endpoint)
+        ca_cert = parse_certificate(ca_pem) if ca_pem else None
+        if ca_cert is None or not is_ca(ca_cert):
+            _LOGGER.error(
+                "Unable to retrieve a valid broker CA from %s",
+                http_api_endpoint)
+            return self.async_show_form(
+                step_id="configure_manager_advanced",
+                data_schema=data_schema,
+                errors={"base": "ca_unavailable"}
+            )
+        ca_fingerprint = fingerprint(ca_cert)
+        ssl_context = await self.hass.async_add_executor_job(
+            build_client_ssl_context, ca_pem, False)
+        set_http_cert_validation(ssl_context)
 
         # Test the connection to the Meross Cloud.
         try:
@@ -476,7 +462,6 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 username=username,
                 password=password,
                 override_mqtt_endpoint=mqtt_host,
-                skip_http_cert_validation=skip_http_cert_validation,
                 requires_mfa=True
             )
             return self.async_show_form(
@@ -532,6 +517,8 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         data = {
             CONF_HTTP_ENDPOINT: http_api_endpoint,
             CONF_OVERRIDE_MQTT_ENDPOINT: mqtt_host,
+            CONF_CA_PEM: ca_pem,
+            CONF_CA_FINGERPRINT: ca_fingerprint,
             CONF_STORED_CREDS: {
                 "domain": creds.domain,
                 "mqtt_domain": creds.mqtt_domain,
@@ -541,8 +528,6 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 "user_email": creds.user_email,
                 "issued_on": creds.issued_on.isoformat()
             },
-            CONF_MQTT_SKIP_CERT_VALIDATION: skip_cert_validation,
-            CONF_HTTP_SKIP_CERT_VALIDATION: skip_http_cert_validation
         }
 
         if self._is_reauth:

@@ -15,29 +15,24 @@ from custom_components.meross_cloud.patches import (
 )
 
 
-def test_context_without_validation():
-    context = create_mqtt_ssl_context(None, True)
-    assert context.verify_mode == ssl.CERT_NONE
-    assert context.check_hostname is False
-
-
 def test_context_verified_with_ca():
     with open(certifi.where(), encoding="utf8") as ca_file:
-        context = create_mqtt_ssl_context(ca_file.read(), False)
+        context = create_mqtt_ssl_context(ca_file.read())
     assert context.verify_mode == ssl.CERT_REQUIRED
     assert context.check_hostname is False
 
 
 def test_context_can_check_hostname():
     with open(certifi.where(), encoding="utf8") as ca_file:
-        context = create_mqtt_ssl_context(ca_file.read(), False, True)
+        context = create_mqtt_ssl_context(ca_file.read(), True)
     assert context.verify_mode == ssl.CERT_REQUIRED
     assert context.check_hostname is True
 
 
 def test_patched_client_uses_preloaded_context(monkeypatch):
     patch_mqtt_client_ssl_context()
-    context = create_mqtt_ssl_context(None, True)
+    with open(certifi.where(), encoding="utf8") as ca_file:
+        context = create_mqtt_ssl_context(ca_file.read())
     fake_manager = SimpleNamespace(
         _client_id="app:test",
         _cloud_creds=SimpleNamespace(user_id="1"),

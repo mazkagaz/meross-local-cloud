@@ -10,8 +10,6 @@ from .common import (
     CONF_CA_FINGERPRINT,
     CONF_CA_PEM,
     CONF_HTTP_ENDPOINT,
-    CONF_HTTP_SKIP_CERT_VALIDATION,
-    CONF_MQTT_SKIP_CERT_VALIDATION,
     CONF_OPT_CUSTOM_USER_AGENT,
     CONF_OPT_LAN,
     CONF_OVERRIDE_MQTT_ENDPOINT,
@@ -31,24 +29,23 @@ TO_REDACT = {
 }
 
 
-def _tls_diagnostics(entry: ConfigEntry) -> dict[str, Any]:
+def _ca_diagnostics(entry: ConfigEntry) -> dict[str, Any]:
     ca_pem = entry.data.get(CONF_CA_PEM)
     certificate = parse_certificate(ca_pem) if ca_pem else None
     if certificate is None:
         return {
-            "ca_available": False,
-            "ca_fingerprint": entry.data.get(CONF_CA_FINGERPRINT),
+            "available": False,
+            "stored_fingerprint": entry.data.get(CONF_CA_FINGERPRINT),
             "valid_ca": False,
         }
     return {
-        "ca_available": True,
-        "ca_fingerprint": fingerprint(certificate),
+        "available": True,
+        "fingerprint": fingerprint(certificate),
         "stored_fingerprint": entry.data.get(CONF_CA_FINGERPRINT),
         "valid_ca": is_ca(certificate),
         "subject": certificate.subject.rfc4514_string(),
         "issuer": certificate.issuer.rfc4514_string(),
         "valid_until": certificate.not_valid_after_utc.isoformat(),
-        "hostnames": sorted(certificate_hostnames(certificate)),
     }
 
 
@@ -73,6 +70,7 @@ async def async_get_config_entry_diagnostics(
     runtime = hass.data.get(DOMAIN) or {}
     manager = runtime.get(MANAGER)
     coordinator = runtime.get(DEVICE_LIST_COORDINATOR)
+    tls_info = runtime.get("TLS_INFO") or {}
 
     return {
         "version": {
@@ -82,10 +80,6 @@ async def async_get_config_entry_diagnostics(
         "entry": {
             "http_endpoint": entry.data.get(CONF_HTTP_ENDPOINT),
             "mqtt_endpoint": entry.data.get(CONF_OVERRIDE_MQTT_ENDPOINT),
-            "http_skip_cert_validation": entry.data.get(
-                CONF_HTTP_SKIP_CERT_VALIDATION),
-            "mqtt_skip_cert_validation": entry.data.get(
-                CONF_MQTT_SKIP_CERT_VALIDATION),
             "options": {
                 "custom_user_agent": entry.options.get(
                     CONF_OPT_CUSTOM_USER_AGENT),
@@ -94,13 +88,24 @@ async def async_get_config_entry_diagnostics(
             "stored_credentials": async_redact_data(
                 entry.data.get(CONF_STORED_CREDS) or {}, TO_REDACT),
         },
-        "tls": _tls_diagnostics(entry),
+        "tls": {
+            "ca": _ca_diagnostics(entry),
+            "server": tls_info.get("server"),
+            "http": {
+                "verified": tls_info.get("http_verified", True),
+                "check_hostname": tls_info.get("http_check_hostname"),
+                "host": tls_info.get("http_host"),
+            },
+            "mqtt": {
+                "verified": tls_info.get("mqtt_verified", True),
+                "check_hostname": tls_info.get("mqtt_check_hostname"),
+                "host": tls_info.get("mqtt_host"),
+                "verified_context": bool(
+                    getattr(coordinator, "_mqtt_ssl_context_verified", None)),
+            },
+        },
         "runtime": {
             "manager_started": manager is not None,
-            "mqtt_verified_context": bool(
-                getattr(coordinator, "_mqtt_ssl_context_verified", None)),
-            "ca_check_hostname": bool(
-                getattr(coordinator, "_ca_check_hostname", False)),
             "devices": _device_diagnostics(manager) if manager else [],
         },
     }

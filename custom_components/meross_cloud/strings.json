@@ -19,8 +19,6 @@
           "password": "Password",
           "http_api_endpoint": "HTTP API Endpoint",
           "override_mqtt_endpoint": "MQTT Address (host:port)",
-          "skip_mqtt_cert_validation": "Skip MQTT certificate validation checks",
-          "skip_http_cert_validation": "Skip HTTP certificate validation (self-signed local certificate)",
           "mfa_code": "MFA Code"
         }
       },
@@ -33,13 +31,15 @@
       "invalid_credentials": "Invalid local login or password.",
       "connection_error": "Unable to connect to the local broker.",
       "invalid_http_endpoint": "Invalid HTTP API endpoint",
-      "api_invalid_ssl_code": "The HTTPS certificate could not be validated. The local broker uses a self-signed certificate: enable \"Skip HTTP certificate validation\", or connect with plain http on port 2003.",
+      "api_invalid_ssl_code": "The HTTPS certificate could not be validated. Update the broker (alpha99 or later) so it serves a valid CA.",
       "api_connection_refused": "Cannot connect to the HTTP(S) API server. Make sure the address is valid",
       "client_connection_error": "An error occurred while connecting to the HTTP API",
       "mdns_lookup_failed": "No broker was discovered automatically. Enter the HTTP API endpoint and MQTT address below.",
       "missing_credentials": "Please provide the missing credentials",
       "missing_mfa": "Your account requires an MFA code to proceed. Please provide it.",
-      "unknown_error": "An unexpected error occurred"
+      "unknown_error": "An unexpected error occurred",
+      "https_required": "Plain HTTP is no longer supported. Use the HTTPS endpoint (https://…:2004) and update the broker (alpha99 or later).",
+      "ca_unavailable": "Unable to retrieve a valid CA certificate from the broker. Update the broker (alpha99 or later)."
     },
     "abort": {
       "single_instance_allowed": "Only a single configuration of Meross Local Cloud is allowed."

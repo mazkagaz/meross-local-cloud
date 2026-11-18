@@ -1,17 +1,11 @@
-from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
-from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509.oid import NameOID
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.meross_cloud.common import (
     CONF_CA_PEM,
     CONF_HTTP_ENDPOINT,
-    CONF_MQTT_SKIP_CERT_VALIDATION,
     CONF_OVERRIDE_MQTT_ENDPOINT,
     CONF_STORED_CREDS,
     DEVICE_LIST_COORDINATOR,
@@ -28,33 +22,13 @@ def auto_enable_custom_integrations(enable_custom_integrations):
     yield
 
 
-def _ca_pem():
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Test CA")])
-    now = datetime.now(timezone.utc)
-    cert = (
-        x509.CertificateBuilder()
-        .subject_name(name)
-        .issuer_name(name)
-        .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(now - timedelta(days=1))
-        .not_valid_after(now + timedelta(days=30))
-        .add_extension(x509.BasicConstraints(ca=True, path_length=None),
-                       critical=True)
-        .sign(key, hashes.SHA256())
-    )
-    return cert.public_bytes(serialization.Encoding.PEM).decode()
-
-
-async def test_diagnostics_redacts_secrets(hass):
+async def test_diagnostics_redacts_secrets(hass, ca_pem):
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
             CONF_HTTP_ENDPOINT: "https://10.0.0.5:2004",
             CONF_OVERRIDE_MQTT_ENDPOINT: "10.0.0.5:2001",
-            CONF_MQTT_SKIP_CERT_VALIDATION: True,
-            CONF_CA_PEM: _ca_pem(),
+            CONF_CA_PEM: ca_pem,
             CONF_STORED_CREDS: {
                 "token": "secret-token",
                 "key": "secret-key",
@@ -76,10 +50,22 @@ async def test_diagnostics_redacts_secrets(hass):
     )
     manager = SimpleNamespace(find_devices=lambda: [device])
     coordinator = SimpleNamespace(
-        _mqtt_ssl_context_verified=object(), _ca_check_hostname=True)
+        _mqtt_ssl_context_verified=object())
     hass.data[DOMAIN] = {
         MANAGER: manager,
         DEVICE_LIST_COORDINATOR: coordinator,
+        "TLS_INFO": {
+            "http_verified": True,
+            "mqtt_verified": True,
+            "http_host": "10.0.0.5",
+            "mqtt_host": "10.0.0.5",
+            "http_check_hostname": True,
+            "mqtt_check_hostname": True,
+            "server": {
+                "subject": "CN=Broker",
+                "hostnames": ["10.0.0.5", "homeassistant.local"],
+            },
+        },
     }
 
     result = await async_get_config_entry_diagnostics(hass, entry)
@@ -90,7 +76,11 @@ async def test_diagnostics_redacts_secrets(hass):
     assert creds["password"] == "**REDACTED**"
     assert creds["user_email"] == "local-user"
 
-    assert result["tls"]["valid_ca"] is True
-    assert len(result["tls"]["ca_fingerprint"]) == 64
+    assert result["tls"]["ca"]["valid_ca"] is True
+    assert len(result["tls"]["ca"]["fingerprint"]) == 64
+    assert result["tls"]["server"]["hostnames"] == [
+        "10.0.0.5", "homeassistant.local"]
+    assert result["tls"]["http"]["check_hostname"] is True
+    assert result["tls"]["mqtt"]["verified_context"] is True
     assert result["runtime"]["manager_started"] is True
     assert result["runtime"]["devices"][0]["uuid"] == "uuid-1"

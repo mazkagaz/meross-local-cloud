@@ -3,7 +3,7 @@ import asyncio
 import logging
 import ssl
 from datetime import datetime, timedelta
-from typing import List, Tuple, Dict, Optional, Collection
+from typing import Any, List, Tuple, Dict, Optional, Collection
 from urllib.parse import urlparse
 
 import homeassistant.helpers.config_validation as cv
@@ -46,7 +46,7 @@ from .common import (
     log_exception,
     CONF_STORED_CREDS,
     LIMITER,
-    CONF_HTTP_ENDPOINT, CONF_MQTT_SKIP_CERT_VALIDATION, CONF_HTTP_SKIP_CERT_VALIDATION,
+    CONF_HTTP_ENDPOINT,
     HTTP_API_RE,
     HTTP_UPDATE_INTERVAL, DEVICE_LIST_COORDINATOR, calculate_id, DEFAULT_USER_AGENT, CONF_OPT_CUSTOM_USER_AGENT,
     CONF_OVERRIDE_MQTT_ENDPOINT, CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, TRANSPORT_MODES_TO_ENUM,
@@ -63,6 +63,7 @@ from .patches import (
 from .tls import (
     async_fetch_ca,
     build_client_ssl_context,
+    certificate_hostnames,
     fetch_server_certificate,
     fingerprint,
     host_is_covered,
@@ -79,8 +80,6 @@ CONFIG_SCHEMA = vol.Schema(
         DOMAIN: vol.Schema(
             {
                 vol.Required(CONF_HTTP_ENDPOINT): cv.string,
-                vol.Required(CONF_MQTT_SKIP_CERT_VALIDATION): cv.boolean,
-                vol.Optional(CONF_HTTP_SKIP_CERT_VALIDATION, default=False): cv.boolean,
                 vol.Optional(CONF_STORED_CREDS): cv.string,
                 vol.Optional(CONF_OVERRIDE_MQTT_ENDPOINT): cv.string
             }
@@ -119,22 +118,19 @@ class MerossCoordinator(DataUpdateCoordinator):
                  config_entry: ConfigEntry,
                  http_api_endpoint: str,
                  creds: MerossCloudCreds,
-                 mqtt_skip_cert_validation: bool,
                  mqtt_override_address: Optional[Tuple[str, int]],
                  update_interval: timedelta,
                  ua_header: str,
-                 ca_pem: Optional[str] = None,
+                 ca_pem: str,
                  ca_check_hostname: bool = False):
 
         self._entry = config_entry
         self._http_api_endpoint = http_api_endpoint
         self._cached_creds = creds
-        self._skip_cert_validation = mqtt_skip_cert_validation
         self._mqtt_override_address = mqtt_override_address
         self._ca_pem = ca_pem
         self._ca_check_hostname = ca_check_hostname
         self._mqtt_ssl_context_verified: Optional[ssl.SSLContext] = None
-        self._mqtt_ssl_context_unverified: Optional[ssl.SSLContext] = None
         self._setup_done = False
         self._ua_header = ua_header
 
@@ -198,41 +194,25 @@ class MerossCoordinator(DataUpdateCoordinator):
 
         # Loading the CA is blocking; do it in an executor so paho does not
         # trigger Home Assistant's event-loop warning on every setup.
-        self._mqtt_ssl_context_verified = None
-        self._mqtt_ssl_context_unverified = await self.hass.async_add_executor_job(
-            create_mqtt_ssl_context, None, True)
-        if self._ca_pem:
-            try:
-                self._mqtt_ssl_context_verified = await self.hass.async_add_executor_job(
-                    create_mqtt_ssl_context, self._ca_pem, False,
-                    self._ca_check_hostname)
-            except ssl.SSLError as err:
-                raise ConfigEntryNotReady(
-                    f"Unable to trust the broker CA: {err}") from err
-            if self._skip_cert_validation:
-                _LOGGER.info(
-                    "A valid broker CA is available; MQTT certificate "
-                    "verification is enabled despite the skip option.")
+        try:
+            self._mqtt_ssl_context_verified = await self.hass.async_add_executor_job(
+                create_mqtt_ssl_context, self._ca_pem,
+                self._ca_check_hostname)
+        except ssl.SSLError as err:
+            raise ConfigEntryNotReady(
+                f"Unable to trust the broker CA: {err}") from err
         patch_mqtt_client_ssl_context()
         patch_mqtt_acks_on_user_topic()
 
         def _create_manager() -> MerossManager:
-            use_skip = (
-                self._skip_cert_validation
-                and self._mqtt_ssl_context_verified is None
-            )
             manager = MerossManager(
                 http_client=self._client,
                 mqtt_override_server=self._mqtt_override_address,
                 auto_reconnect=True,
-                mqtt_skip_cert_validation=use_skip,
+                mqtt_skip_cert_validation=False,
                 ca_cert=None,
             )
-            manager._ha_ssl_context = (
-                self._mqtt_ssl_context_verified
-                if self._mqtt_ssl_context_verified is not None
-                else self._mqtt_ssl_context_unverified
-            )
+            manager._ha_ssl_context = self._mqtt_ssl_context_verified
             return manager
 
         # Now that we are logged in at HTTP api level, instantiate the manager.
@@ -438,8 +418,7 @@ def _http_info_changed(known: Collection[HttpDeviceInfo], discovered: Collection
 
 async def _async_prepare_tls(
         hass: HomeAssistant, config_entry: ConfigEntry,
-        endpoint: str, mqtt_host: Optional[str],
-        skip_http_validation: bool):
+        endpoint: str, mqtt_host: Optional[str]):
     """Fetch the broker CA, pin it, and build the HTTP SSL context."""
     stored_pem = config_entry.data.get(CONF_CA_PEM)
     stored_fp = config_entry.data.get(CONF_CA_FINGERPRINT)
@@ -456,23 +435,22 @@ async def _async_prepare_tls(
                     ca_fp)
             ca_pem = fetched
         else:
-            _LOGGER.warning(
-                "The /ca.crt served by the broker is not a valid CA certificate.")
+            raise ConfigEntryNotReady(
+                "The /ca.crt served by the broker is not a valid CA "
+                "certificate. Update the broker (alpha99 or later).")
 
-    if ca_pem is None and not skip_http_validation:
+    if ca_pem is None:
         raise ConfigEntryNotReady(
-            "Unable to retrieve the broker CA certificate.")
+            "Unable to retrieve the broker CA certificate. Update the broker "
+            "(alpha99 or later).")
 
     parsed = urlparse(endpoint)
     host = parsed.hostname
     http_check = False
     mqtt_check = False
-    # The SAN lookup is independent from the stored skip option: a valid CA
-    # enables verification anyway, and hostname checks must be evaluated too.
-    if ca_pem and host:
-        ports = []
-        if parsed.scheme == "https":
-            ports.append(parsed.port or 443)
+    server_info: Optional[Dict[str, Any]] = None
+    if host:
+        ports = [parsed.port or 443] if parsed.scheme == "https" else []
         ports.extend((2004, 2001))
         server_cert = None
         for port in dict.fromkeys(ports):
@@ -485,16 +463,18 @@ async def _async_prepare_tls(
             http_check = host_is_covered(server_cert, host)
             mqtt_check = host_is_covered(
                 server_cert, mqtt_host or host)
+            server_info = {
+                "subject": server_cert.subject.rfc4514_string(),
+                "issuer": server_cert.issuer.rfc4514_string(),
+                "valid_until": server_cert.not_valid_after_utc.isoformat(),
+                "fingerprint": fingerprint(server_cert),
+                "hostnames": sorted(certificate_hostnames(server_cert)),
+            }
 
-    http_context = None
-    if ca_pem:
-        http_context = await hass.async_add_executor_job(
-            build_client_ssl_context, ca_pem, http_check)
-    if http_context is not None and skip_http_validation:
-        _LOGGER.info(
-            "A valid broker CA is available; certificate verification is "
-            "enabled despite the skip option.")
-    return ca_pem, ca_fp, http_context, mqtt_check
+    http_context = await hass.async_add_executor_job(
+        build_client_ssl_context, ca_pem, http_check)
+    return (ca_pem, ca_fp, http_context, http_check, mqtt_check,
+            server_info)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
@@ -511,18 +491,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     str_creds = config_entry.data.get(CONF_STORED_CREDS)
     _LOGGER.info("Loaded %s: %s", CONF_STORED_CREDS, "******")
 
-    mqtt_skip_cert_validation = config_entry.data.get(CONF_MQTT_SKIP_CERT_VALIDATION, True)
-    _LOGGER.info("Skip MQTT cert validation option set to: %s", mqtt_skip_cert_validation)
-
-    http_skip_cert_validation = config_entry.data.get(CONF_HTTP_SKIP_CERT_VALIDATION, False)
-    _LOGGER.info("Skip HTTP cert validation option set to: %s", http_skip_cert_validation)
-
     mqtt_override_address = config_entry.data.get(CONF_OVERRIDE_MQTT_ENDPOINT)
     _LOGGER.info("Override MQTT address set to: %s", "no" if mqtt_override_address is None else "yes -> %s" % mqtt_override_address)
 
     # Make sure we have all the needed requirements
     if http_api_endpoint is None or HTTP_API_RE.fullmatch(http_api_endpoint) is None:
         raise ConfigEntryAuthFailed("Missing or wrong HTTP_API_ENDPOINT")
+    if not http_api_endpoint.lower().startswith("https://"):
+        raise ConfigEntryAuthFailed(
+            "The broker must be reached over HTTPS. Use the https://…:2004 "
+            "endpoint and update the broker (alpha99 or later).")
     if str_creds is None:
         raise ConfigEntryAuthFailed("Missing credentials. Please re-authenticate.")
     mqtt_host = None
@@ -531,19 +509,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         mqtt_port = int(mqtt_override_address.split(":")[1])
         mqtt_override_address = (mqtt_host, mqtt_port)
 
-    ca_pem, ca_fingerprint, http_ssl_context, ca_check_hostname = \
-        await _async_prepare_tls(
-            hass, config_entry, http_api_endpoint, mqtt_host,
-            http_skip_cert_validation)
+    (ca_pem, ca_fingerprint, http_ssl_context, http_check_hostname,
+     ca_check_hostname, server_tls) = await _async_prepare_tls(
+        hass, config_entry, http_api_endpoint, mqtt_host)
     _LOGGER.info(
-        "Meross Local Cloud %s: %s, hostname verification %s",
+        "Meross Local Cloud %s: broker CA pinned (SHA-256 %s), "
+        "hostname verification %s",
         MEROSS_INTEGRATION_VERSION,
-        f"broker CA pinned (SHA-256 {ca_fingerprint[:16]}…)"
-        if ca_fingerprint else "broker CA unavailable",
+        ca_fingerprint[:16] if ca_fingerprint else "unknown",
         "enabled" if ca_check_hostname else "disabled")
-    set_http_cert_validation(
-        http_skip_cert_validation and http_ssl_context is None,
-        http_ssl_context)
+    set_http_cert_validation(http_ssl_context)
 
     issued_on = datetime.fromisoformat(str_creds.get("issued_on"))
     creds = MerossCloudCreds(
@@ -559,6 +534,15 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     # Initialize the HASS structure
     hass.data[DOMAIN] = {}
     hass.data[DOMAIN]["ADDED_ENTITIES_IDS"] = set()
+    hass.data[DOMAIN]["TLS_INFO"] = {
+        "http_verified": True,
+        "mqtt_verified": True,
+        "http_host": urlparse(http_api_endpoint).hostname,
+        "mqtt_host": mqtt_host or urlparse(http_api_endpoint).hostname,
+        "http_check_hostname": http_check_hostname,
+        "mqtt_check_hostname": ca_check_hostname,
+        "server": server_tls,
+    }
 
     # Retrieve options we need
     ua_header = config_entry.options.get(CONF_OPT_CUSTOM_USER_AGENT, DEFAULT_USER_AGENT)
@@ -574,7 +558,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             config_entry=config_entry,
             http_api_endpoint=http_api_endpoint,
             creds=creds,
-            mqtt_skip_cert_validation=mqtt_skip_cert_validation,
             mqtt_override_address=mqtt_override_address,
             update_interval=timedelta(seconds=HTTP_UPDATE_INTERVAL),
             ua_header=ua_header,

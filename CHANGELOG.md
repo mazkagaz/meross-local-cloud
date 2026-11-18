@@ -1,3 +1,17 @@
+## 2.0.0
+
+- **Breaking:** the broker must be reached over HTTPS with a valid CA (broker
+  **alpha99 or later**). Plain HTTP (port 2003), the “Skip HTTP/MQTT
+  certificate validation” options and the unverified fallback are removed.
+- The CA is fetched from `/ca.crt`, validated and pinned; HTTP and MQTT always
+  verify the chain, with hostname verification when the server certificate
+  covers the configured host.
+- Diagnostics include the server certificate (subject, issuer, validity, SANs)
+  and the HTTP/MQTT verification state.
+- Existing entries using an `http://` endpoint or relying on the skip options
+  must be reconfigured with the `https://…:2004` endpoint after updating the
+  broker.
+
 ## 1.5.3
 
 - Evaluate the server certificate SANs even when the stored skip option is
