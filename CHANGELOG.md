@@ -3,6 +3,9 @@
 - Device removals no longer leave ghost entities. When the broker announces an
   `Appliance.Control.Unbind` (broker alpha101 or later), the integration
   removes the corresponding entity as before and stops tracking the device.
+  The broker sends this event within 60 seconds of the deletion (immediately
+  when the agent reconnects), which is the normal delay before the entities
+  disappear.
 - A device that has not been reported by a successful HTTP poll for 48 hours
   raises a fixable repair issue. Confirming it deletes the device and its
   entities from Home Assistant; re-pairing with the same UUID recreates them.
