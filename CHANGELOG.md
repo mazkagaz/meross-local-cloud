@@ -1,3 +1,10 @@
+## 1.5.2
+
+- Add diagnostics support: the downloaded diagnostics include the integration
+  and meross_iot versions, the entry settings, the broker CA state (validity,
+  fingerprint, SAN hostnames, hostname verification) and the device list.
+  Tokens, keys and passwords are redacted.
+
 ## 1.5.1
 
 - Declare the integration logger in the manifest so the Home Assistant log
