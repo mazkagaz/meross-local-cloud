@@ -56,6 +56,7 @@ from .common import (
     CONF_OPT_PROFILE_BACKEND, BROKER_ADAPTER, effective_user_agent
 )
 from .missing_devices import MissingDeviceTracker
+from .log_redaction import install as install_log_redaction
 from .version import MEROSS_INTEGRATION_VERSION, MEROSS_IOT_VERSION
 from .patches import (
     apply_patches,
@@ -532,6 +533,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     For us, the configuration entry is the username-password credentials that the user
     needs to access the Meross cloud.
     """
+
+    install_log_redaction(config_entry.entry_id)
 
     # Retrieve the stored credentials from config-flow
     http_api_endpoint = config_entry.data.get(CONF_HTTP_ENDPOINT)

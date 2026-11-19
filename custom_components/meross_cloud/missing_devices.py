@@ -31,9 +31,8 @@ def registry_devices(hass: HomeAssistant, entry_id: str) -> dict[str, str]:
     id; subdevices carry an extra ``#SUB`` segment and are left to their hub.
     """
     devices = {}
-    for device in dr.async_get(hass).devices.values():
-        if entry_id not in device.config_entries:
-            continue
+    registry = dr.async_get(hass)
+    for device in dr.async_entries_for_config_entry(registry, entry_id):
         for domain, identifier in device.identifiers:
             if domain != DOMAIN or not identifier.startswith("#BASE:"):
                 continue

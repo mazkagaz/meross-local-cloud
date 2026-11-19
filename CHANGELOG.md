@@ -1,3 +1,21 @@
+## 2.4.4
+
+- Corrige réellement les timeouts de la sonde profils : la résolution des
+  réponses MQTT (transaction par `messageId`) vivait dans la couche HA de
+  meross_lan, exclue de la vendorisation. Le client applicatif de l'adaptateur
+  l'implémente désormais lui-même.
+- Journalisation DEBUG instrumentée : connexion MQTT, trames reçues, requêtes
+  de descripteurs ; côté broker, suivi `messageId → topic de réponse` et
+  routage ACK.
+- Obfuscation automatique des journaux de l'intégration : UUID, MAC, IP,
+  emails, identifiants d'application et secrets (`sign`, `key`, `token`,
+  `password`, `Basic`) remplacés par des pseudonymes stables.
+- Suppression des avertissements de dépréciation HA : `device_registry`
+  (`async_entries_for_config_entry`, `config_entry_id`) et
+  `CONN_CLASS_CLOUD_PUSH`.
+- Le capteur **Broker profile backend** est retiré du registre quand l'option
+  est désactivée.
+
 ## 2.4.3
 
 - Supprime le dernier accès fichier à l'import du socle vendorisé

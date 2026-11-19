@@ -129,7 +129,9 @@ Dans **Paramètres → Appareils et services → Meross Local Cloud → Configur
 
 Les diagnostics (**Paramètres → Appareils et services → Meross Local Cloud →
 Télécharger les diagnostics**) sont expurgés : identifiants masqués, CA,
-certificat serveur et état de vérification inclus.
+certificat serveur et état de vérification inclus. Les journaux de
+l'intégration pseudonymisent UUID, MAC, IP, emails et secrets, pour pouvoir
+être collés dans une issue sans masquage manuel.
 
 ## Entités créées
 

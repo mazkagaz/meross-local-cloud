@@ -16,6 +16,7 @@ from meross_iot.model.http.device import HttpDeviceInfo
 
 from homeassistant.components.sensor import SensorStateClass, SensorEntity, SensorDeviceClass
 from homeassistant.const import PERCENTAGE, UnitOfTemperature, UnitOfPower
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.event import async_track_time_interval
@@ -482,6 +483,12 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
     adapter = hass.data[DOMAIN].get(BROKER_ADAPTER)
     if adapter is not None:
         async_add_entities([BrokerProfileSensor(adapter)], True)
+    else:
+        registry = er.async_get(hass)
+        entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, BrokerProfileSensor._attr_unique_id)
+        if entity_id is not None:
+            registry.async_remove(entity_id)
 
 
 # TODO: Implement entry unload

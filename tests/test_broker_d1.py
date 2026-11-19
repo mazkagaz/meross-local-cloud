@@ -37,6 +37,45 @@ class FakeTransport:
         return None
 
 
+async def test_app_client_resolves_pending_transactions(hass):
+    import json
+    import ssl
+    from types import SimpleNamespace as NS
+
+    from custom_components.meross_cloud.broker_transport import (
+        _BrokerAppClient,
+    )
+    from custom_components.meross_cloud.vendor.merossclient import (
+        HostAddress,
+    )
+
+    connection = _BrokerAppClient(
+        HostAddress("localhost", 2001),
+        NS(log=lambda *a, **k: None, getEffectiveLevel=lambda: 0,
+           isEnabledFor=lambda level: False),
+        user_id="1",
+        key="key",
+        sslcontext=ssl.create_default_context(),
+        loop=hass.loop,
+    )
+    from unittest.mock import Mock
+    transaction = Mock()
+    connection._transactions["m1"] = transaction
+    payload = json.dumps({
+        "header": {
+            "messageId": "m1", "namespace": "Appliance.System.All",
+            "method": "GETACK", "from": "/appliance/uuid/publish",
+        },
+        "payload": {"all": {}},
+    }).encode()
+
+    connection.on_message(SimpleNamespace(
+        payload=payload, topic="/app/1-app/subscribe"))
+
+    transaction.set_result.assert_called_once()
+    assert transaction.set_result.call_args.args[0].messageid == "m1"
+
+
 def test_devices_library_is_loaded_lazily():
     from custom_components.meross_cloud.vendor.merossclient import library
 

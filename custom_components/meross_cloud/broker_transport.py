@@ -6,8 +6,37 @@ import ssl
 
 from .vendor.merossclient import DeviceDescriptor, HostAddress
 from .vendor.merossclient.client.mqtt import MQTTAppClient
+from .vendor.merossclient.protocol.message import MerossResponse
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class _BrokerAppClient(MQTTAppClient):
+    """App client that resolves pending transactions from MQTT replies.
+
+    meross_lan implements this dispatch in its Home Assistant profile layer,
+    which is not part of the vendored subset; without it every request waits
+    for its timeout.
+    """
+
+    def on_message(self, mqtt_msg, /):
+        try:
+            payload = mqtt_msg.payload
+            text = payload.decode("utf-8") if isinstance(
+                payload, (bytes, bytearray)) else payload
+            message = MerossResponse(text)
+        except Exception:  # noqa: BLE001 - malformed messages are ignored
+            _LOGGER.debug("Unparseable MQTT message on %s",
+                          getattr(mqtt_msg, "topic", None), exc_info=True)
+            return
+        _LOGGER.debug("MQTT RX %s %s %s", getattr(mqtt_msg, "topic", None),
+                      message.namespace, message.method)
+        transaction = self._transactions.get(message.messageid)
+        if transaction is None:
+            _LOGGER.debug("MQTT RX without pending transaction: %s",
+                          message.messageid)
+            return
+        transaction.set_result(message)
 
 
 class BrokerMqttTransport:
@@ -29,7 +58,7 @@ class BrokerMqttTransport:
         return bool(self._connection and self._connection.is_connected)
 
     async def async_connect(self) -> None:
-        connection = MQTTAppClient(
+        connection = _BrokerAppClient(
             HostAddress(self._host, self._port),
             _LOGGER,
             user_id=self._user_id,
@@ -55,8 +84,16 @@ class BrokerMqttTransport:
             loop=self._loop,
             timeout=self._timeout,
         )
+        _LOGGER.debug("Requesting System.All/Ability for %s", device_uuid)
         try:
-            return await client.async_identify(timeout=self._timeout)
+            descriptor = await client.async_identify(timeout=self._timeout)
+            _LOGGER.debug("Descriptor received for %s (%s)",
+                          device_uuid, descriptor.type)
+            return descriptor
+        except Exception as err:  # noqa: BLE001 - logged by the adapter
+            _LOGGER.debug("Describe failed for %s: %s: %s", device_uuid,
+                          type(err).__name__, err)
+            raise
         finally:
             client.shutdown()
 
