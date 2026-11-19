@@ -55,7 +55,8 @@ class ProfileRegistry:
         if registry.revision is None:
             _LOGGER.warning("Profile catalog has no revision")
 
-        if registry.schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        if (isinstance(registry.schema_version, bool)
+                or registry.schema_version not in SUPPORTED_SCHEMA_VERSIONS):
             registry.errors.append(
                 f"unsupported schema_version {registry.schema_version!r}")
             return registry

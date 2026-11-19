@@ -1,5 +1,9 @@
+import ast
+from pathlib import Path
+
 import pytest
 
+from custom_components.meross_cloud.profiles import paths as paths_module
 from custom_components.meross_cloud.profiles.paths import (
     MISSING,
     UnknownToken,
@@ -107,6 +111,28 @@ def test_substitute_rejects_partial_and_unknown_tokens():
 def test_substitute_requires_a_value_for_each_token():
     with pytest.raises(UnknownToken):
         substitute("$value", {"channel": 0})
+
+
+def test_get_path_accepts_parsed_tokens_and_scalar_documents():
+    document = {"a": {"b": 3}}
+
+    assert get_path(document, parse_path("a.b")) == 3
+    assert get_path(5, "a.b") is MISSING
+    assert get_path(None, "a.b") is MISSING
+
+
+def test_paths_module_never_uses_dynamic_execution():
+    source = Path(paths_module.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    forbidden = {"eval", "exec", "compile", "__import__", "getattr",
+                 "setattr", "globals", "locals"}
+
+    calls = {
+        node.func.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
+    assert calls & forbidden == set()
 
 
 def test_token_discovery():

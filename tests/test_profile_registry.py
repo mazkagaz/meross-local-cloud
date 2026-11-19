@@ -156,6 +156,14 @@ def test_entry_without_version_is_skipped():
     assert registry.skipped[0].reason == "missing profile version"
 
 
+def test_non_string_requires_engine_is_skipped():
+    registry = ProfileRegistry.from_catalog(
+        catalog(entry("a", 5)))
+
+    assert registry.profiles == {}
+    assert registry.skipped[0].id == "a"
+
+
 def test_invalid_requires_engine_is_skipped():
     registry = ProfileRegistry.from_catalog(
         catalog(entry("a", "nonsense")))
@@ -172,6 +180,35 @@ def test_missing_revision_warns(caplog):
 
     assert registry.revision is None
     assert "no revision" in caplog.text
+
+
+def test_boolean_schema_version_is_rejected():
+    registry = ProfileRegistry.from_catalog(
+        catalog(entry("a"), schema=True))
+
+    assert registry.profiles == {}
+    assert any("unsupported schema_version" in error
+               for error in registry.errors)
+
+
+def test_missing_hash_is_tolerated():
+    item = entry("a")
+    item.pop("hash")
+
+    registry = ProfileRegistry.from_catalog(catalog(item))
+
+    assert registry.profiles["a"].digest is None
+
+
+def test_profile_level_requires_engine_is_evaluated():
+    item = entry("a")
+    item.pop("requires_engine")
+    item["profile"]["profile"]["requires_engine"] = ">=99.0"
+
+    registry = ProfileRegistry.from_catalog(catalog(item))
+
+    assert registry.profiles == {}
+    assert registry.skipped[0].id == "a"
 
 
 def test_extension_keys_are_preserved():

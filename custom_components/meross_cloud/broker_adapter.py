@@ -201,6 +201,11 @@ class BrokerProfileAdapter:
         self.revision = revision.get("revision")
         self.profile_count = int(revision.get("count") or 0)
         self.catalog_version = catalog.get("revision")
+        if (self.revision and self.catalog_version
+                and self.revision != self.catalog_version):
+            _LOGGER.warning(
+                "Profile catalog revision %s does not match the revision "
+                "endpoint %s", self.catalog_version, self.revision)
         self.registry = ProfileRegistry.from_catalog(catalog)
         _LOGGER.info(
             "Device profile engine %s: %d profile(s) loaded, %d skipped, "

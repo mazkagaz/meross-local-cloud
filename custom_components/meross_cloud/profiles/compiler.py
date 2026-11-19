@@ -175,8 +175,8 @@ def _compile_polling(prefix: str, raw: Any, methods: Tuple[str, ...],
                     and not set(methods) & {"GET", "GETACK", "PUSH"}
                     else "default")
     elif strategy not in POLLING_STRATEGIES:
-        compiled.errors.append(f"{prefix}: unknown polling strategy "
-                               f"{strategy!r}")
+        compiled.warnings.append(f"{prefix}: unknown polling strategy "
+                                 f"{strategy!r} ignored, using default")
         strategy = "default"
 
     period_s = declared.get("period_s", _DEFAULT_PERIOD_S)

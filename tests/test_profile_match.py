@@ -213,6 +213,61 @@ def test_declared_subtype_must_match():
     assert result.profile is None
 
 
+def test_type_and_subtype_comparison_is_case_insensitive():
+    item = profile("a", types=("MSS310",), sub_type=["UN"])
+
+    result = match_profile(
+        registry(item), context(type="mss310", sub_type="un"))
+
+    assert result.profile.id == "a"
+
+
+def test_missing_match_never_matches():
+    item = profile("a")
+    item["profile"].pop("match")
+
+    assert match_profile(registry(item), context(
+        type="mss310")).profile is None
+
+
+def test_malformed_match_never_matches():
+    item = profile("a")
+    item["profile"]["match"] = {"type": "mss310"}
+
+    assert match_profile(registry(item), context(
+        type="mss310")).profile is None
+
+
+def test_unknown_kind_never_matches():
+    item = profile("a", kind="sensor")
+
+    assert match_profile(registry(item), context(
+        type="mss310")).profile is None
+
+
+def test_generic_profile_matches_unknown_devices():
+    result = match_profile(
+        registry(profile("generic", types=("*",))),
+        context(type="mystery"),
+    )
+
+    assert result.profile.id == "generic"
+
+
+def test_invalid_declared_mac_prefix_cannot_match():
+    result = match_profile(
+        registry(profile("mac", mac_prefix=["ABC"])),
+        context(type="mss310", mac="AABBCCDDEEFF"),
+    )
+
+    assert result.profile is None
+
+
+def test_empty_registry_matches_nothing():
+    assert match_profile(
+        registry(), context(type="mss310")).profile is None
+
+
 def template(uid, types):
     return ProfileMeta(
         id=uid,

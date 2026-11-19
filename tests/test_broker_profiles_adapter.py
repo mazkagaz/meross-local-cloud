@@ -1,10 +1,15 @@
+import copy
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import yaml
 
-from custom_components.meross_cloud.broker_adapter import BrokerProfileAdapter
+from custom_components.meross_cloud.broker_adapter import (
+    BrokerProfileAdapter,
+    _subdevice_descriptors,
+)
 from custom_components.meross_cloud.vendor.merossclient import DeviceDescriptor
 
 FIXTURES = Path(__file__).parent / "fixtures" / "profiles"
@@ -136,6 +141,42 @@ async def run_adapter(catalog, transport=FakeTransport):
     return adapter
 
 
+def test_subdevice_descriptors_are_ignored_for_non_hubs():
+    class Device:
+        is_hub = False
+
+        @property
+        def subdevices(self):
+            raise AssertionError("subdevices must not be read")
+
+    assert _subdevice_descriptors(Device()) == []
+
+
+def test_malformed_hub_digest_does_not_abort_the_probe():
+    class BrokenHub:
+        is_hub = True
+
+        @property
+        def subdevices(self):
+            raise KeyError("subdevice")
+
+    assert _subdevice_descriptors(BrokenHub()) == []
+
+
+def test_subdevice_descriptors_are_extracted():
+    class Sub:
+        id = "sub1"
+        type = "ms100"
+        subType = "un"
+
+    class Hub:
+        is_hub = True
+        subdevices = [Sub()]
+
+    assert _subdevice_descriptors(Hub()) == [
+        {"id": "sub1", "type": "ms100", "subType": "un"}]
+
+
 async def test_matching_device_is_compiled_lazily():
     adapter = await run_adapter({
         "schema_version": 1,
@@ -186,6 +227,64 @@ async def test_compile_errors_are_reported_without_failing_the_probe():
     assert summary["devices_matched"] == 1
     assert any("unknown state namespace" in error
                for error in summary["compile_errors"])
+
+
+async def test_ambiguous_matches_are_counted():
+    first = profile_entry("mss310")
+    second = copy.deepcopy(first)
+    second["id"] = "test.second"
+    second["profile"]["profile"]["id"] = "test.second"
+
+    adapter = await run_adapter({
+        "schema_version": 1,
+        "revision": "abc",
+        "profiles": [first, second],
+    })
+
+    summary = adapter.summary()
+    assert summary["devices_matched"] == 1
+    assert summary["match_ambiguities"] == 1
+
+
+async def test_compile_errors_are_bounded():
+    entities = [{
+        "key": f"broken_{index}",
+        "platform": "switch",
+        "state": {"namespace": "Appliance.Unknown",
+                  "fields": {"value": "value"}},
+    } for index in range(25)]
+    data = {
+        "schema_version": 2,
+        "profile": {"id": "test.broken", "version": "1"},
+        "match": {"type": ["mss310"]},
+        "payloads": {},
+        "entities": entities,
+    }
+
+    adapter = await run_adapter({
+        "schema_version": 2,
+        "revision": "abc",
+        "profiles": [{
+            "id": "test.broken",
+            "version": "1",
+            "hash": "broken",
+            "profile": data,
+        }],
+    })
+
+    assert len(adapter.summary()["compile_errors"]) == 20
+
+
+async def test_catalog_revision_mismatch_is_logged(caplog):
+    caplog.set_level(logging.WARNING)
+
+    await run_adapter({
+        "schema_version": 1,
+        "revision": "different",
+        "profiles": [profile_entry("mss310")],
+    })
+
+    assert "does not match the revision endpoint" in caplog.text
 
 
 async def test_hub_subdevices_are_matched_to_templates():

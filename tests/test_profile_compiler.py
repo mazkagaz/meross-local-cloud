@@ -199,7 +199,7 @@ def test_invalid_state_path_is_refused(path):
     assert any("invalid state path" in error for error in compiled.errors)
 
 
-@pytest.mark.parametrize("channel", [-1, 1.5, True, "one"])
+@pytest.mark.parametrize("channel", [-1, 1.5, True, "one", "$channel"])
 def test_invalid_entity_channel_is_refused(channel):
     compiled = compile_profile(meta(doc(
         entities=[entity(channel=channel)])))
@@ -241,6 +241,22 @@ def test_value_is_required_for_number_commands():
 
     assert "missing" not in compiled.entities
     assert "provided" in compiled.entities
+    assert any("$value is required" in error for error in compiled.errors)
+
+
+@pytest.mark.parametrize("platform,command", [
+    ("select", "set_option"),
+    ("light", "set_brightness"),
+    ("light", "set_rgb"),
+])
+def test_value_is_required_for_value_commands(platform, command):
+    compiled = compile_profile(meta(doc(entities=[entity(
+        platform=platform,
+        commands={command: {"namespace": TOGGLE_NS,
+                            "payload": {"value": 3}}},
+    )])))
+
+    assert compiled.entities == {}
     assert any("$value is required" in error for error in compiled.errors)
 
 
@@ -408,6 +424,268 @@ def test_explicit_polling_is_kept():
     assert polling.strategy == "smart"
     assert polling.period_s == 30
     assert polling.response_size == 512
+
+
+@pytest.mark.parametrize("key", ["BadKey", "with-dash", "", 5])
+def test_invalid_entity_key_is_refused(key):
+    compiled = compile_profile(meta(doc(entities=[entity(key=key)])))
+
+    assert compiled.entities == {}
+    assert any("invalid entity key" in error for error in compiled.errors)
+
+
+def test_non_string_state_property_is_refused():
+    compiled = compile_profile(meta(doc(entities=[entity(state={
+        "namespace": TOGGLE_NS,
+        "fields": {1: "onoff"},
+    })])))
+
+    assert compiled.entities == {}
+    assert any("invalid state path" in error for error in compiled.errors)
+
+
+def test_non_string_namespace_name_is_refused():
+    compiled = compile_profile(meta(doc(
+        payloads={5: {"methods": ["GETACK"]}})))
+
+    assert compiled.namespaces == {}
+    assert any("malformed declaration" in error
+               for error in compiled.errors)
+
+
+def test_non_object_payloads_is_an_error():
+    compiled = compile_profile(meta(doc(payloads=[])))
+
+    assert compiled.namespaces == {}
+    assert any("payloads must be an object" in error
+               for error in compiled.errors)
+
+
+@pytest.mark.parametrize("methods", [None, [], "GET", [1], [None]])
+def test_invalid_methods_are_errors(methods):
+    compiled = compile_profile(meta(doc(
+        payloads={TOGGLE_NS: {"methods": methods}})))
+
+    assert TOGGLE_NS not in compiled.namespaces
+    assert any("methods must be" in error for error in compiled.errors)
+
+
+@pytest.mark.parametrize("polling,expected", [
+    ("bad", "polling must be an object"),
+    ({"period_s": -1}, "invalid polling period_s"),
+    ({"period_s": "60"}, "invalid polling period_s"),
+    ({"push": "yes"}, "push must be a boolean"),
+    ({"response_size": -1}, "invalid polling response_size"),
+    ({"response_size": 1.5}, "invalid polling response_size"),
+])
+def test_invalid_polling_is_reported_and_defaulted(polling, expected):
+    compiled = compile_profile(meta(doc(
+        payloads={TOGGLE_NS: {"methods": ["GETACK"], "polling": polling}})))
+
+    assert any(expected in error for error in compiled.errors)
+    assert compiled.namespaces[TOGGLE_NS].polling.period_s == 60
+
+
+def test_unknown_polling_strategy_falls_back_with_a_warning():
+    compiled = compile_profile(meta(doc(
+        payloads={TOGGLE_NS: {
+            "methods": ["GETACK"],
+            "polling": {"strategy": "future_strategy"},
+        }})))
+
+    assert compiled.errors == []
+    assert any("unknown polling strategy" in warning
+               for warning in compiled.warnings)
+    assert compiled.namespaces[TOGGLE_NS].polling.strategy == "default"
+
+
+def test_namespace_fields_must_be_an_object():
+    compiled = compile_profile(meta(doc(
+        payloads={TOGGLE_NS: {"methods": ["GETACK"], "fields": []}})))
+
+    assert any("fields must be an object" in error
+               for error in compiled.errors)
+
+
+@pytest.mark.parametrize("digest,expected", [
+    (5, "digest must be a path"),
+    ("a..b", "invalid digest"),
+])
+def test_invalid_namespace_digest_is_an_error(digest, expected):
+    compiled = compile_profile(meta(doc(
+        payloads={TOGGLE_NS: {"methods": ["GETACK"], "digest": digest}})))
+
+    assert any(expected in error for error in compiled.errors)
+
+
+def test_entities_must_be_a_list():
+    data = doc()
+    data["entities"] = "nope"
+
+    compiled = compile_profile(meta(data))
+
+    assert any("entities must be a list" in error
+               for error in compiled.errors)
+
+
+def test_malformed_entity_is_reported():
+    compiled = compile_profile(meta(doc(entities=["nope"])))
+
+    assert compiled.entities == {}
+    assert any("malformed entity" in error for error in compiled.errors)
+
+
+@pytest.mark.parametrize("channel", [-1, 1.5, True, "$other", "1"])
+def test_invalid_state_channel_is_refused(channel):
+    compiled = compile_profile(meta(doc(entities=[entity(state={
+        "namespace": TOGGLE_NS,
+        "channel": channel,
+        "fields": {"onoff": "onoff"},
+    })])))
+
+    assert compiled.entities == {}
+    assert any("state channel" in error for error in compiled.errors)
+
+
+def test_state_channel_token_requires_an_entity_channel():
+    compiled = compile_profile(meta(doc(entities=[entity(
+        channel=None,
+        state={"namespace": TOGGLE_NS, "channel": "$channel",
+               "fields": {"onoff": "onoff"}},
+    )])))
+
+    assert compiled.entities == {}
+    assert any("$channel used without an entity channel" in error
+               for error in compiled.errors)
+
+
+@pytest.mark.parametrize("digest,expected", [
+    (5, "state.digest must be a path"),
+    ("a..b", "invalid state digest"),
+])
+def test_invalid_state_digest_is_an_error(digest, expected):
+    compiled = compile_profile(meta(doc(entities=[entity(state={
+        "namespace": TOGGLE_NS,
+        "fields": {"onoff": "onoff"},
+        "digest": digest,
+    })])))
+
+    assert compiled.entities == {}
+    assert any(expected in error for error in compiled.errors)
+
+
+def test_invalid_state_scale_is_an_error():
+    compiled = compile_profile(meta(doc(entities=[entity(state={
+        "namespace": TOGGLE_NS,
+        "fields": {"onoff": "onoff"},
+        "scale": "x",
+    })])))
+
+    assert compiled.entities == {}
+    assert any("state.scale must be a number" in error
+               for error in compiled.errors)
+
+
+@pytest.mark.parametrize("commands,expected", [
+    ([], "commands must be an object"),
+    ({"turn_on": "x"}, "malformed command"),
+    ({"turn_on": {"namespace": TOGGLE_NS, "payload": []}},
+     "payload must be an object"),
+    ({"turn_on": {"namespace": TOGGLE_NS, "payload": {"onoff": 1},
+                  "value_scale": "x"}}, "value_scale must be a number"),
+])
+def test_invalid_commands_are_errors(commands, expected):
+    compiled = compile_profile(meta(doc(
+        entities=[entity(commands=commands)])))
+
+    assert compiled.entities == {}
+    assert any(expected in error for error in compiled.errors)
+
+
+def test_command_channel_token_requires_an_entity_channel():
+    compiled = compile_profile(meta(doc(entities=[entity(
+        channel=None,
+        commands={"turn_on": {"namespace": TOGGLE_NS,
+                              "payload": {"channel": "$channel"}}},
+    )])))
+
+    assert compiled.entities == {}
+    assert any("$channel used without an entity channel" in error
+               for error in compiled.errors)
+
+
+@pytest.mark.parametrize("field", [
+    "name", "unit", "device_class", "entity_category",
+])
+def test_invalid_string_attributes_are_errors(field):
+    compiled = compile_profile(meta(doc(
+        entities=[entity(**{field: 5})])))
+
+    assert compiled.entities == {}
+    assert any(f"{field} must be a string" in error
+               for error in compiled.errors)
+
+
+def test_capabilities_must_be_an_object():
+    compiled = compile_profile(meta(doc(
+        entities=[entity(capabilities=[])])))
+
+    assert compiled.entities == {}
+    assert any("capabilities must be an object" in error
+               for error in compiled.errors)
+
+
+def test_quirks_must_be_a_list():
+    compiled = compile_profile(meta(doc(entities=[entity(quirks="bad")])))
+
+    assert compiled.entities == {}
+    assert any("quirks must be a list" in error for error in compiled.errors)
+
+
+def test_quirk_params_must_be_an_object():
+    compiled = compile_profile(meta(doc(entities=[entity(
+        quirks=[{"name": "config_persist", "params": []}])])))
+
+    assert compiled.entities == {}
+    assert any("params must be an object" in error
+               for error in compiled.errors)
+
+
+def test_malformed_subdevice_template_is_reported():
+    compiled = compile_profile(meta(hub_doc(["nope"])))
+
+    assert compiled.subdevices == ()
+    assert any("malformed template" in error for error in compiled.errors)
+
+
+def test_subdevice_template_name_must_be_a_string():
+    template = subdevice()
+    template["name"] = 5
+
+    compiled = compile_profile(meta(hub_doc([template])))
+
+    assert compiled.subdevices[0].name is None
+    assert any("name must be a string" in error
+               for error in compiled.errors)
+
+
+def test_subdevice_template_entities_must_be_a_list():
+    template = subdevice()
+    template["entities"] = "nope"
+
+    compiled = compile_profile(meta(hub_doc([template])))
+
+    assert any("entities must be a list" in error
+               for error in compiled.errors)
+
+
+def test_subdevice_template_quirks_are_validated():
+    template = subdevice()
+    template["quirks"] = [{"name": "nope"}]
+
+    compiled = compile_profile(meta(hub_doc([template])))
+
+    assert any("unknown root quirk" in error for error in compiled.errors)
 
 
 def test_lazy_compilation_cache_uses_id_version_and_digest():
