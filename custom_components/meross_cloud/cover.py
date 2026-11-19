@@ -193,7 +193,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
                     new_entities.append(w)
                     _LOGGER.info("Adding cover %s (channel %d, features %s)", w.name, channel_index, w.supported_features)
 
-        async_add_entities(new_entities, True)
+        async_add_entities(new_entities, False)
 
     coordinator = hass.data[DOMAIN][DEVICE_LIST_COORDINATOR]
     coordinator.async_add_listener(entity_adder_callback)

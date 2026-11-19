@@ -96,7 +96,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
                     )
                     if entity.unique_id not in hass.data[DOMAIN]["ADDED_ENTITIES_IDS"]:
                         new_entities.append(entity)
-        async_add_entities(new_entities, True)
+        async_add_entities(new_entities, False)
 
     coordinator = hass.data[DOMAIN][DEVICE_LIST_COORDINATOR]
     coordinator.async_add_listener(entity_adder_callback)

@@ -1,3 +1,13 @@
+## 2.4.5
+
+- Les entités de plateforme ne déclenchent plus de mise à jour complète de
+  l'appareil lors de leur ajout (`update_before_add=False`). Le manager a déjà
+  découvert et mis à jour les appareils avant le montage des plateformes.
+  Corrige les mises à jour `Appliance.RollerShutter.Config` en double et les
+  délais de démarrage de plus de 10 secondes.
+- Les capteurs qui se rafraîchissent eux-mêmes (température, électricité, DND)
+  conservent leur polling périodique.
+
 ## 2.4.4
 
 - Corrige réellement les timeouts de la sonde profils : la résolution des
