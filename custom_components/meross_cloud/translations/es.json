@@ -6,14 +6,14 @@
     "error": {
       "invalid_credentials": "Inicio de sesión local o contraseña no válidos.",
       "connection_error": "No se puede conectar con el broker local.",
-      "api_invalid_ssl_code": "No se ha podido validar el certificado HTTPS. Actualiza el broker (alpha99 o posterior) para que sirva una CA válida.",
+      "api_invalid_ssl_code": "No se ha podido validar el certificado HTTPS. Actualiza el broker (1.0.0 o posterior) para que sirva una CA válida.",
       "unknown_error": "Ocurrió un error inesperado",
       "api_connection_refused": "No se puede conectar al servidor de API HTTP(S). Asegúrate de que la dirección es correcta",
       "client_connection_error": "Ha ocurrido un error mientras se conectaba a la API HTTP",
       "missing_credentials": "Proporciona las credenciales que faltan",
       "mdns_lookup_failed": "Broker no detectado.",
       "missing_mfa": "Tu cuenta requiere un código MFA para continuar. Introdúcelo.",
-      "ca_unavailable": "No se ha podido obtener un certificado CA válido del broker. Actualiza el broker (alpha99 o posterior).",
+      "ca_unavailable": "No se ha podido obtener un certificado CA válido del broker. Actualiza el broker (1.0.0 o posterior).",
       "missing_broker_host": "Introduce la dirección del Meross Local Broker.",
       "invalid_port": "Los puertos deben ser números entre 1 y 65535.",
       "port_reserved": "El puerto 2003 está reservado."
@@ -64,7 +64,8 @@
       "init": {
         "data": {
           "custom_user_agent": "Cabecera User-Agent personalizada",
-          "lan_transport_mode": "Opciones de comunicación con los dispositivos"
+          "lan_transport_mode": "Opciones de comunicación con los dispositivos",
+          "profile_backend": "Activar la sonda del motor de perfiles de dispositivos (avanzado, recargar tras el cambio)"
         },
         "title": "Opciones de Meross Local Cloud"
       }

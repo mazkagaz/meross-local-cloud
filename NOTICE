@@ -17,5 +17,14 @@ cloud API protocol.
 Fork modifications: Copyright (c) 2026 the MRS100 fork contributors, MIT.
 See MODIFICATIONS.md and LEGAL.md.
 
+This product includes a vendored subset of merossclient from the meross_lan
+project:
+  https://github.com/krahabb/meross_lan
+  Version v6.0.2, commit f7783303269c7f2b021400ea369b7d150a773a63
+  Original license: MIT (see the LICENSE file in
+  custom_components/meross_cloud/vendor/merossclient/)
+  Modification: `from __future__ import annotations` added for Python 3.13.
+See custom_components/meross_cloud/vendor/merossclient/UPSTREAM.md.
+
 Meross is a trademark of its respective owner. This fork is not affiliated
 with, endorsed by, or sponsored by Meross or the upstream author.

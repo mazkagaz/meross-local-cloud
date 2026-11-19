@@ -38,7 +38,7 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 | Brique | Version minimale | Remarques |
 |---|---|---|
 | Meross Local Cloud | 2.3.2 | cette intégration |
-| Meross Local Broker | 1.0.0 | alpha99 minimum pour la CA valide, alpha101 pour Unbind |
+| Meross Local Broker | 1.0.0 | CA valide, HTTPS, Unbind |
 | Meross Local Pairer | 2.0.8 | HTTPS 2004 uniquement |
 | Home Assistant | 2025.6 | testé avec 2026.11 |
 
@@ -94,10 +94,10 @@ Au-dessus des champs, un exemple générique est affiché :
 
 4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
 
-Le broker doit être en **1.0.0** (alpha99 minimum pour la CA valide). Sa CA
-locale est valide : elle est téléchargée depuis `/ca.crt`, vérifiée et épinglée
-par l'intégration, puis utilisée pour HTTP et MQTT (vérification du nom d'hôte
-incluse lorsque le certificat couvre l'adresse configurée).
+Le broker doit être en **1.0.0 ou plus récent**. Sa CA locale est valide : elle
+est téléchargée depuis `/ca.crt`, vérifiée et épinglée par l'intégration, puis
+utilisée pour HTTP et MQTT (vérification du nom d'hôte incluse lorsque le
+certificat couvre l'adresse configurée).
 
 Le HTTP non chiffré (port 2003) et les options « ignorer la validation du
 certificat » ont été **supprimés** : toute connexion passe par TLS avec une CA

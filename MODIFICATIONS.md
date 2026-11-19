@@ -12,6 +12,15 @@
 - Banner and logo: originals in `branding/`, generated brand assets in
   `custom_components/meross_cloud/brand/`.
 
+## Vendored code
+
+`custom_components/meross_cloud/vendor/merossclient/` contains a restricted
+copy of meross_lan v6.0.2 (`f778330`), MIT. Only the protocol, descriptor,
+device, library, logging and MQTT client modules are included; cloud, BLE and
+direct-HTTP modules are excluded. The only local change is the addition of
+`from __future__ import annotations` so the code runs on Python 3.13. See
+`vendor/merossclient/UPSTREAM.md` and `NOTICE`.
+
 ## Changed files
 
 | File | Change |

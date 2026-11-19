@@ -6,14 +6,14 @@
     "error": {
       "invalid_credentials": "Invalid local login or password.",
       "connection_error": "Unable to connect to the local broker.",
-      "api_invalid_ssl_code": "The HTTPS certificate could not be validated. Update the broker (alpha99 or later) so it serves a valid CA.",
+      "api_invalid_ssl_code": "The HTTPS certificate could not be validated. Update the broker (1.0.0 or later) so it serves a valid CA.",
       "unknown_error": "An unexpected error occurred",
       "api_connection_refused": "Cannot connect to the HTTP(S) API server. Make sure the address is valid",
       "client_connection_error": "An error occurred while connecting to the HTTP API",
       "missing_credentials": "Please provide the missing credentials",
       "mdns_lookup_failed": "Broker not detected.",
       "missing_mfa": "Your account requires an MFA code to proceed. Please provide it.",
-      "ca_unavailable": "Unable to retrieve a valid CA certificate from the broker. Update the broker (alpha99 or later).",
+      "ca_unavailable": "Unable to retrieve a valid CA certificate from the broker. Update the broker (1.0.0 or later).",
       "missing_broker_host": "Enter the Meross Local Broker address.",
       "invalid_port": "Ports must be numbers between 1 and 65535.",
       "port_reserved": "Port 2003 is reserved."
@@ -64,7 +64,8 @@
       "init": {
         "data": {
           "custom_user_agent": "Custom HTTP User Agent header for API polling",
-          "lan_transport_mode": "Device communication options"
+          "lan_transport_mode": "Device communication options",
+          "profile_backend": "Enable the device-profile backend probe (advanced, reload after change)"
         },
         "title": "Meross Local Cloud Options"
       }

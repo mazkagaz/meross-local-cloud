@@ -30,7 +30,9 @@ from .calibration import (
     adjust_status_name,
 )
 from .common import (DOMAIN, MANAGER, log_exception, HA_SENSOR,
-                     HA_SENSOR_POLL_INTERVAL_SECONDS, invoke_method_or_property, DEVICE_LIST_COORDINATOR)
+                     HA_SENSOR_POLL_INTERVAL_SECONDS, invoke_method_or_property,
+                     DEVICE_LIST_COORDINATOR, BROKER_ADAPTER)
+from .broker_profile_sensor import BrokerProfileSensor
 
 _LOGGER = logging.getLogger(__name__)
 PARALLEL_UPDATES = 2
@@ -476,6 +478,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
     coordinator.async_add_listener(entity_adder_callback)
     # Run the entity adder a first time during setup
     entity_adder_callback()
+
+    adapter = hass.data[DOMAIN].get(BROKER_ADAPTER)
+    if adapter is not None:
+        async_add_entities([BrokerProfileSensor(adapter)], True)
 
 
 # TODO: Implement entry unload

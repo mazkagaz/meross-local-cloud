@@ -1,3 +1,14 @@
+## 2.4.0
+
+- Opt-in device-profile backend (`profile_backend`, disabled by default):
+  vendored merossclient v6.0.2 (restricted subset), app-style MQTT transport
+  with the broker CA, profile-catalog fetch and per-device descriptors.
+- Requires broker **1.1.0** for the read-only profile endpoints; failure of
+  the probe never blocks normal setup.
+- Diagnostic sensor **Broker profile backend** (state, revision, profile and
+  device counts, last error) when the option is enabled.
+- Messages and documentation now refer to broker 1.0.0 instead of alpha99.
+
 ## 2.3.2
 
 - Devices left behind in the Home Assistant registries by earlier versions are

@@ -29,7 +29,8 @@ from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
     MEROSS_LOCAL_MDNS_SERVICE_TYPES, MEROSS_LOCAL_MDNS_MQTT_SERVICE_TYPE, \
     MEROSS_LOCAL_MDNS_API_SERVICE_TYPE, CONF_OVERRIDE_MQTT_ENDPOINT, \
     CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, \
-    CONF_OPT_LAN_HTTP_FIRST, CONF_OPT_LAN_HTTP_FIRST_ONLY_GET, DEFAULT_USER_AGENT
+    CONF_OPT_LAN_HTTP_FIRST, CONF_OPT_LAN_HTTP_FIRST_ONLY_GET, DEFAULT_USER_AGENT, \
+    CONF_OPT_PROFILE_BACKEND
 from .patches import set_http_cert_validation
 from .tls import (
     async_fetch_ca,
@@ -549,6 +550,8 @@ class MerossOptionsFlowHandler(config_entries.OptionsFlow):
                             {"value": CONF_OPT_LAN_HTTP_FIRST_ONLY_GET,
                              "label": "Attempt local HTTP communication first only for GET commands, fall-back to MQTT broker"}
                         ], mode=SelectSelectorMode.LIST)
-                )
+                ),
+                vol.Optional(CONF_OPT_PROFILE_BACKEND,
+                             default=saved_options.get(CONF_OPT_PROFILE_BACKEND, False)): bool,
             })
         )

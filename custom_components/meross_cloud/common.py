@@ -60,6 +60,8 @@ MULTIPLE_APIS_FOUND = "multiple_apis_found"
 DIFFERENT_HOSTS_FOR_BROKER_AND_API = "different_hosts_for_broker_and_api"
 
 CONF_OPT_CUSTOM_USER_AGENT = "custom_user_agent"
+CONF_OPT_PROFILE_BACKEND = "profile_backend"
+BROKER_ADAPTER = "broker_profile_adapter"
 CONF_OPT_LAN = "lan_transport_mode"
 CONF_OPT_LAN_MQTT_ONLY = "conf_opt_lan_mqtt_only"
 CONF_OPT_LAN_HTTP_FIRST = "conf_opt_lan_http_first"
