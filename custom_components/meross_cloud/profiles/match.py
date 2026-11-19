@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, FrozenSet, Optional, Tuple
+from typing import Any, Dict, FrozenSet, Iterable, Optional, Tuple
 
 from .models import ProfileMeta
 from .registry import ProfileRegistry
@@ -144,13 +144,18 @@ def _score(profile: ProfileMeta, context: MatchContext) -> Optional[Tuple[int, i
 
 def match_profile(registry: ProfileRegistry,
                   context: MatchContext) -> MatchResult:
-    """Return the best profile for context, deterministically.
+    return match_candidates(registry.profiles.values(), context)
+
+
+def match_candidates(profiles: Iterable[ProfileMeta],
+                     context: MatchContext) -> MatchResult:
+    """Return the best candidate for context, deterministically.
 
     Equal scores are resolved by lexicographic profile id and reported as an
     ambiguity; the profile with the smallest id wins.
     """
     scored = []
-    for profile in registry.profiles.values():
+    for profile in profiles:
         score = _score(profile, context)
         if score is not None:
             scored.append((score, profile))

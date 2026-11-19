@@ -13,6 +13,7 @@ from .models import (
     PollingSpec,
     ProfileMeta,
     StateSpec,
+    SubDeviceTemplate,
 )
 from .paths import InvalidPath, find_tokens, parse_path, validate_tokens
 
@@ -65,7 +66,13 @@ def compile_profile(profile: ProfileMeta) -> CompiledProfile:
     )
     compiled.namespaces = _compile_namespaces(profile.id, data, compiled)
     _check_root_quirks(profile.id, data, compiled)
-    _compile_entities(profile.id, data, compiled)
+    compiled.entities = _compile_entities(
+        profile.id, data, compiled.namespaces, compiled,
+        uid_prefix=profile.id,
+        default_device="hub",
+        allow_subdevice=False,
+    )
+    compiled.subdevices = _compile_subdevices(profile.id, data, compiled)
     return compiled
 
 
@@ -217,57 +224,63 @@ def _check_root_quirks(profile_id: str, data: Dict[str, Any],
         seen.add(name)
 
 
-def _compile_entities(profile_id: str, data: Dict[str, Any],
-                      compiled: CompiledProfile) -> None:
+def _compile_entities(context_id: str, data: Dict[str, Any],
+                      namespaces: Dict[str, NamespaceSpec],
+                      compiled: CompiledProfile, *, uid_prefix: str,
+                      default_device: str,
+                      allow_subdevice: bool) -> Dict[str, EntitySpec]:
     raw_entities = data.get("entities")
     if raw_entities is None:
-        return
+        return {}
     if not isinstance(raw_entities, (list, tuple)):
-        compiled.errors.append(f"{profile_id}: entities must be a list")
-        return
+        compiled.errors.append(f"{context_id}: entities must be a list")
+        return {}
 
+    entities = {}
     seen_keys = set()
     for raw in raw_entities:
         if not isinstance(raw, dict):
             compiled.errors.append(
-                f"{profile_id}: malformed entity {raw!r}")
+                f"{context_id}: malformed entity {raw!r}")
             continue
         key = raw.get("key")
         label = key if isinstance(key, str) else "?"
         if isinstance(key, str) and key in seen_keys:
             compiled.errors.append(
-                f"{profile_id}: entity {label}: duplicate entity key")
+                f"{context_id}: entity {label}: duplicate entity key")
             continue
         if isinstance(key, str):
             seen_keys.add(key)
 
         platform = raw.get("platform")
-        if platform in COMPLEX_PLATFORMS:
+        if platform not in SIMPLE_PLATFORMS | COMPLEX_PLATFORMS:
             compiled.warnings.append(
-                f"{profile_id}: entity {label}: platform {platform} "
-                "deferred to D2.2.3")
-            continue
-        if platform not in SIMPLE_PLATFORMS:
-            compiled.warnings.append(
-                f"{profile_id}: entity {label}: unknown platform "
+                f"{context_id}: entity {label}: unknown platform "
                 f"{platform!r} ignored")
             continue
 
         errors: List[str] = []
-        entity = _compile_entity(profile_id, raw, compiled.namespaces,
-                                 errors)
+        entity = _compile_entity(
+            context_id, raw, namespaces, errors,
+            uid_prefix=uid_prefix,
+            default_device=default_device,
+            allow_subdevice=allow_subdevice,
+        )
         if errors:
             compiled.errors.extend(errors)
             continue
-        compiled.entities[entity.key] = entity
+        entities[entity.key] = entity
+    return entities
 
 
-def _compile_entity(profile_id: str, raw: Dict[str, Any],
+def _compile_entity(context_id: str, raw: Dict[str, Any],
                     namespaces: Dict[str, NamespaceSpec],
-                    errors: List[str]) -> EntitySpec:
+                    errors: List[str], *, uid_prefix: str,
+                    default_device: str,
+                    allow_subdevice: bool) -> EntitySpec:
     key = raw.get("key")
     label = key if isinstance(key, str) else "?"
-    prefix = f"{profile_id}: entity {label}"
+    prefix = f"{context_id}: entity {label}"
 
     if not isinstance(key, str) or not _KEY_RE.fullmatch(key):
         errors.append(f"{prefix}: invalid entity key")
@@ -279,13 +292,15 @@ def _compile_entity(profile_id: str, raw: Dict[str, Any],
             errors.append(f"{prefix}: channel must be a non-negative integer")
             channel = None
 
-    device = raw.get("device", "hub")
+    device = raw.get("device", default_device)
     if device not in ("hub", "subdevice"):
         errors.append(f"{prefix}: invalid device {device!r}")
-    elif device == "subdevice":
+    elif device == "subdevice" and not allow_subdevice:
         errors.append(
-            f"{prefix}: subdevice entities require a hub template "
-            "(D2.2.3)")
+            f"{prefix}: subdevice entities require a hub template")
+    elif device == "hub" and default_device == "subdevice":
+        errors.append(
+            f"{prefix}: template entities must use device: subdevice")
 
     name = _optional_string(prefix, raw, "name", errors)
     device_class = _optional_string(prefix, raw, "device_class", errors)
@@ -302,9 +317,11 @@ def _compile_entity(profile_id: str, raw: Dict[str, Any],
     if capabilities is not None and not isinstance(capabilities, dict):
         errors.append(f"{prefix}: capabilities must be an object")
         capabilities = None
+    elif capabilities is None and platform in ("climate", "fan"):
+        errors.append(f"{prefix}: {platform} requires capabilities")
 
     return EntitySpec(
-        uid=f"{profile_id}:{label}",
+        uid=f"{uid_prefix}:{label}",
         key=label,
         platform=platform,
         channel=channel,
@@ -318,6 +335,52 @@ def _compile_entity(profile_id: str, raw: Dict[str, Any],
         quirks=quirks,
         capabilities=capabilities,
     )
+
+
+def _compile_subdevices(profile_id: str, data: Dict[str, Any],
+                        compiled: CompiledProfile
+                        ) -> Tuple[SubDeviceTemplate, ...]:
+    raw_subdevices = data.get("subdevices")
+    if raw_subdevices is None:
+        return ()
+    if not isinstance(raw_subdevices, (list, tuple)):
+        compiled.errors.append(f"{profile_id}: subdevices must be a list")
+        return ()
+
+    templates = []
+    for index, raw in enumerate(raw_subdevices):
+        uid = f"{profile_id}:subdevice:{index}"
+        if not isinstance(raw, dict):
+            compiled.errors.append(f"{uid}: malformed template")
+            continue
+        match = raw.get("match")
+        types = match.get("type") if isinstance(match, dict) else None
+        if (not isinstance(match, dict)
+                or not isinstance(types, (list, tuple)) or not types
+                or not all(isinstance(item, str) for item in types)):
+            compiled.errors.append(
+                f"{uid}: match.type must be a non-empty list of strings")
+            continue
+        name = raw.get("name")
+        if name is not None and not isinstance(name, str):
+            compiled.errors.append(f"{uid}: name must be a string")
+            name = None
+        namespaces = _compile_namespaces(uid, raw, compiled)
+        _check_root_quirks(uid, raw, compiled)
+        entities = _compile_entities(
+            uid, raw, namespaces, compiled,
+            uid_prefix=uid,
+            default_device="subdevice",
+            allow_subdevice=True,
+        )
+        templates.append(SubDeviceTemplate(
+            uid=uid,
+            name=name,
+            match=dict(match),
+            namespaces=namespaces,
+            entities=entities,
+        ))
+    return tuple(templates)
 
 
 def _optional_string(prefix: str, raw: Dict[str, Any], key: str,

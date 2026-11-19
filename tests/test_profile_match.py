@@ -2,9 +2,11 @@ import logging
 
 from custom_components.meross_cloud.profiles.match import (
     MatchContext,
+    match_candidates,
     match_profile,
     normalize_mac,
 )
+from custom_components.meross_cloud.profiles.models import ProfileMeta
 from custom_components.meross_cloud.profiles.registry import ProfileRegistry
 
 
@@ -206,6 +208,38 @@ def test_declared_subtype_must_match():
     result = match_profile(
         registry(profile("sub", sub_type=["un"])),
         context(type="mss310", sub_type="other"),
+    )
+
+    assert result.profile is None
+
+
+def template(uid, types):
+    return ProfileMeta(
+        id=uid,
+        version="1",
+        source="template",
+        digest=None,
+        requires_engine=None,
+        data={"match": {"type": list(types)}},
+    )
+
+
+def test_subdevice_templates_are_matched_deterministically():
+    result = match_candidates(
+        [template("hub:subdevice:1", ("ms100",)),
+         template("hub:subdevice:0", ("ms100",))],
+        context(type="ms100"),
+    )
+
+    assert result.profile.id == "hub:subdevice:0"
+    assert result.candidates == ("hub:subdevice:0", "hub:subdevice:1")
+    assert result.ambiguous is True
+
+
+def test_unmatched_subdevice_returns_no_template():
+    result = match_candidates(
+        [template("hub:subdevice:0", ("ms100",))],
+        context(type="ms200"),
     )
 
     assert result.profile is None

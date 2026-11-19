@@ -12,9 +12,12 @@ from .broker_profiles import async_fetch_catalog, async_fetch_revision
 from .broker_transport import BrokerMqttTransport
 from .profiles import (
     ENGINE_VERSION,
+    CompiledProfile,
     MatchContext,
     ProfileCompiler,
+    ProfileMeta,
     ProfileRegistry,
+    match_candidates,
     match_profile,
 )
 
@@ -23,6 +26,20 @@ _LOGGER = logging.getLogger(__name__)
 _DESCRIBE_TIMEOUT = 5
 _TOTAL_BUDGET = 20
 _MAX_COMPILE_ERRORS = 20
+
+
+def _subdevice_descriptors(descriptor) -> list[Dict[str, Any]]:
+    if not descriptor.is_hub:
+        return []
+    try:
+        return [
+            {"id": subdevice.id, "type": subdevice.type,
+             "subType": subdevice.subType}
+            for subdevice in descriptor.subdevices
+        ]
+    except Exception as err:  # noqa: BLE001 - a bad digest must not abort
+        _LOGGER.debug("Unable to read hub subdevices: %s", err)
+        return []
 
 
 class BrokerProfileAdapter:
@@ -48,6 +65,8 @@ class BrokerProfileAdapter:
         self.compiler = ProfileCompiler()
         self.devices_matched = 0
         self.devices_unmatched = 0
+        self.subdevices_matched = 0
+        self.subdevices_unmatched = 0
         self.match_ambiguities = 0
         self.compile_errors: list[str] = []
 
@@ -106,15 +125,17 @@ class BrokerProfileAdapter:
                 "abilities": sorted(descriptor.ability),
                 "mac": descriptor.macAddress,
                 "is_hub": descriptor.is_hub,
+                "subdevices": _subdevice_descriptors(descriptor),
             }
         self._match_profiles()
         if self.descriptors:
             _LOGGER.info(
                 "Broker profile backend: revision %s, %d profile(s), "
-                "%d device(s) described, %d matched (%d compiled)",
+                "%d device(s) described, %d matched (%d compiled), "
+                "%d subdevice(s) matched",
                 (self.revision or "unknown")[:16], self.profile_count,
                 len(self.descriptors), self.devices_matched,
-                self.compiler.cache_size)
+                self.compiler.cache_size, self.subdevices_matched)
 
     def _match_profiles(self) -> None:
         """Match descriptors and compile profiles lazily. No entities, no IO."""
@@ -141,6 +162,36 @@ class BrokerProfileAdapter:
             for error in compiled.errors:
                 if len(self.compile_errors) < _MAX_COMPILE_ERRORS:
                     self.compile_errors.append(error)
+            if descriptor["subdevices"]:
+                self._match_subdevices(compiled, descriptor["subdevices"])
+
+    def _match_subdevices(self, compiled: CompiledProfile,
+                          subdevices: list[Dict[str, Any]]) -> None:
+        options = [
+            ProfileMeta(
+                id=template.uid,
+                version=compiled.version,
+                source="template",
+                digest=None,
+                requires_engine=None,
+                data={"match": template.match},
+            )
+            for template in compiled.subdevices
+        ]
+        for subdevice in subdevices:
+            result = match_candidates(
+                options,
+                MatchContext(
+                    type=subdevice["type"],
+                    sub_type=subdevice["subType"],
+                ),
+            )
+            if result.ambiguous:
+                self.match_ambiguities += 1
+            if result.profile is None:
+                self.subdevices_unmatched += 1
+            else:
+                self.subdevices_matched += 1
 
     async def _async_fetch_profiles(self) -> None:
         client = self._coordinator.client
@@ -179,6 +230,8 @@ class BrokerProfileAdapter:
             "profiles_compiled": self.compiler.cache_size,
             "devices_matched": self.devices_matched,
             "devices_unmatched": self.devices_unmatched,
+            "subdevices_matched": self.subdevices_matched,
+            "subdevices_unmatched": self.subdevices_unmatched,
             "match_ambiguities": self.match_ambiguities,
             "compile_errors": list(self.compile_errors),
         }

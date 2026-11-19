@@ -25,6 +25,61 @@ MSS310_PAYLOAD = {
 }
 
 
+HUB_PAYLOAD = {
+    "all": {
+        "system": {
+            "hardware": {
+                "type": "msh300", "subType": "un", "version": "1.0.0",
+                "uuid": "h1", "macAddress": "AA:BB:CC:DD:EE:01",
+            },
+            "firmware": {"version": "3.0.0"},
+            "online": {"status": 1},
+        },
+        "digest": {
+            "hub": {
+                "subdevice": [
+                    {"id": "sub1", "ms100": {}},
+                ],
+            },
+        },
+    },
+    "ability": {"Appliance.Hub.Sensor.TempHum": {}},
+}
+
+SUBDEVICE_NS = "Appliance.Hub.Sensor.TempHum"
+HUB_CATALOG = {
+    "schema_version": 2,
+    "revision": "abc",
+    "profiles": [{
+        "id": "test.hub",
+        "version": "1",
+        "hash": "hub-fixture",
+        "profile": {
+            "schema_version": 2,
+            "profile": {"id": "test.hub", "version": "1"},
+            "match": {"kind": "hub", "type": ["msh300"]},
+            "payloads": {},
+            "entities": [],
+            "subdevices": [{
+                "match": {"type": ["ms100"]},
+                "payloads": {
+                    SUBDEVICE_NS: {"methods": ["GETACK", "PUSH"],
+                                   "fields": {}},
+                },
+                "entities": [{
+                    "key": "temperature",
+                    "platform": "sensor",
+                    "state": {
+                        "namespace": SUBDEVICE_NS,
+                        "fields": {"value": "temperature"},
+                    },
+                }],
+            }],
+        },
+    }],
+}
+
+
 class FakeTransport:
     connected = True
 
@@ -60,10 +115,15 @@ def coordinator():
     )
 
 
-async def run_adapter(catalog):
+class FakeHubTransport(FakeTransport):
+    async def async_describe(self, device_uuid):
+        return DeviceDescriptor(HUB_PAYLOAD)
+
+
+async def run_adapter(catalog, transport=FakeTransport):
     with patch(
             "custom_components.meross_cloud.broker_adapter."
-            "BrokerMqttTransport", return_value=FakeTransport()), \
+            "BrokerMqttTransport", return_value=transport()), \
             patch(
                 "custom_components.meross_cloud.broker_adapter."
                 "async_fetch_revision", AsyncMock(
@@ -126,6 +186,42 @@ async def test_compile_errors_are_reported_without_failing_the_probe():
     assert summary["devices_matched"] == 1
     assert any("unknown state namespace" in error
                for error in summary["compile_errors"])
+
+
+async def test_hub_subdevices_are_matched_to_templates():
+    adapter = await run_adapter(HUB_CATALOG, FakeHubTransport)
+
+    summary = adapter.summary()
+    assert summary["state"] == "connected"
+    assert summary["devices_matched"] == 1
+    assert summary["subdevices_matched"] == 1
+    assert summary["subdevices_unmatched"] == 0
+    assert summary["compile_errors"] == []
+
+
+async def test_unmatched_hub_subdevice_is_counted():
+    catalog = {
+        "schema_version": 2,
+        "revision": "abc",
+        "profiles": [],
+    }
+    catalog["profiles"] = [{
+        **HUB_CATALOG["profiles"][0],
+        "profile": {
+            **HUB_CATALOG["profiles"][0]["profile"],
+            "subdevices": [{
+                "match": {"type": ["ms200"]},
+                "entities": [],
+            }],
+        },
+    }]
+
+    adapter = await run_adapter(catalog, FakeHubTransport)
+
+    summary = adapter.summary()
+    assert summary["devices_matched"] == 1
+    assert summary["subdevices_matched"] == 0
+    assert summary["subdevices_unmatched"] == 1
 
 
 async def test_without_a_catalog_nothing_is_matched():

@@ -38,11 +38,12 @@ def meta(data, digest=None):
     )
 
 
-def doc(entities=None, payloads=None, quirks=None):
+def doc(entities=None, payloads=None, quirks=None, subdevices=None,
+        match=None):
     data = {
         "schema_version": 2,
         "profile": {"id": "test.profile", "version": "1"},
-        "match": {"type": ["mss310"]},
+        "match": match or {"type": ["mss310"]},
         "payloads": payloads if payloads is not None else {
             TOGGLE_NS: {
                 "methods": ["GETACK", "PUSH"],
@@ -54,7 +55,43 @@ def doc(entities=None, payloads=None, quirks=None):
     }
     if quirks is not None:
         data["quirks"] = quirks
+    if subdevices is not None:
+        data["subdevices"] = subdevices
     return data
+
+
+SUBDEVICE_NS = "Appliance.Hub.Sensor.TempHum"
+
+
+def subdevice(types=("ms100",), entities=None, payloads=None, name=None):
+    template = {
+        "match": {"type": list(types)},
+        "entities": entities if entities is not None else [],
+    }
+    if payloads is not None:
+        template["payloads"] = payloads
+    if name is not None:
+        template["name"] = name
+    return template
+
+
+def sub_entity(key="temperature", **overrides):
+    item = {
+        "key": key,
+        "platform": "sensor",
+        "state": {
+            "namespace": SUBDEVICE_NS,
+            "fields": {"value": "temperature"},
+        },
+    }
+    item.update(overrides)
+    return item
+
+
+def subdevice_payloads():
+    return {
+        SUBDEVICE_NS: {"methods": ["GETACK", "PUSH"], "fields": {}},
+    }
 
 
 def entity(key="switch", platform="switch", **overrides):
@@ -87,14 +124,36 @@ def test_unknown_platform_is_ignored_with_a_warning():
     assert any("unknown platform" in warning for warning in compiled.warnings)
 
 
-def test_complex_platform_is_deferred_not_failed():
+@pytest.mark.parametrize("platform", ["climate", "fan"])
+def test_climate_and_fan_require_capabilities(platform):
     compiled = compile_profile(meta(doc(
-        entities=[entity(platform="climate")])))
+        entities=[entity(platform=platform)])))
 
     assert compiled.entities == {}
+    assert any("requires capabilities" in error
+               for error in compiled.errors)
+
+
+@pytest.mark.parametrize("platform", ["climate", "fan"])
+def test_climate_and_fan_compile_with_capabilities(platform):
+    capabilities = {"features": ["target_temperature"]}
+    compiled = compile_profile(meta(doc(
+        entities=[entity(platform=platform, capabilities=capabilities)])))
+
     assert compiled.errors == []
-    assert any("deferred to D2.2.3" in warning
-               for warning in compiled.warnings)
+    assert compiled.entities["switch"].platform == platform
+    assert compiled.entities["switch"].capabilities == capabilities
+
+
+@pytest.mark.parametrize("platform", [
+    "humidifier", "calendar", "media_player", "siren", "update",
+])
+def test_other_complex_platforms_compile(platform):
+    compiled = compile_profile(meta(doc(
+        entities=[entity(platform=platform)])))
+
+    assert compiled.errors == []
+    assert compiled.entities["switch"].platform == platform
 
 
 def test_missing_state_namespace_is_an_entity_error():
@@ -218,6 +277,76 @@ def test_subdevice_entity_without_hub_template_is_an_error():
 
     assert compiled.entities == {}
     assert any("require a hub template" in error
+               for error in compiled.errors)
+
+
+def hub_doc(subdevices):
+    return doc(
+        match={"kind": "hub", "type": ["msh300"]},
+        payloads={},
+        subdevices=subdevices,
+    )
+
+
+def test_hub_profile_compiles_subdevice_template():
+    compiled = compile_profile(meta(hub_doc([subdevice(
+        entities=[sub_entity()], payloads=subdevice_payloads())])))
+
+    assert compiled.errors == []
+    assert len(compiled.subdevices) == 1
+    template = compiled.subdevices[0]
+    assert template.uid == "test.profile:subdevice:0"
+    assert template.match == {"type": ["ms100"]}
+    assert set(template.entities) == {"temperature"}
+
+
+def test_subdevice_entities_default_to_subdevice():
+    compiled = compile_profile(meta(hub_doc([subdevice(
+        entities=[sub_entity()], payloads=subdevice_payloads())])))
+
+    entity = compiled.subdevices[0].entities["temperature"]
+    assert entity.device == "subdevice"
+    assert entity.uid == "test.profile:subdevice:0:temperature"
+
+
+def test_template_entities_cannot_target_the_hub():
+    compiled = compile_profile(meta(hub_doc([subdevice(
+        entities=[sub_entity(device="hub")],
+        payloads=subdevice_payloads())])))
+
+    assert compiled.subdevices[0].entities == {}
+    assert any("must use device: subdevice" in error
+               for error in compiled.errors)
+
+
+def test_subdevice_template_requires_a_match_type():
+    compiled = compile_profile(meta(hub_doc([{"entities": []}])))
+
+    assert compiled.subdevices == ()
+    assert any("match.type" in error for error in compiled.errors)
+
+
+def test_subdevice_entity_keys_may_repeat_across_templates():
+    entity_one = sub_entity()
+    entity_two = sub_entity(key="temperature", name="Second")
+    compiled = compile_profile(meta(hub_doc([
+        subdevice(types=("ms100",), entities=[entity_one],
+                  payloads=subdevice_payloads()),
+        subdevice(types=("ms101",), entities=[entity_two],
+                  payloads=subdevice_payloads()),
+    ])))
+
+    assert compiled.errors == []
+    assert len(compiled.subdevices) == 2
+    assert compiled.subdevices[1].entities["temperature"].name == "Second"
+
+
+def test_subdevice_namespace_must_be_declared_in_the_template():
+    compiled = compile_profile(meta(hub_doc([subdevice(
+        entities=[sub_entity()])])))
+
+    assert compiled.subdevices[0].entities == {}
+    assert any("unknown state namespace" in error
                for error in compiled.errors)
 
 

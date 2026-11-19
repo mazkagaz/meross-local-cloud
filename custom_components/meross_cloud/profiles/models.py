@@ -92,6 +92,17 @@ class EntitySpec:
     capabilities: Optional[Dict[str, Any]] = None
 
 
+@dataclass(frozen=True)
+class SubDeviceTemplate:
+    """A compiled hub subdevice template."""
+
+    uid: str
+    name: Optional[str]
+    match: Dict[str, Any] = field(default_factory=dict)
+    namespaces: Dict[str, NamespaceSpec] = field(default_factory=dict)
+    entities: Dict[str, EntitySpec] = field(default_factory=dict)
+
+
 @dataclass
 class CompiledProfile:
     """Compilation result; entity errors are isolated."""
@@ -101,5 +112,6 @@ class CompiledProfile:
     schema_version: Optional[int]
     namespaces: Dict[str, NamespaceSpec] = field(default_factory=dict)
     entities: Dict[str, EntitySpec] = field(default_factory=dict)
+    subdevices: Tuple[SubDeviceTemplate, ...] = ()
     errors: list = field(default_factory=list)
     warnings: list = field(default_factory=list)
