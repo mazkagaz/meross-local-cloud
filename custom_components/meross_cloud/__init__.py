@@ -53,7 +53,7 @@ from .common import (
     HTTP_UPDATE_INTERVAL, DEVICE_LIST_COORDINATOR, calculate_id, DEFAULT_USER_AGENT, CONF_OPT_CUSTOM_USER_AGENT,
     CONF_OVERRIDE_MQTT_ENDPOINT, CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, TRANSPORT_MODES_TO_ENUM,
     MEROSS_DEFAULT_CLOUD_API_URL, CONF_CA_PEM, CONF_CA_FINGERPRINT, MISSING_TRACKER,
-    CONF_OPT_PROFILE_BACKEND, BROKER_ADAPTER
+    CONF_OPT_PROFILE_BACKEND, BROKER_ADAPTER, effective_user_agent
 )
 from .missing_devices import MissingDeviceTracker
 from .version import MEROSS_INTEGRATION_VERSION, MEROSS_IOT_VERSION
@@ -594,11 +594,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     }
 
     # Retrieve options we need
-    ua_header = config_entry.options.get(CONF_OPT_CUSTOM_USER_AGENT, DEFAULT_USER_AGENT)
-    if ua_header == "" or not isinstance(ua_header, str):
-        _LOGGER.warning("Invalid user-agent option specified in config <%s>; defaulting to <%s>", str(ua_header),
-                        str(DEFAULT_USER_AGENT))
-        ua_header = DEFAULT_USER_AGENT
+    ua_header = effective_user_agent(
+        config_entry.options.get(CONF_OPT_CUSTOM_USER_AGENT))
 
     try:
         # Setup the coordinator
@@ -695,7 +692,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 async def update_listener(hass, entry):
     """Handle options update."""
     # Update options
-    custom_ua = entry.options.get(CONF_OPT_CUSTOM_USER_AGENT, DEFAULT_USER_AGENT)
+    custom_ua = effective_user_agent(
+        entry.options.get(CONF_OPT_CUSTOM_USER_AGENT))
     transport_mode = entry.options.get(CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY)
     manager_transport_mode = TRANSPORT_MODES_TO_ENUM[transport_mode]
     manager: MerossManager = hass.data[DOMAIN][MANAGER]

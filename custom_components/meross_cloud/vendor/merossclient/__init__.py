@@ -47,15 +47,9 @@ try:
     from random import randint
 
     class MEROSSDEBUG:
-        # this will raise an OSError on non-dev machines missing the
-        # debug configuration so the MEROSSDEBUG symbol will be invalidated
-        data: dict = json.load(
-            open(
-                file="./custom_components/meross_lan/merossclient/debug.secret.json",
-                mode="r",
-                encoding="utf-8",
-            )
-        )
+        # The upstream debug secrets are never shipped here: loading them at
+        # import performs blocking file I/O on the Home Assistant event loop.
+        data: dict = {}
 
         cloudapi_login = data.get("login")
         cloudapi_device_devlist = data.get("Device_devList")

@@ -23,6 +23,8 @@ direct), HA integration layer (`helpers/`, `devices/`, `config_flow.py`).
   annotations).
 - `devices.json` is loaded lazily through `get_devices_library()` instead of at
   import time: Home Assistant rejects blocking file I/O on the event loop.
+- The upstream `MEROSSDEBUG` block no longer reads `debug.secret.json` at
+  import; the vendored copy uses an empty debug configuration.
 - No behavioural change otherwise.
 
 ## Updating

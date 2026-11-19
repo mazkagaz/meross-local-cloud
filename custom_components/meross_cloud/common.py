@@ -79,6 +79,15 @@ HTTP_API_RE = re.compile("(http://|https://)?([^:]+)(:([0-9]+))?")
 
 DEFAULT_USER_AGENT = f"MerossHA/{version.MEROSS_INTEGRATION_VERSION}"
 
+
+def effective_user_agent(value) -> str:
+    """Use the version-tracking default unless a real custom value is set."""
+    if not isinstance(value, str) or not value.strip():
+        return DEFAULT_USER_AGENT
+    if value.startswith("MerossHA/"):
+        return DEFAULT_USER_AGENT
+    return value
+
 TRANSPORT_MODES_TO_ENUM = {
     CONF_OPT_LAN_MQTT_ONLY: TransportMode.MQTT_ONLY,
     CONF_OPT_LAN_HTTP_FIRST: TransportMode.LAN_HTTP_FIRST,

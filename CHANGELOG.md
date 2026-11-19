@@ -1,3 +1,12 @@
+## 2.4.3
+
+- Supprime le dernier accès fichier à l'import du socle vendorisé
+  (`debug.secret.json` de MEROSSDEBUG), qui déclenchait encore le détecteur de
+  blocage de Home Assistant.
+- User-Agent personnalisé : le défaut `MerossHA/<version>` n'est plus figé dans
+  les options et suit désormais la version du manifest ; une valeur
+  `MerossHA/...` déjà enregistrée est traitée comme le défaut.
+
 ## 2.4.2
 
 - Corrige l'échec de chargement du backend profils : `devices.json` du socle

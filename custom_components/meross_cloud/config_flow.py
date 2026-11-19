@@ -29,8 +29,8 @@ from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
     MEROSS_LOCAL_MDNS_SERVICE_TYPES, MEROSS_LOCAL_MDNS_MQTT_SERVICE_TYPE, \
     MEROSS_LOCAL_MDNS_API_SERVICE_TYPE, CONF_OVERRIDE_MQTT_ENDPOINT, \
     CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, \
-    CONF_OPT_LAN_HTTP_FIRST, CONF_OPT_LAN_HTTP_FIRST_ONLY_GET, DEFAULT_USER_AGENT, \
-    CONF_OPT_PROFILE_BACKEND
+    CONF_OPT_LAN_HTTP_FIRST, CONF_OPT_LAN_HTTP_FIRST_ONLY_GET, \
+    CONF_OPT_PROFILE_BACKEND, effective_user_agent
 from .patches import set_http_cert_validation
 from .tls import (
     async_fetch_ca,
@@ -525,20 +525,25 @@ class MerossOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         """Handle the initial step."""
         if user_input is not None:
-            return self.async_create_entry(
-                title="",
-                data={k: v for k, v in user_input.items() if v not in (None, "")},
-            )
+            data = {k: v for k, v in user_input.items()
+                    if v not in (None, "")}
+            if str(data.get(CONF_OPT_CUSTOM_USER_AGENT, "")).startswith(
+                    "MerossHA/"):
+                # Keep the version-tracking default instead of freezing it.
+                data.pop(CONF_OPT_CUSTOM_USER_AGENT, None)
+            return self.async_create_entry(title="", data=data)
 
         saved_options = {}
         if self.config_entry is not None:
             saved_options = self.config_entry.options
+        saved_ua = effective_user_agent(
+            saved_options.get(CONF_OPT_CUSTOM_USER_AGENT))
 
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
                 vol.Optional(CONF_OPT_CUSTOM_USER_AGENT,
-                             default=saved_options.get(CONF_OPT_CUSTOM_USER_AGENT, DEFAULT_USER_AGENT)): str,
+                             default=saved_ua): str,
                 vol.Required(CONF_OPT_LAN,
                              default=saved_options.get(CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY)): SelectSelector(
                     SelectSelectorConfig(
