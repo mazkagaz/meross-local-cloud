@@ -19,12 +19,15 @@ from .models import (
 )
 from .paths import MISSING, get_path, parse_path, substitute
 from .registry import ProfileRegistry
+from .runtime import DeviceRuntime, EntityState, SubDeviceRuntime
 
 __all__ = [
     "ENGINE_VERSION",
     "CommandSpec",
     "CompiledProfile",
+    "DeviceRuntime",
     "EntitySpec",
+    "EntityState",
     "MISSING",
     "MatchContext",
     "MatchResult",
@@ -34,6 +37,7 @@ __all__ = [
     "ProfileMeta",
     "ProfileRegistry",
     "StateSpec",
+    "SubDeviceRuntime",
     "SubDeviceTemplate",
     "compile_profile",
     "get_path",

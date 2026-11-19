@@ -29,12 +29,27 @@ class _BrokerAppClient(MQTTAppClient):
             _LOGGER.debug("Unparseable MQTT message on %s",
                           getattr(mqtt_msg, "topic", None), exc_info=True)
             return
+        try:
+            namespace = message.namespace
+            method = message.method
+            messageid = message.messageid
+        except Exception:  # noqa: BLE001 - header is missing or malformed
+            _LOGGER.debug("MQTT RX with a malformed header on %s ignored",
+                          getattr(mqtt_msg, "topic", None))
+            return
         _LOGGER.debug("MQTT RX %s %s %s", getattr(mqtt_msg, "topic", None),
-                      message.namespace, message.method)
-        transaction = self._transactions.get(message.messageid)
+                      namespace, method)
+        listener = getattr(self, "message_listener", None)
+        if listener is not None:
+            try:
+                listener(message)
+            except Exception:  # noqa: BLE001 - dispatch must not break MQTT
+                _LOGGER.debug("MQTT payload listener failed",
+                              exc_info=True)
+        transaction = self._transactions.get(messageid)
         if transaction is None:
             _LOGGER.debug("MQTT RX without pending transaction: %s",
-                          message.messageid)
+                          messageid)
             return
         transaction.set_result(message)
 
@@ -43,13 +58,15 @@ class BrokerMqttTransport:
     """App-behavioured MQTT connection to the local broker."""
 
     def __init__(self, host: str, port: int, user_id: str, key: str,
-                 ssl_context: ssl.SSLContext, loop, timeout: float = 15):
+                 ssl_context: ssl.SSLContext, loop, timeout: float = 15,
+                 message_listener=None):
         self._host = host
         self._port = port
         self._user_id = str(user_id)
         self._key = key
         self._ssl_context = ssl_context
         self._loop = loop
+        self._message_listener = message_listener
         self._timeout = timeout
         self._connection: MQTTAppClient | None = None
 
@@ -67,6 +84,7 @@ class BrokerMqttTransport:
             loop=self._loop,
             timeout=self._timeout,
         )
+        connection.message_listener = self._message_listener
         await connection.async_connect(timeout=self._timeout)
         self._connection = connection
         _LOGGER.debug("Broker MQTT transport connected to %s:%s",

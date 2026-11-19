@@ -13,10 +13,12 @@ from .broker_transport import BrokerMqttTransport
 from .profiles import (
     ENGINE_VERSION,
     CompiledProfile,
+    DeviceRuntime,
     MatchContext,
     ProfileCompiler,
     ProfileMeta,
     ProfileRegistry,
+    SubDeviceTemplate,
     match_candidates,
     match_profile,
 )
@@ -69,6 +71,7 @@ class BrokerProfileAdapter:
         self.subdevices_unmatched = 0
         self.match_ambiguities = 0
         self.compile_errors: list[str] = []
+        self.runtimes: Dict[str, DeviceRuntime] = {}
 
     def start_background(self, hass: HomeAssistant) -> None:
         if self._task is None or self._task.done():
@@ -104,6 +107,7 @@ class BrokerProfileAdapter:
             self._coordinator.credentials.key,
             self._coordinator.mqtt_ssl_context,
             self._hass.loop,
+            message_listener=self._dispatch_message,
         )
         await self._transport.async_connect()
         devices = await self._coordinator.client.async_list_devices()
@@ -141,7 +145,7 @@ class BrokerProfileAdapter:
         """Match descriptors and compile profiles lazily. No entities, no IO."""
         if self.registry is None:
             return
-        for descriptor in self.descriptors.values():
+        for device_uuid, descriptor in self.descriptors.items():
             context = MatchContext(
                 type=descriptor["type"],
                 sub_type=descriptor["subType"],
@@ -162,11 +166,19 @@ class BrokerProfileAdapter:
             for error in compiled.errors:
                 if len(self.compile_errors) < _MAX_COMPILE_ERRORS:
                     self.compile_errors.append(error)
+            runtime = DeviceRuntime(device_uuid, compiled)
             if descriptor["subdevices"]:
-                self._match_subdevices(compiled, descriptor["subdevices"])
+                bindings = self._match_subdevices(
+                    compiled, descriptor["subdevices"])
+                for subdevice_id, template in bindings.items():
+                    runtime.add_subdevice(subdevice_id, template)
+            self.runtimes[device_uuid] = runtime
 
     def _match_subdevices(self, compiled: CompiledProfile,
-                          subdevices: list[Dict[str, Any]]) -> None:
+                          subdevices: list[Dict[str, Any]]
+                          ) -> Dict[str, SubDeviceTemplate]:
+        templates = {template.uid: template
+                     for template in compiled.subdevices}
         options = [
             ProfileMeta(
                 id=template.uid,
@@ -178,6 +190,7 @@ class BrokerProfileAdapter:
             )
             for template in compiled.subdevices
         ]
+        bindings = {}
         for subdevice in subdevices:
             result = match_candidates(
                 options,
@@ -192,6 +205,26 @@ class BrokerProfileAdapter:
                 self.subdevices_unmatched += 1
             else:
                 self.subdevices_matched += 1
+                bindings[subdevice["id"]] = templates[result.profile.id]
+        return bindings
+
+    def _dispatch_message(self, message) -> None:
+        """Route one decoded MQTT message to the matching device runtime."""
+        try:
+            device_uuid = message.uuid
+        except Exception:  # noqa: BLE001 - malformed header or topic
+            _LOGGER.debug("Payload without a device uuid ignored",
+                          exc_info=True)
+            return
+        runtime = self.runtimes.get(device_uuid)
+        if runtime is None:
+            return
+        try:
+            runtime.dispatch(message.namespace, message.method,
+                             message.payload)
+        except Exception as err:  # noqa: BLE001 - dispatch is best effort
+            _LOGGER.debug("Payload dispatch failed for %s: %s",
+                          device_uuid, err)
 
     async def _async_fetch_profiles(self) -> None:
         client = self._coordinator.client
@@ -239,6 +272,17 @@ class BrokerProfileAdapter:
             "subdevices_unmatched": self.subdevices_unmatched,
             "match_ambiguities": self.match_ambiguities,
             "compile_errors": list(self.compile_errors),
+            "runtime_messages": sum(
+                runtime.messages for runtime in self.runtimes.values()),
+            "runtime_updates": sum(
+                runtime.updates for runtime in self.runtimes.values()),
+            "runtime_ignored": sum(
+                runtime.ignored for runtime in self.runtimes.values()),
+            "runtime_errors": [
+                error
+                for runtime in self.runtimes.values()
+                for error in runtime.errors
+            ][:_MAX_COMPILE_ERRORS],
         }
         if self.registry is not None:
             summary.update(self.registry.summary())

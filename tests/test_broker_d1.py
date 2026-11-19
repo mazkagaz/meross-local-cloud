@@ -76,6 +76,49 @@ async def test_app_client_resolves_pending_transactions(hass):
     assert transaction.set_result.call_args.args[0].messageid == "m1"
 
 
+async def test_app_client_notifies_the_payload_listener(hass):
+    import json
+    import ssl
+    from types import SimpleNamespace as NS
+
+    from custom_components.meross_cloud.broker_transport import (
+        _BrokerAppClient,
+    )
+    from custom_components.meross_cloud.vendor.merossclient import (
+        HostAddress,
+    )
+
+    connection = _BrokerAppClient(
+        HostAddress("localhost", 2001),
+        NS(log=lambda *a, **k: None, getEffectiveLevel=lambda: 0,
+           isEnabledFor=lambda level: False),
+        user_id="1",
+        key="key",
+        sslcontext=ssl.create_default_context(),
+        loop=hass.loop,
+    )
+    seen = []
+    connection.message_listener = seen.append
+
+    def deliver(message):
+        connection.on_message(SimpleNamespace(
+            payload=json.dumps(message).encode(),
+            topic="/app/1-app/subscribe"))
+
+    deliver({
+        "header": {
+            "messageId": "m1", "namespace": "Appliance.Control.ToggleX",
+            "method": "PUSH", "from": "/appliance/uuid/publish",
+        },
+        "payload": {"channel": 0, "togglex": [{"channel": 0, "onoff": 1}]},
+    })
+    deliver({"payload": {}})
+    deliver({"header": {}, "payload": {}})
+
+    assert len(seen) == 1
+    assert seen[0].namespace == "Appliance.Control.ToggleX"
+
+
 def test_devices_library_is_loaded_lazily():
     from custom_components.meross_cloud.vendor.merossclient import library
 

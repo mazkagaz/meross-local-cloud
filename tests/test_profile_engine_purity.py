@@ -8,6 +8,7 @@ PACKAGE = Path(__file__).resolve().parents[1] / "custom_components" / \
 ALLOWED_IMPORTS = {
     "__future__",
     "dataclasses",
+    "json",
     "logging",
     "packaging",
     "re",

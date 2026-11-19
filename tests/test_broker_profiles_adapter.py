@@ -1,4 +1,5 @@
 import copy
+import json
 import logging
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,6 +12,9 @@ from custom_components.meross_cloud.broker_adapter import (
     _subdevice_descriptors,
 )
 from custom_components.meross_cloud.vendor.merossclient import DeviceDescriptor
+from custom_components.meross_cloud.vendor.merossclient.protocol.message import (
+    MerossResponse,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "profiles"
 
@@ -175,6 +179,78 @@ def test_subdevice_descriptors_are_extracted():
 
     assert _subdevice_descriptors(Hub()) == [
         {"id": "sub1", "type": "ms100", "subType": "un"}]
+
+
+def meross_message(payload, uuid="u1",
+                   namespace="Appliance.Control.ToggleX",
+                   method="PUSH", message_id="m1"):
+    return MerossResponse(json.dumps({
+        "header": {
+            "messageId": message_id,
+            "namespace": namespace,
+            "method": method,
+            "from": f"/appliance/{uuid}/publish",
+        },
+        "payload": payload,
+    }))
+
+
+async def test_runtime_dispatch_updates_the_device_state():
+    adapter = await run_adapter({
+        "schema_version": 1,
+        "revision": "abc",
+        "profiles": [profile_entry("mss310")],
+    })
+
+    adapter._dispatch_message(meross_message({
+        "channel": 0, "togglex": [{"channel": 0, "onoff": 1}]}))
+
+    summary = adapter.summary()
+    assert summary["runtime_messages"] == 1
+    assert summary["runtime_updates"] == 1
+    assert adapter.runtimes["u1"].entities["switch"].values == {"onoff": 1}
+
+
+async def test_runtime_dispatch_ignores_unknown_devices():
+    adapter = await run_adapter({
+        "schema_version": 1,
+        "revision": "abc",
+        "profiles": [profile_entry("mss310")],
+    })
+
+    adapter._dispatch_message(meross_message({
+        "channel": 0, "togglex": [{"channel": 0, "onoff": 1}]}, uuid="u2"))
+
+    assert adapter.summary()["runtime_messages"] == 0
+
+
+async def test_runtime_dispatch_ignores_malformed_messages():
+    adapter = await run_adapter({
+        "schema_version": 1,
+        "revision": "abc",
+        "profiles": [profile_entry("mss310")],
+    })
+
+    adapter._dispatch_message(MerossResponse(json.dumps({"payload": {}})))
+    adapter._dispatch_message(meross_message([]))
+
+    summary = adapter.summary()
+    assert summary["runtime_messages"] == 1
+    assert summary["runtime_ignored"] == 1
+    assert summary["runtime_updates"] == 0
+
+
+async def test_hub_subdevice_payload_updates_the_template_state():
+    adapter = await run_adapter(HUB_CATALOG, FakeHubTransport)
+
+    adapter._dispatch_message(meross_message(
+        {"tempHum": [{"id": "sub1", "temperature": 210}]},
+        uuid="u1", namespace=SUBDEVICE_NS))
+
+    summary = adapter.summary()
+    assert summary["runtime_updates"] == 1
+    state = adapter.runtimes["u1"].subdevices["sub1"]
+    assert state.entities["temperature"].values == {"value": 210}
 
 
 async def test_matching_device_is_compiled_lazily():
