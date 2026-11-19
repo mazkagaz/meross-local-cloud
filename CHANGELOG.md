@@ -1,3 +1,11 @@
+## 2.4.6
+
+- Pont temporaire pour les volets : `cover` et `number` rétablissent
+  `update_before_add=True`, car sans mise à jour initiale les entités
+  restaient dans un état erroné et les commandes échouaient.
+- Les autres plateformes conservent `update_before_add=False` (P1).
+- Ce pont sera supprimé en D3 avec le scheduler central par appareil.
+
 ## 2.4.5
 
 - Les entités de plateforme ne déclenchent plus de mise à jour complète de
