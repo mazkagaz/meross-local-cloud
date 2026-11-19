@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 
 from .broker_profiles import async_fetch_catalog, async_fetch_revision
 from .broker_transport import BrokerMqttTransport
+from .profiles import ENGINE_VERSION, ProfileRegistry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class BrokerProfileAdapter:
         self.state = "idle"
         self.revision: Optional[str] = None
         self.catalog_version: Optional[str] = None
+        self.registry: Optional[ProfileRegistry] = None
         self.profile_count = 0
         self.descriptors: Dict[str, Dict[str, Any]] = {}
         self.last_error: Optional[str] = None
@@ -106,6 +108,12 @@ class BrokerProfileAdapter:
         self.revision = revision.get("revision")
         self.profile_count = int(revision.get("count") or 0)
         self.catalog_version = catalog.get("revision")
+        self.registry = ProfileRegistry.from_catalog(catalog)
+        _LOGGER.info(
+            "Device profile engine %s: %d profile(s) loaded, %d skipped, "
+            "%d catalog error(s)",
+            ENGINE_VERSION, len(self.registry.profiles),
+            len(self.registry.skipped), len(self.registry.errors))
 
     async def async_stop(self) -> None:
         task, self._task = self._task, None
@@ -119,10 +127,14 @@ class BrokerProfileAdapter:
         self.state = "stopped"
 
     def summary(self) -> Dict[str, Any]:
-        return {
+        summary = {
             "state": self.state,
             "revision": self.revision,
             "profiles": self.profile_count,
             "devices": len(self.descriptors),
             "last_error": self.last_error,
+            "engine_version": ENGINE_VERSION,
         }
+        if self.registry is not None:
+            summary.update(self.registry.summary())
+        return summary
