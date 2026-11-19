@@ -11,7 +11,12 @@ Ce fork ajoute le support MRS100 :
 
 - entités `number` pour les durées d'ouverture/fermeture ;
 - boutons **Start calibration** / **Stop calibration** ;
-- capteur **Calibration status**.
+- capteur **Calibration status** ;
+- suppression fiable des appareils oubliés (Unbind) et réparation des appareils
+  absents depuis 48 h.
+
+**Version stable 2.3.2**, compatible avec le broker **1.0.0** et le pairer
+**2.0.8**.
 
 ## Les trois briques du montage
 
@@ -27,6 +32,15 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
                             │ appairage initial
                        Meross Local Pairer (Android)
 ```
+
+## Compatibilité des versions
+
+| Brique | Version minimale | Remarques |
+|---|---|---|
+| Meross Local Cloud | 2.3.2 | cette intégration |
+| Meross Local Broker | 1.0.0 | alpha99 minimum pour la CA valide, alpha101 pour Unbind |
+| Meross Local Pairer | 2.0.8 | HTTPS 2004 uniquement |
+| Home Assistant | 2025.6 | testé avec 2026.11 |
 
 ## Avant de commencer
 
@@ -80,10 +94,10 @@ Au-dessus des champs, un exemple générique est affiché :
 
 4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
 
-Le broker doit être en **alpha99 ou plus récent**. Sa CA locale est valide :
-elle est téléchargée depuis `/ca.crt`, vérifiée et épinglée par l'intégration,
-puis utilisée pour HTTP et MQTT (vérification du nom d'hôte incluse lorsque le
-certificat couvre l'adresse configurée).
+Le broker doit être en **1.0.0** (alpha99 minimum pour la CA valide). Sa CA
+locale est valide : elle est téléchargée depuis `/ca.crt`, vérifiée et épinglée
+par l'intégration, puis utilisée pour HTTP et MQTT (vérification du nom d'hôte
+incluse lorsque le certificat couvre l'adresse configurée).
 
 Le HTTP non chiffré (port 2003) et les options « ignorer la validation du
 certificat » ont été **supprimés** : toute connexion passe par TLS avec une CA
@@ -93,6 +107,29 @@ l'intégration.
 Le login local n'est pas obligatoirement une adresse email : un simple nom
 d'utilisateur suffit. **N'utilisez jamais les identifiants du cloud Meross
 officiel** ; l'intégration ne contacte que le broker local.
+
+## Oubli d'un appareil
+
+- Quand le broker publie `Appliance.Control.Unbind` (broker 1.0.0), l'appareil
+  et ses entités sont supprimés de Home Assistant dans la minute.
+- Un appareil absent de tous les polls HTTP réussis pendant **48 heures**
+  déclenche une réparation « Appareil plus appairé ». La confirmer supprime
+  l'appareil et ses entités ; un retour de l'appareil annule la réparation.
+- Les entrées héritées d'anciennes versions sont réconciliées au démarrage et
+  suivent le même délai de 48 h. Pour nettoyer immédiatement, supprimer
+  l'appareil dans **Paramètres → Appareils**.
+
+## Options de l'intégration
+
+Dans **Paramètres → Appareils et services → Meross Local Cloud → Configurer** :
+
+- **Device communication options** : MQTT seul, HTTP local puis MQTT, ou HTTP
+  local pour les GET uniquement. Le broker local fonctionne en MQTT seul.
+- **Custom HTTP User-Agent** : laisser vide sauf besoin particulier.
+
+Les diagnostics (**Paramètres → Appareils et services → Meross Local Cloud →
+Télécharger les diagnostics**) sont expurgés : identifiants masqués, CA,
+certificat serveur et état de vérification inclus.
 
 ## Entités créées
 
@@ -126,10 +163,11 @@ Home Assistant. Une nouvelle release GitHub est publiée pour chaque version.
 |---|---|
 | HACS ne trouve pas le dépôt | dépôt public, catégorie **Integration**, release publiée |
 | Aucun appareil découvert | add-on démarré, appareil ONLINE, compte local correct |
-| Erreur de connexion HTTP | adresse `https://…:2004` (HTTPS obligatoire) |
-| Certificat HTTPS refusé | mettre à jour le broker en alpha99+ (CA valide) |
-| Erreur MQTT | adresse `…:2001` ; broker alpha99+ requis |
+| Erreur de connexion HTTP | adresse du broker et port HTTPS `2004` (TLS obligatoire) |
+| Certificat HTTPS refusé | mettre à jour le broker en 1.0.0 (CA valide) |
+| Erreur MQTT | adresse `…:2001` ; broker 1.0.0 requis |
 | Entités absentes | redémarrer HA après l'appairage, puis recharger l'intégration |
+| Entités fantômes après un oubli | Unbind en 60 s, réparation 48 h, ou suppression manuelle de l'appareil |
 | Statut de calibration bloqué | vérifier les logs de l'add-on et le capteur `Calibration status` |
 
 ## Origine, licence et historique
