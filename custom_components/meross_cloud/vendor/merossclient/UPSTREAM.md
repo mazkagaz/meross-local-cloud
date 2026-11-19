@@ -21,6 +21,8 @@ direct), HA integration layer (`helpers/`, `devices/`, `config_flow.py`).
 - `from __future__ import annotations` added to the vendored modules so they
   import on Python 3.13 (upstream v6.0.2 relies on Python 3.14 lazy
   annotations).
+- `devices.json` is loaded lazily through `get_devices_library()` instead of at
+  import time: Home Assistant rejects blocking file I/O on the event loop.
 - No behavioural change otherwise.
 
 ## Updating

@@ -37,6 +37,13 @@ class FakeTransport:
         return None
 
 
+def test_devices_library_is_loaded_lazily():
+    from custom_components.meross_cloud.vendor.merossclient import library
+
+    assert not hasattr(library, "DEVICES_LIBRARY")
+    assert library.get_devices_library()
+
+
 def test_vendored_descriptor_reads_broker_payload():
     descriptor = DeviceDescriptor(PAYLOAD)
     assert descriptor.type == "mrs100"

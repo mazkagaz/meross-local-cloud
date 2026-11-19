@@ -11,7 +11,7 @@ from time import gmtime, time
 from typing import TYPE_CHECKING, override
 import zoneinfo
 
-from .library import DEVICES_LIBRARY
+from .library import get_devices_library
 from .protocol import const as mc, namespaces as mn
 
 if TYPE_CHECKING:
@@ -570,7 +570,8 @@ class Descriptor:
     _DYNAMIC_ATTRS = {
         mc.KEY_TYPE: (False, lambda _self: mc.TYPE_UNKNOWN),
         mc.KEY_SUBTYPE: (False, lambda _self: mc.TYPE_UNKNOWN),
-        "parameters": (False, lambda _self: DEVICES_LIBRARY[_self.type]),
+        "parameters": (
+            False, lambda _self: get_devices_library()[_self.type]),
         "hw_version": (True, lambda _self: None),
         "fw_version": (True, lambda _self: None),
         "productname": (False, lambda _self: _self.parameters["name"]),

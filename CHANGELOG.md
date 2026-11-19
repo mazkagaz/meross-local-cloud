@@ -1,3 +1,10 @@
+## 2.4.2
+
+- Corrige l'échec de chargement du backend profils : `devices.json` du socle
+  vendorisé était lu à l'import, ce que Home Assistant refuse sur la boucle
+  événementielle (`blocking call`, puis `IndexError` dans son détecteur).
+  Le catalogue est désormais chargé à la première utilisation.
+
 ## 2.4.1
 
 - Sonde du backend profils non bloquante : elle démarre en tâche de fond après

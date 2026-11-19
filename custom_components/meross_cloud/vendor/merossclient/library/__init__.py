@@ -71,4 +71,17 @@ class DevicesDict(dict[str, DeviceParameters]):
                 return _parameters
 
 
-DEVICES_LIBRARY = DevicesDict()
+_DEVICES_LIBRARY: DevicesDict | None = None
+
+
+def get_devices_library() -> DevicesDict:
+    """Load the JSON catalog on first use, never at import time.
+
+    Home Assistant rejects blocking file I/O on the event loop; the upstream
+    module opened devices.json at import, which also ran inside
+    async_setup_entry when the integration imported it lazily.
+    """
+    global _DEVICES_LIBRARY
+    if _DEVICES_LIBRARY is None:
+        _DEVICES_LIBRARY = DevicesDict()
+    return _DEVICES_LIBRARY
