@@ -240,6 +240,9 @@ class MerossCoordinator(DataUpdateCoordinator):
                 "The broker TLS certificate could not be verified. Check the "
                 "broker CA or enable the certificate-skip option.") from err
 
+        # Older versions could leave devices behind in the HA registry only:
+        # seed them so the 48 h repair can offer to clean them up.
+        await self._missing_tracker.async_reconcile(self._entry.entry_id)
         await self._missing_tracker.async_update(http_devices)
         self.hass.data[DOMAIN][MISSING_TRACKER] = self._missing_tracker
 

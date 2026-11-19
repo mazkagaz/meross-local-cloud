@@ -31,6 +31,11 @@ async def async_remove_device(hass: HomeAssistant, device_uuid: str) -> None:
 
     registry = dr.async_get(hass)
     entry = registry.async_get_device({(DOMAIN, internal_id)})
+    if entry is None and internal_id == device_uuid:
+        # Forgotten devices are gone from the manager, so only the registry
+        # identifier is left; top-level Meross devices use "#BASE:<uuid>".
+        entry = registry.async_get_device(
+            {(DOMAIN, f"#BASE:{device_uuid}")})
     if entry is not None:
         registry.async_remove_device(entry.id)
 

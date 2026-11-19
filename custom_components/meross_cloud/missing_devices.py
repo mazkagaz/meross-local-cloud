@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Iterable
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
@@ -21,6 +22,26 @@ _ISSUE_TRANSLATION_KEY = "remove_missing_device"
 
 def issue_id(device_uuid: str) -> str:
     return f"remove_missing_device_{device_uuid}"
+
+
+def registry_devices(hass: HomeAssistant, entry_id: str) -> dict[str, str]:
+    """Map the UUIDs of devices this config entry owns to their HA names.
+
+    Top-level Meross devices are registered with the ``#BASE:<uuid>`` internal
+    id; subdevices carry an extra ``#SUB`` segment and are left to their hub.
+    """
+    devices = {}
+    for device in dr.async_get(hass).devices.values():
+        if entry_id not in device.config_entries:
+            continue
+        for domain, identifier in device.identifiers:
+            if domain != DOMAIN or not identifier.startswith("#BASE:"):
+                continue
+            if "#SUB:" in identifier:
+                continue
+            uuid = identifier[len("#BASE:"):]
+            devices[uuid] = device.name_by_user or device.name or uuid
+    return devices
 
 
 class MissingDeviceTracker:
@@ -43,6 +64,22 @@ class MissingDeviceTracker:
         self._known = dict(stored.get("known") or {})
         self._missing = dict(stored.get("missing") or {})
         self._loaded = True
+
+    async def async_reconcile(self, entry_id: str) -> None:
+        """Seed tracking from devices that are already in the HA registry.
+
+        Entries left by an older version never went through the polling path
+        and would otherwise never be offered for removal.
+        """
+        if not self._loaded:
+            await self.async_load()
+        changed = False
+        for uuid, name in registry_devices(self._hass, entry_id).items():
+            if self._known.get(uuid, {}).get("name") != name:
+                self._known[uuid] = {"name": name}
+                changed = True
+        if changed:
+            await self._save()
 
     async def async_update(self, devices: Iterable) -> None:
         if not self._loaded:

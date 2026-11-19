@@ -1,3 +1,12 @@
+## 2.3.2
+
+- Devices left behind in the Home Assistant registries by earlier versions are
+  now tracked even when the broker never reports them again: at setup, the
+  integration reconciles the devices it owns against the HTTP discovery and
+  feeds the existing 48 h repair.
+- The repair also finds devices absent from the local manager through their
+  `#BASE:<uuid>` registry identifier, so confirming it really removes them.
+
 ## 2.3.1
 
 - Unbind: the device and its entities are now really deleted from the Home

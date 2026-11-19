@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.meross_cloud.common import DOMAIN
 from custom_components.meross_cloud.missing_devices import (
@@ -80,6 +82,49 @@ async def test_missing_period_survives_a_restart(hass, monkeypatch):
     await second.async_update([])
 
     assert _issue(hass, "u1") is not None
+
+
+async def test_registry_orphan_raises_issue_after_48_hours(hass, monkeypatch):
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    clock = _freeze(monkeypatch, start)
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.add_to_hass(hass)
+    dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "#BASE:u1")},
+        name="Volet",
+    )
+
+    tracker = MissingDeviceTracker(hass, entry.entry_id)
+    await tracker.async_reconcile(entry.entry_id)
+    await tracker.async_update([])
+    assert _issue(hass, "u1") is None
+
+    clock["now"] = start + MISSING_DEVICE_RETENTION
+    await tracker.async_update([])
+    issue = _issue(hass, "u1")
+    assert issue is not None
+    assert issue.translation_placeholders["name"] == "Volet"
+
+
+async def test_registry_reconcile_ignores_subdevices(hass, monkeypatch):
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    clock = _freeze(monkeypatch, start)
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.add_to_hass(hass)
+    dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "#BASE:u1#SUB:0")},
+        name="Thermostat",
+    )
+
+    tracker = MissingDeviceTracker(hass, entry.entry_id)
+    await tracker.async_reconcile(entry.entry_id)
+    await tracker.async_update([])
+    clock["now"] = start + MISSING_DEVICE_RETENTION
+    await tracker.async_update([])
+
+    assert _issue(hass, "u1#SUB:0") is None
 
 
 async def test_forget_stops_tracking(hass, monkeypatch):
