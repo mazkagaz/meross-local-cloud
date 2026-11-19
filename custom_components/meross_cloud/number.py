@@ -23,7 +23,10 @@ from meross_iot.manager import MerossManager
 from meross_iot.model.http.device import HttpDeviceInfo
 
 from . import MerossDevice
-from .common import DOMAIN, MANAGER, HA_NUMBER, DEVICE_LIST_COORDINATOR
+from .broker_config import ChannelState
+from .common import (
+    DOMAIN, MANAGER, HA_NUMBER, DEVICE_LIST_COORDINATOR, SHUTTER_CONFIG_CACHE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,6 +54,7 @@ class RollerShutterTimerNumber(MerossDevice, NumberEntity):
         if timer not in ("open", "close"):
             raise ValueError(f"Invalid roller-shutter timer {timer!r}")
         self._timer = timer
+        self._p3_state: ChannelState | None = None
         self._entity_name = f"{device.name} - {'Open' if timer == 'open' else 'Close'} duration"
         self._attr_native_min_value = MIN_TIMER_SECONDS
         self._attr_native_max_value = MAX_TIMER_SECONDS
@@ -61,7 +65,37 @@ class RollerShutterTimerNumber(MerossDevice, NumberEntity):
         self._attr_entity_category = EntityCategory.CONFIG
         self._attr_icon = "mdi:timer-cog-outline"
 
+    @property
+    def _config_cache(self):
+        hass = getattr(self, "hass", None)
+        if hass is None:
+            return None
+        return hass.data.get(DOMAIN, {}).get(SHUTTER_CONFIG_CACHE)
+
+    async def async_update(self):
+        """Use the broker account cache instead of a per-entity Config GET."""
+        cache = self._config_cache
+        if cache is not None:
+            try:
+                state = await cache.async_get_channel(
+                    self._device.internal_id, self._channel_id)
+            except Exception:  # noqa: BLE001 - cache failures fall back
+                state = None
+            if state is not None:
+                millis = (state.signal_open_ms if self._timer == "open"
+                          else state.signal_close_ms)
+                if millis is not None:
+                    self._p3_state = state
+                    return
+        self._p3_state = None
+        await super().async_update()
+
     def _timer_millis(self, timer: str):
+        if self._p3_state is not None:
+            cached = (self._p3_state.signal_open_ms if timer == "open"
+                      else self._p3_state.signal_close_ms)
+            if cached is not None:
+                return cached
         try:
             if timer == "open":
                 return self._device.get_open_timer_duration_millis(channel=self._channel_id)
@@ -96,6 +130,20 @@ class RollerShutterTimerNumber(MerossDevice, NumberEntity):
             close_timer_seconds=close_seconds,
             channel=self._channel_id,
         )
+        cache = self._config_cache
+        if cache is not None:
+            previous = self._p3_state
+            open_ms, close_ms = open_seconds * 1000, close_seconds * 1000
+            cache.update_from_set(
+                self._device.internal_id, self._channel_id,
+                signal_open_ms=open_ms, signal_close_ms=close_ms)
+            self._p3_state = ChannelState(
+                channel=self._channel_id,
+                signal_open_ms=open_ms,
+                signal_close_ms=close_ms,
+                position=previous.position if previous else None,
+                adjust=previous.adjust if previous else None,
+            )
         self.async_write_ha_state()
 
 

@@ -197,6 +197,22 @@ async def test_refresh_and_invalidate_force_a_fetch():
     assert fetch.await_count == 3
 
 
+async def test_hanging_fetch_times_out(monkeypatch):
+    import asyncio
+
+    from custom_components.meross_cloud import broker_config
+
+    monkeypatch.setattr(broker_config, "FETCH_TIMEOUT", 0.01)
+
+    async def hang(client, endpoint):
+        await asyncio.sleep(1)
+
+    config = cache(hang)
+
+    assert await config.async_get("u1") is None
+    assert "TimeoutError" in config.last_error
+
+
 async def test_endpoint_path_and_authentication():
     credentials = object()
     client = SimpleNamespace(cloud_credentials=credentials)

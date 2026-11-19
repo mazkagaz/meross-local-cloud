@@ -53,8 +53,10 @@ from .common import (
     HTTP_UPDATE_INTERVAL, DEVICE_LIST_COORDINATOR, calculate_id, DEFAULT_USER_AGENT, CONF_OPT_CUSTOM_USER_AGENT,
     CONF_OVERRIDE_MQTT_ENDPOINT, CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, TRANSPORT_MODES_TO_ENUM,
     MEROSS_DEFAULT_CLOUD_API_URL, CONF_CA_PEM, CONF_CA_FINGERPRINT, MISSING_TRACKER,
-    CONF_OPT_PROFILE_BACKEND, BROKER_ADAPTER, effective_user_agent
+    CONF_OPT_PROFILE_BACKEND, BROKER_ADAPTER, SHUTTER_CONFIG_CACHE,
+    effective_user_agent
 )
+from .broker_config import RollerShutterConfigCache
 from .missing_devices import MissingDeviceTracker
 from .log_redaction import install as install_log_redaction
 from .version import MEROSS_INTEGRATION_VERSION, MEROSS_IOT_VERSION
@@ -620,6 +622,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         manager = meross_coordinator.manager
         hass.data[DOMAIN][MANAGER] = manager
         hass.data[DOMAIN][DEVICE_LIST_COORDINATOR] = meross_coordinator
+        hass.data[DOMAIN][SHUTTER_CONFIG_CACHE] = RollerShutterConfigCache(
+            meross_coordinator.client, meross_coordinator.http_api_endpoint)
 
         if config_entry.options.get(CONF_OPT_PROFILE_BACKEND, False):
             from .broker_adapter import BrokerProfileAdapter

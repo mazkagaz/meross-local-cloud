@@ -20,6 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 CONFIG_PATH = "/v1/Device/rollerShutterConfig"
 DEFAULT_TTL = 600.0
 FAILURE_TTL = 60.0
+FETCH_TIMEOUT = 10.0
 
 
 @dataclass(frozen=True)
@@ -145,6 +146,11 @@ class RollerShutterConfigCache:
             return None
         return states.get(channel)
 
+    def cached_channel(self, uuid: str,
+                       channel: int) -> Optional[ChannelState]:
+        """Return a cached channel without triggering a fetch."""
+        return self._states.get(uuid, {}).get(channel)
+
     async def async_refresh(self) -> None:
         await self._async_fetch(force=True)
 
@@ -189,7 +195,8 @@ class RollerShutterConfigCache:
                 if now - self._fetched_at < ttl:
                     return
             try:
-                raw = await self._fetch(self._client, self._endpoint)
+                async with asyncio.timeout(FETCH_TIMEOUT):
+                    raw = await self._fetch(self._client, self._endpoint)
             except Exception as err:  # noqa: BLE001 - endpoint may be absent
                 self.last_error = f"{type(err).__name__}: {err}"
                 self._healthy = False
