@@ -1,3 +1,5 @@
+import logging
+
 from custom_components.meross_cloud.profiles import (
     ENGINE_VERSION,
     ProfileRegistry,
@@ -85,6 +87,100 @@ def test_catalog_errors_are_surfaced():
         catalog(entry("a"), errors=["broken.yaml: invalid"]))
 
     assert any("broken.yaml" in error for error in registry.errors)
+
+
+def test_non_object_catalog_is_rejected():
+    registry = ProfileRegistry.from_catalog(["not", "a", "catalog"])
+
+    assert registry.profiles == {}
+    assert any("not an object" in error for error in registry.errors)
+
+
+def test_non_list_profiles_is_reported():
+    registry = ProfileRegistry.from_catalog({
+        "schema_version": 2,
+        "revision": "rev1",
+        "profiles": "nope",
+    })
+
+    assert registry.profiles == {}
+    assert any("profiles is not a list" in error
+               for error in registry.errors)
+
+
+def test_non_list_catalog_errors_are_normalized():
+    registry = ProfileRegistry.from_catalog({
+        "schema_version": 2,
+        "revision": "rev1",
+        "profiles": [],
+        "errors": "boom",
+    })
+
+    assert any("malformed catalog errors" in error
+               for error in registry.errors)
+
+
+def test_null_and_string_entries_are_rejected():
+    registry = ProfileRegistry.from_catalog(
+        catalog(None, "nope", {"id": "a", "profile": "nope"}))
+
+    assert registry.profiles == {}
+    assert len([error for error in registry.errors
+                if "malformed profile" in error]) == 3
+
+
+def test_entry_without_id_is_rejected():
+    registry = ProfileRegistry.from_catalog(catalog({
+        "version": "1",
+        "profile": {"schema_version": 2, "profile": {"version": "1"}},
+    }))
+
+    assert registry.profiles == {}
+    assert any("malformed profile" in error for error in registry.errors)
+
+
+def test_entry_without_version_is_skipped():
+    data = {
+        "schema_version": 2,
+        "profile": {"id": "a"},
+        "match": {"type": ["x"]},
+        "payloads": {},
+        "entities": [],
+    }
+    registry = ProfileRegistry.from_catalog(catalog({
+        "id": "a",
+        "profile": data,
+    }))
+
+    assert registry.profiles == {}
+    assert registry.skipped[0].reason == "missing profile version"
+
+
+def test_invalid_requires_engine_is_skipped():
+    registry = ProfileRegistry.from_catalog(
+        catalog(entry("a", "nonsense")))
+
+    assert registry.profiles == {}
+    assert registry.skipped[0].id == "a"
+    assert "requires engine" in registry.skipped[0].reason
+
+
+def test_missing_revision_warns(caplog):
+    caplog.set_level(logging.WARNING)
+    registry = ProfileRegistry.from_catalog(
+        catalog(entry("a")) | {"revision": None})
+
+    assert registry.revision is None
+    assert "no revision" in caplog.text
+
+
+def test_extension_keys_are_preserved():
+    item = entry("a")
+    item["profile"]["x-vendor"] = {"nested": True}
+
+    registry = ProfileRegistry.from_catalog(catalog(item))
+
+    assert registry.profiles["a"].data["x-vendor"] == {"nested": True}
 
 
 def test_engine_requirements():

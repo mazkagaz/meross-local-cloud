@@ -1,0 +1,59 @@
+schema_version: 1
+profile:
+  id: meross.msl120
+  version: "2026.11.0"
+  requires_engine: ">=1.1"
+  description: "Éclairage RGB : état, luminosité et couleur."
+match:
+  type: [msl120]
+  abilities:
+    all: [Appliance.Control.ToggleX]
+    any: [Appliance.Control.Light]
+payloads:
+  Appliance.Control.ToggleX:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    digest: digest
+    fields:
+      channel: { type: integer }
+      togglex:
+        type: array
+        items:
+          type: object
+          fields:
+            channel: { type: integer }
+            onoff: { type: integer, values: { 0: off, 1: on } }
+  Appliance.Control.Light:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      channel: { type: integer }
+      light:
+        type: object
+        fields:
+          onoff: { type: integer, values: { 0: off, 1: on } }
+          luminance: { type: integer, unit: "%" }
+          rgb: { type: integer }
+          capacity: { type: integer }
+entities:
+  - key: light
+    platform: light
+    channel: 0
+    state:
+      namespace: Appliance.Control.Light
+      channel: $channel
+      fields:
+        onoff: light.onoff
+        brightness: light.luminance
+        rgb: light.rgb
+    commands:
+      turn_on:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { onoff: 1 } }
+      turn_off:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { onoff: 0 } }
+      set_brightness:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { luminance: $value } }
+      set_rgb:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { rgb: $value } }

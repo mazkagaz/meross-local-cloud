@@ -1,0 +1,482 @@
+"""Compile validated profile documents into runtime specs."""
+from __future__ import annotations
+
+import logging
+import re
+from typing import Any, Dict, List, Optional, Tuple
+
+from .models import (
+    CommandSpec,
+    CompiledProfile,
+    EntitySpec,
+    NamespaceSpec,
+    PollingSpec,
+    ProfileMeta,
+    StateSpec,
+)
+from .paths import InvalidPath, find_tokens, parse_path, validate_tokens
+
+_LOGGER = logging.getLogger(__name__)
+
+SIMPLE_PLATFORMS = frozenset({
+    "cover", "switch", "light", "sensor", "binary_sensor", "number",
+    "button", "select",
+})
+COMPLEX_PLATFORMS = frozenset({
+    "climate", "fan", "humidifier", "calendar", "media_player", "siren",
+    "update",
+})
+KNOWN_METHODS = frozenset({
+    "GET", "SET", "GETACK", "SETACK", "PUSH", "ERROR",
+})
+POLLING_STRATEGIES = frozenset({"default", "smart", "once", "chunked"})
+KNOWN_QUIRKS = frozenset({
+    "roller_shutter_config_replay",
+    "config_persist",
+    "adjust_start",
+    "adjust_stop",
+    "adjust_status_names",
+})
+_REQUIRED_VALUE_COMMANDS = {
+    "number": frozenset({"set_value"}),
+    "select": frozenset({"set_option"}),
+    "light": frozenset({"set_brightness", "set_rgb"}),
+}
+_KEY_RE = re.compile(r"^[a-z0-9_]+$")
+_DEFAULT_PERIOD_S = 60.0
+
+
+def _is_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_number(value: Any) -> bool:
+    return (isinstance(value, (int, float))
+            and not isinstance(value, bool))
+
+
+def compile_profile(profile: ProfileMeta) -> CompiledProfile:
+    """Compile one profile; entity errors stay isolated."""
+    data = profile.data if isinstance(profile.data, dict) else {}
+    compiled = CompiledProfile(
+        profile_id=profile.id,
+        version=profile.version,
+        schema_version=data.get("schema_version"),
+    )
+    compiled.namespaces = _compile_namespaces(profile.id, data, compiled)
+    _check_root_quirks(profile.id, data, compiled)
+    _compile_entities(profile.id, data, compiled)
+    return compiled
+
+
+class ProfileCompiler:
+    """Lazy compilation cache keyed by (id, version, hash)."""
+
+    def __init__(self) -> None:
+        self._cache: Dict[Tuple[str, Optional[str], Optional[str]],
+                          CompiledProfile] = {}
+
+    def compile(self, profile: ProfileMeta) -> CompiledProfile:
+        key = (profile.id, profile.version, profile.digest)
+        compiled = self._cache.get(key)
+        if compiled is None:
+            compiled = compile_profile(profile)
+            self._cache[key] = compiled
+        return compiled
+
+    @property
+    def cache_size(self) -> int:
+        return len(self._cache)
+
+
+def _compile_namespaces(profile_id: str, data: Dict[str, Any],
+                        compiled: CompiledProfile
+                        ) -> Dict[str, NamespaceSpec]:
+    raw_namespaces = data.get("payloads")
+    if raw_namespaces is None:
+        return {}
+    if not isinstance(raw_namespaces, dict):
+        compiled.errors.append(
+            f"{profile_id}: payloads must be an object")
+        return {}
+
+    namespaces = {}
+    for name, raw in raw_namespaces.items():
+        prefix = f"{profile_id}: namespace {name}"
+        if not isinstance(name, str) or not isinstance(raw, dict):
+            compiled.errors.append(f"{prefix}: malformed declaration")
+            continue
+        methods = _compile_methods(prefix, raw, compiled)
+        if methods is None:
+            continue
+        fields = raw.get("fields")
+        if fields is None:
+            fields = {}
+        elif not isinstance(fields, dict):
+            compiled.errors.append(f"{prefix}: fields must be an object")
+            fields = {}
+        digest = raw.get("digest")
+        if digest is not None:
+            if not isinstance(digest, str):
+                compiled.errors.append(f"{prefix}: digest must be a path")
+                digest = None
+            else:
+                try:
+                    parse_path(digest)
+                except InvalidPath as err:
+                    compiled.errors.append(f"{prefix}: invalid digest: {err}")
+                    digest = None
+        polling = _compile_polling(prefix, raw.get("polling"), methods,
+                                   compiled)
+        namespaces[name] = NamespaceSpec(
+            namespace=name,
+            methods=methods,
+            fields=dict(fields),
+            digest=digest,
+            polling=polling,
+        )
+    return namespaces
+
+
+def _compile_methods(prefix: str, raw: Dict[str, Any],
+                     compiled: CompiledProfile) -> Optional[Tuple[str, ...]]:
+    methods = raw.get("methods")
+    if (not isinstance(methods, (list, tuple)) or not methods
+            or not all(isinstance(item, str) for item in methods)):
+        compiled.errors.append(
+            f"{prefix}: methods must be a non-empty list of strings")
+        return None
+    known = []
+    for method in methods:
+        if method in KNOWN_METHODS:
+            known.append(method)
+        else:
+            compiled.warnings.append(
+                f"{prefix}: unknown method {method!r} ignored")
+    return tuple(known)
+
+
+def _compile_polling(prefix: str, raw: Any, methods: Tuple[str, ...],
+                     compiled: CompiledProfile) -> PollingSpec:
+    declared = raw if isinstance(raw, dict) else {}
+    if raw is not None and not isinstance(raw, dict):
+        compiled.errors.append(f"{prefix}: polling must be an object")
+
+    strategy = declared.get("strategy")
+    if strategy is None:
+        strategy = ("once" if "SET" in methods
+                    and not set(methods) & {"GET", "GETACK", "PUSH"}
+                    else "default")
+    elif strategy not in POLLING_STRATEGIES:
+        compiled.errors.append(f"{prefix}: unknown polling strategy "
+                               f"{strategy!r}")
+        strategy = "default"
+
+    period_s = declared.get("period_s", _DEFAULT_PERIOD_S)
+    if not _is_number(period_s) or period_s < 0:
+        compiled.errors.append(f"{prefix}: invalid polling period_s")
+        period_s = _DEFAULT_PERIOD_S
+
+    push = declared.get("push", "PUSH" in methods)
+    if not isinstance(push, bool):
+        compiled.errors.append(f"{prefix}: polling push must be a boolean")
+        push = "PUSH" in methods
+
+    response_size = declared.get("response_size")
+    if response_size is not None and (
+            not _is_int(response_size) or response_size < 0):
+        compiled.errors.append(f"{prefix}: invalid polling response_size")
+        response_size = None
+
+    return PollingSpec(
+        strategy=strategy,
+        period_s=float(period_s),
+        push=push,
+        response_size=response_size,
+    )
+
+
+def _check_root_quirks(profile_id: str, data: Dict[str, Any],
+                       compiled: CompiledProfile) -> None:
+    raw = data.get("quirks")
+    if raw is None:
+        return
+    if not isinstance(raw, (list, tuple)):
+        compiled.errors.append(f"{profile_id}: quirks must be a list")
+        return
+    seen = set()
+    for item in raw:
+        name = item.get("name") if isinstance(item, dict) else None
+        if not isinstance(name, str) or name not in KNOWN_QUIRKS:
+            compiled.errors.append(
+                f"{profile_id}: unknown root quirk {name!r}")
+            continue
+        if name in seen:
+            compiled.errors.append(
+                f"{profile_id}: duplicate root quirk {name!r}")
+        seen.add(name)
+
+
+def _compile_entities(profile_id: str, data: Dict[str, Any],
+                      compiled: CompiledProfile) -> None:
+    raw_entities = data.get("entities")
+    if raw_entities is None:
+        return
+    if not isinstance(raw_entities, (list, tuple)):
+        compiled.errors.append(f"{profile_id}: entities must be a list")
+        return
+
+    seen_keys = set()
+    for raw in raw_entities:
+        if not isinstance(raw, dict):
+            compiled.errors.append(
+                f"{profile_id}: malformed entity {raw!r}")
+            continue
+        key = raw.get("key")
+        label = key if isinstance(key, str) else "?"
+        if isinstance(key, str) and key in seen_keys:
+            compiled.errors.append(
+                f"{profile_id}: entity {label}: duplicate entity key")
+            continue
+        if isinstance(key, str):
+            seen_keys.add(key)
+
+        platform = raw.get("platform")
+        if platform in COMPLEX_PLATFORMS:
+            compiled.warnings.append(
+                f"{profile_id}: entity {label}: platform {platform} "
+                "deferred to D2.2.3")
+            continue
+        if platform not in SIMPLE_PLATFORMS:
+            compiled.warnings.append(
+                f"{profile_id}: entity {label}: unknown platform "
+                f"{platform!r} ignored")
+            continue
+
+        errors: List[str] = []
+        entity = _compile_entity(profile_id, raw, compiled.namespaces,
+                                 errors)
+        if errors:
+            compiled.errors.extend(errors)
+            continue
+        compiled.entities[entity.key] = entity
+
+
+def _compile_entity(profile_id: str, raw: Dict[str, Any],
+                    namespaces: Dict[str, NamespaceSpec],
+                    errors: List[str]) -> EntitySpec:
+    key = raw.get("key")
+    label = key if isinstance(key, str) else "?"
+    prefix = f"{profile_id}: entity {label}"
+
+    if not isinstance(key, str) or not _KEY_RE.fullmatch(key):
+        errors.append(f"{prefix}: invalid entity key")
+
+    platform = raw["platform"]
+    channel = raw.get("channel")
+    if channel is not None:
+        if not _is_int(channel) or channel < 0:
+            errors.append(f"{prefix}: channel must be a non-negative integer")
+            channel = None
+
+    device = raw.get("device", "hub")
+    if device not in ("hub", "subdevice"):
+        errors.append(f"{prefix}: invalid device {device!r}")
+    elif device == "subdevice":
+        errors.append(
+            f"{prefix}: subdevice entities require a hub template "
+            "(D2.2.3)")
+
+    name = _optional_string(prefix, raw, "name", errors)
+    device_class = _optional_string(prefix, raw, "device_class", errors)
+    entity_category = _optional_string(
+        prefix, raw, "entity_category", errors)
+    unit = _optional_string(prefix, raw, "unit", errors)
+
+    state = _compile_state(prefix, raw.get("state"), namespaces, channel,
+                           errors)
+    commands = _compile_commands(
+        prefix, platform, raw.get("commands"), namespaces, channel, errors)
+    quirks = _compile_entity_quirks(prefix, raw.get("quirks"), errors)
+    capabilities = raw.get("capabilities")
+    if capabilities is not None and not isinstance(capabilities, dict):
+        errors.append(f"{prefix}: capabilities must be an object")
+        capabilities = None
+
+    return EntitySpec(
+        uid=f"{profile_id}:{label}",
+        key=label,
+        platform=platform,
+        channel=channel,
+        name=name,
+        device_class=device_class,
+        entity_category=entity_category,
+        unit=unit,
+        device=device,
+        state=state,
+        commands=commands,
+        quirks=quirks,
+        capabilities=capabilities,
+    )
+
+
+def _optional_string(prefix: str, raw: Dict[str, Any], key: str,
+                     errors: List[str]) -> Optional[str]:
+    value = raw.get(key)
+    if value is not None and not isinstance(value, str):
+        errors.append(f"{prefix}: {key} must be a string")
+        return None
+    return value
+
+
+def _compile_state(prefix: str, raw: Any,
+                   namespaces: Dict[str, NamespaceSpec],
+                   entity_channel: Optional[int],
+                   errors: List[str]) -> Optional[StateSpec]:
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        errors.append(f"{prefix}: state must be an object")
+        return None
+
+    namespace = raw.get("namespace")
+    if not isinstance(namespace, str) or namespace not in namespaces:
+        errors.append(f"{prefix}: unknown state namespace {namespace!r}")
+
+    fields_raw = raw.get("fields")
+    fields: Dict[str, str] = {}
+    if not isinstance(fields_raw, dict) or not fields_raw:
+        errors.append(f"{prefix}: state.fields must be a non-empty object")
+    else:
+        for prop, path in fields_raw.items():
+            if not isinstance(prop, str) or not isinstance(path, str) \
+                    or not path:
+                errors.append(
+                    f"{prefix}: invalid state path for {prop!r}")
+                continue
+            try:
+                parse_path(path)
+            except InvalidPath as err:
+                errors.append(f"{prefix}: invalid state path {path!r}: {err}")
+                continue
+            fields[prop] = path
+
+    state_channel = raw.get("channel")
+    channel: Optional[int] = None
+    if state_channel is not None:
+        if state_channel == "$channel":
+            if entity_channel is None:
+                errors.append(
+                    f"{prefix}: $channel used without an entity channel")
+            channel = entity_channel
+        elif _is_int(state_channel) and state_channel >= 0:
+            channel = state_channel
+        else:
+            errors.append(
+                f"{prefix}: state channel must be a non-negative integer "
+                "or $channel")
+
+    digest = raw.get("digest")
+    if digest is not None:
+        if not isinstance(digest, str):
+            errors.append(f"{prefix}: state.digest must be a path")
+            digest = None
+        else:
+            try:
+                parse_path(digest)
+            except InvalidPath as err:
+                errors.append(f"{prefix}: invalid state digest: {err}")
+                digest = None
+
+    scale = raw.get("scale")
+    if scale is not None and not _is_number(scale):
+        errors.append(f"{prefix}: state.scale must be a number")
+        scale = None
+
+    return StateSpec(
+        namespace=namespace,
+        channel=channel,
+        fields=fields,
+        digest=digest,
+        scale=float(scale) if scale is not None else None,
+    )
+
+
+def _compile_commands(prefix: str, platform: str, raw: Any,
+                      namespaces: Dict[str, NamespaceSpec],
+                      entity_channel: Optional[int],
+                      errors: List[str]) -> Dict[str, CommandSpec]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        errors.append(f"{prefix}: commands must be an object")
+        return {}
+
+    commands = {}
+    for name, command in raw.items():
+        if not isinstance(name, str) or not isinstance(command, dict):
+            errors.append(f"{prefix}: malformed command {name!r}")
+            continue
+        namespace = command.get("namespace")
+        if not isinstance(namespace, str) or namespace not in namespaces:
+            errors.append(
+                f"{prefix}: command {name}: unknown namespace {namespace!r}")
+            continue
+        payload = command.get("payload")
+        if not isinstance(payload, dict):
+            errors.append(
+                f"{prefix}: command {name}: payload must be an object")
+            continue
+        invalid_tokens = validate_tokens(payload)
+        if invalid_tokens:
+            errors.append(
+                f"{prefix}: command {name}: unsupported token(s) "
+                f"{', '.join(sorted(set(invalid_tokens)))}")
+            continue
+        tokens = set(find_tokens(payload))
+        if "$channel" in tokens and entity_channel is None:
+            errors.append(
+                f"{prefix}: command {name}: $channel used without an "
+                "entity channel")
+        if (name in _REQUIRED_VALUE_COMMANDS.get(platform, ())
+                and "$value" not in tokens):
+            errors.append(
+                f"{prefix}: command {name}: $value is required")
+        value_scale = command.get("value_scale")
+        if value_scale is not None and not _is_number(value_scale):
+            errors.append(
+                f"{prefix}: command {name}: value_scale must be a number")
+            value_scale = None
+        commands[name] = CommandSpec(
+            namespace=namespace,
+            payload=dict(payload),
+            value_scale=float(value_scale)
+            if value_scale is not None else None,
+        )
+    return commands
+
+
+def _compile_entity_quirks(prefix: str, raw: Any,
+                           errors: List[str]) -> Tuple[Dict[str, Any], ...]:
+    if raw is None:
+        return ()
+    if not isinstance(raw, (list, tuple)):
+        errors.append(f"{prefix}: quirks must be a list")
+        return ()
+    quirks = []
+    seen = set()
+    for item in raw:
+        name = item.get("name") if isinstance(item, dict) else None
+        if not isinstance(name, str) or name not in KNOWN_QUIRKS:
+            errors.append(f"{prefix}: unknown quirk {name!r}")
+            continue
+        if name in seen:
+            errors.append(f"{prefix}: duplicate quirk {name!r}")
+            continue
+        seen.add(name)
+        params = item.get("params")
+        if params is not None and not isinstance(params, dict):
+            errors.append(f"{prefix}: quirk {name}: params must be an object")
+            continue
+        quirks.append(dict(item))
+    return tuple(quirks)

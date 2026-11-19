@@ -1,0 +1,84 @@
+schema_version: 1
+profile:
+  id: meross.mss310
+  version: "2026.11.0"
+  requires_engine: ">=1.1"
+  description: "Prise connectée avec mesure de consommation."
+match:
+  type: [mss310]
+  abilities:
+    all: [Appliance.Control.ToggleX]
+payloads:
+  Appliance.Control.ToggleX:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    digest: digest
+    fields:
+      channel: { type: integer }
+      togglex:
+        type: array
+        items:
+          type: object
+          fields:
+            channel: { type: integer }
+            onoff: { type: integer, values: { 0: off, 1: on } }
+  Appliance.Control.Electricity:
+    methods: [GETACK, PUSH]
+    fields:
+      channel: { type: integer }
+      electricity:
+        type: object
+        fields:
+          current: { type: number, unit: A, scale: 0.001 }
+          voltage: { type: number, unit: V, scale: 0.1 }
+          power: { type: number, unit: W, scale: 0.001 }
+          consumption: { type: number, unit: "kWh", scale: 0.001 }
+entities:
+  - key: switch
+    platform: switch
+    channel: 0
+    state:
+      namespace: Appliance.Control.ToggleX
+      channel: $channel
+      fields: { onoff: "togglex[0].onoff" }
+    commands:
+      turn_on:
+        namespace: Appliance.Control.ToggleX
+        payload:
+          { channel: $channel, togglex: [{ channel: $channel, onoff: 1 }] }
+      turn_off:
+        namespace: Appliance.Control.ToggleX
+        payload:
+          { channel: $channel, togglex: [{ channel: $channel, onoff: 0 }] }
+
+  - key: power
+    platform: sensor
+    channel: 0
+    name: "Power"
+    unit: W
+    device_class: power
+    state:
+      namespace: Appliance.Control.Electricity
+      channel: $channel
+      fields: { value: electricity.power }
+
+  - key: voltage
+    platform: sensor
+    channel: 0
+    name: "Voltage"
+    unit: V
+    device_class: voltage
+    state:
+      namespace: Appliance.Control.Electricity
+      channel: $channel
+      fields: { value: electricity.voltage }
+
+  - key: current
+    platform: sensor
+    channel: 0
+    name: "Current"
+    unit: A
+    device_class: current
+    state:
+      namespace: Appliance.Control.Electricity
+      channel: $channel
+      fields: { value: electricity.current }

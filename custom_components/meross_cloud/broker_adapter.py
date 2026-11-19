@@ -10,12 +10,19 @@ from homeassistant.core import HomeAssistant
 
 from .broker_profiles import async_fetch_catalog, async_fetch_revision
 from .broker_transport import BrokerMqttTransport
-from .profiles import ENGINE_VERSION, ProfileRegistry
+from .profiles import (
+    ENGINE_VERSION,
+    MatchContext,
+    ProfileCompiler,
+    ProfileRegistry,
+    match_profile,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 _DESCRIBE_TIMEOUT = 5
 _TOTAL_BUDGET = 20
+_MAX_COMPILE_ERRORS = 20
 
 
 class BrokerProfileAdapter:
@@ -38,6 +45,11 @@ class BrokerProfileAdapter:
         self.profile_count = 0
         self.descriptors: Dict[str, Dict[str, Any]] = {}
         self.last_error: Optional[str] = None
+        self.compiler = ProfileCompiler()
+        self.devices_matched = 0
+        self.devices_unmatched = 0
+        self.match_ambiguities = 0
+        self.compile_errors: list[str] = []
 
     def start_background(self, hass: HomeAssistant) -> None:
         if self._task is None or self._task.done():
@@ -92,13 +104,43 @@ class BrokerProfileAdapter:
                 "subType": descriptor.subType,
                 "firmware": descriptor.fw_version,
                 "abilities": sorted(descriptor.ability),
+                "mac": descriptor.macAddress,
+                "is_hub": descriptor.is_hub,
             }
+        self._match_profiles()
         if self.descriptors:
             _LOGGER.info(
                 "Broker profile backend: revision %s, %d profile(s), "
-                "%d device(s) described",
+                "%d device(s) described, %d matched (%d compiled)",
                 (self.revision or "unknown")[:16], self.profile_count,
-                len(self.descriptors))
+                len(self.descriptors), self.devices_matched,
+                self.compiler.cache_size)
+
+    def _match_profiles(self) -> None:
+        """Match descriptors and compile profiles lazily. No entities, no IO."""
+        if self.registry is None:
+            return
+        for descriptor in self.descriptors.values():
+            context = MatchContext(
+                type=descriptor["type"],
+                sub_type=descriptor["subType"],
+                mac=descriptor["mac"],
+                abilities=frozenset(descriptor["abilities"]),
+                is_hub=bool(descriptor["is_hub"]),
+            )
+            result = match_profile(self.registry, context)
+            if result.ambiguous:
+                self.match_ambiguities += 1
+            if result.profile is None:
+                self.devices_unmatched += 1
+                continue
+            self.devices_matched += 1
+            compiled = self.compiler.compile(result.profile)
+            for warning in compiled.warnings:
+                _LOGGER.debug("Profile warning: %s", warning)
+            for error in compiled.errors:
+                if len(self.compile_errors) < _MAX_COMPILE_ERRORS:
+                    self.compile_errors.append(error)
 
     async def _async_fetch_profiles(self) -> None:
         client = self._coordinator.client
@@ -134,6 +176,11 @@ class BrokerProfileAdapter:
             "devices": len(self.descriptors),
             "last_error": self.last_error,
             "engine_version": ENGINE_VERSION,
+            "profiles_compiled": self.compiler.cache_size,
+            "devices_matched": self.devices_matched,
+            "devices_unmatched": self.devices_unmatched,
+            "match_ambiguities": self.match_ambiguities,
+            "compile_errors": list(self.compile_errors),
         }
         if self.registry is not None:
             summary.update(self.registry.summary())

@@ -1,8 +1,8 @@
 """Runtime models for compiled device profiles."""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -30,3 +30,76 @@ class ProfileMeta:
                 or entry.get("requires_engine")),
             data=data,
         )
+
+
+@dataclass(frozen=True)
+class PollingSpec:
+    """How a namespace is polled by the (future) central scheduler."""
+
+    strategy: str = "default"
+    period_s: float = 60
+    push: bool = False
+    response_size: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class NamespaceSpec:
+    """A validated payload namespace declaration."""
+
+    namespace: str
+    methods: Tuple[str, ...]
+    fields: Dict[str, Any] = field(default_factory=dict)
+    digest: Optional[str] = None
+    polling: PollingSpec = field(default_factory=PollingSpec)
+
+
+@dataclass(frozen=True)
+class StateSpec:
+    """Where an entity reads its state from."""
+
+    namespace: str
+    channel: Optional[int] = None
+    fields: Dict[str, str] = field(default_factory=dict)
+    digest: Optional[str] = None
+    scale: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class CommandSpec:
+    """One entity command, payload still carrying $channel/$value."""
+
+    namespace: str
+    payload: Dict[str, Any] = field(default_factory=dict)
+    value_scale: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class EntitySpec:
+    """A compiled entity, ready for D3 without HA registration."""
+
+    uid: str
+    key: str
+    platform: str
+    channel: Optional[int] = None
+    name: Optional[str] = None
+    device_class: Optional[str] = None
+    entity_category: Optional[str] = None
+    unit: Optional[str] = None
+    device: str = "hub"
+    state: Optional[StateSpec] = None
+    commands: Dict[str, CommandSpec] = field(default_factory=dict)
+    quirks: Tuple[Dict[str, Any], ...] = ()
+    capabilities: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class CompiledProfile:
+    """Compilation result; entity errors are isolated."""
+
+    profile_id: str
+    version: Optional[str]
+    schema_version: Optional[int]
+    namespaces: Dict[str, NamespaceSpec] = field(default_factory=dict)
+    entities: Dict[str, EntitySpec] = field(default_factory=dict)
+    errors: list = field(default_factory=list)
+    warnings: list = field(default_factory=list)

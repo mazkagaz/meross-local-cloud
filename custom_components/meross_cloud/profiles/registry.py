@@ -34,19 +34,40 @@ class ProfileRegistry:
 
     @classmethod
     def from_catalog(cls, payload: Optional[Dict[str, Any]]) -> "ProfileRegistry":
-        payload = payload or {}
+        if payload is None:
+            payload = {}
+        if not isinstance(payload, dict):
+            return cls(errors=["malformed catalog: payload is not an object"])
+
+        raw_errors = payload.get("errors")
+        if raw_errors is None:
+            errors = []
+        elif isinstance(raw_errors, list):
+            errors = [str(error) for error in raw_errors]
+        else:
+            errors = [f"malformed catalog errors: {raw_errors!r}"]
+
         registry = cls(
             revision=payload.get("revision"),
             schema_version=payload.get("schema_version"),
-            errors=[str(error) for error in payload.get("errors") or []],
+            errors=errors,
         )
+        if registry.revision is None:
+            _LOGGER.warning("Profile catalog has no revision")
 
         if registry.schema_version not in SUPPORTED_SCHEMA_VERSIONS:
             registry.errors.append(
                 f"unsupported schema_version {registry.schema_version!r}")
             return registry
 
-        for entry in payload.get("profiles") or []:
+        entries = payload.get("profiles")
+        if entries is None:
+            entries = []
+        elif not isinstance(entries, list):
+            registry.errors.append("malformed catalog: profiles is not a list")
+            entries = []
+
+        for entry in entries:
             profile_id = entry.get("id") if isinstance(entry, dict) else None
             data = entry.get("profile") if isinstance(entry, dict) else None
             if not isinstance(profile_id, str) or not isinstance(data, dict):
@@ -65,7 +86,12 @@ class ProfileRegistry:
                         f"requires engine {requires} (running "
                         f"{ENGINE_VERSION})"))
                 continue
-            registry.profiles[profile_id] = ProfileMeta.from_entry(entry)
+            meta = ProfileMeta.from_entry(entry)
+            if not meta.version:
+                registry.skipped.append(
+                    SkippedProfile(profile_id, "missing profile version"))
+                continue
+            registry.profiles[profile_id] = meta
 
         return registry
 

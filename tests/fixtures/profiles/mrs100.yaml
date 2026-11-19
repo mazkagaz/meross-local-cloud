@@ -1,0 +1,148 @@
+schema_version: 1
+profile:
+  id: meross.mrs100
+  version: "2026.11.0"
+  requires_engine: ">=1.1"
+  description: "Volet roulant MRS100 : position, durées persistées, calibration."
+match:
+  type: [mrs100]
+  sub_type: ["*"]
+  abilities:
+    all: [Appliance.RollerShutter.State]
+payloads:
+  Appliance.RollerShutter.State:
+    methods: [GETACK, SETACK, PUSH]
+    fields:
+      channel: { type: integer }
+      state:
+        type: integer
+        values: { 0: stop, 1: open, 2: close }
+  Appliance.RollerShutter.Position:
+    methods: [GETACK, SETACK, PUSH]
+    fields:
+      channel: { type: integer }
+      position: { type: integer, unit: "%" }
+      state: { type: integer }
+  Appliance.RollerShutter.Config:
+    methods: [SET, SETACK]
+    fields:
+      channel: { type: integer }
+      config:
+        type: object
+        fields:
+          signalOpen: { type: integer, unit: "ms" }
+          signalClose: { type: integer, unit: "ms" }
+  Appliance.RollerShutter.Adjust:
+    methods: [GETACK, SET, SETACK, PUSH]
+    fields:
+      channel: { type: integer }
+      value: { type: integer }
+entities:
+  - key: cover
+    platform: cover
+    channel: 0
+    state:
+      namespace: Appliance.RollerShutter.Position
+      channel: $channel
+      fields:
+        position: position
+        state: state
+    commands:
+      open:
+        namespace: Appliance.RollerShutter.State
+        payload: { channel: $channel, state: 1 }
+      close:
+        namespace: Appliance.RollerShutter.State
+        payload: { channel: $channel, state: 2 }
+      stop:
+        namespace: Appliance.RollerShutter.State
+        payload: { channel: $channel, state: 0 }
+      set_position:
+        namespace: Appliance.RollerShutter.Position
+        payload: { channel: $channel, position: $value }
+    quirks:
+      - name: roller_shutter_config_replay
+        params: { cooldown_s: 300 }
+
+  - key: open_duration
+    platform: number
+    channel: 0
+    name: "Open duration"
+    unit: s
+    device_class: duration
+    entity_category: config
+    state:
+      namespace: Appliance.RollerShutter.Config
+      channel: $channel
+      fields: { value: config.signalOpen }
+      scale: 0.001
+    commands:
+      set_value:
+        namespace: Appliance.RollerShutter.Config
+        payload: { channel: $channel, config: { signalOpen: $value } }
+        value_scale: 1000
+    quirks:
+      - name: config_persist
+
+  - key: close_duration
+    platform: number
+    channel: 0
+    name: "Close duration"
+    unit: s
+    device_class: duration
+    entity_category: config
+    state:
+      namespace: Appliance.RollerShutter.Config
+      channel: $channel
+      fields: { value: config.signalClose }
+      scale: 0.001
+    commands:
+      set_value:
+        namespace: Appliance.RollerShutter.Config
+        payload: { channel: $channel, config: { signalClose: $value } }
+        value_scale: 1000
+    quirks:
+      - name: config_persist
+
+  - key: start_calibration
+    platform: button
+    channel: 0
+    name: "Start calibration"
+    entity_category: config
+    commands:
+      press:
+        namespace: Appliance.RollerShutter.Adjust
+        payload: { channel: $channel, value: 1 }
+    quirks:
+      - name: adjust_start
+
+  - key: stop_calibration
+    platform: button
+    channel: 0
+    name: "Stop calibration"
+    entity_category: config
+    commands:
+      press:
+        namespace: Appliance.RollerShutter.Adjust
+        payload: { channel: $channel, value: 0 }
+    quirks:
+      - name: adjust_stop
+
+  - key: calibration_status
+    platform: sensor
+    channel: 0
+    name: "Calibration status"
+    entity_category: diagnostic
+    state:
+      namespace: Appliance.RollerShutter.Adjust
+      channel: $channel
+      fields: { value: value }
+    quirks:
+      - name: adjust_status_names
+quirks:
+  - name: roller_shutter_config_replay
+    params: { cooldown_s: 300 }
+  - name: config_persist
+  - name: adjust_start
+  - name: adjust_stop
+  - name: adjust_status_names
