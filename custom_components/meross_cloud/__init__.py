@@ -626,7 +626,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
             adapter = BrokerProfileAdapter(hass, meross_coordinator)
             hass.data[DOMAIN][BROKER_ADAPTER] = adapter
-            await adapter.async_start()
 
         if ca_pem and (
                 config_entry.data.get(CONF_CA_PEM) != ca_pem
@@ -656,6 +655,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         # a discovery when needed
         config_entry.async_on_unload(meross_coordinator.async_add_listener(_http_api_polled))
         config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
+
+        adapter = hass.data[DOMAIN].get(BROKER_ADAPTER)
+        if adapter is not None:
+            adapter.start_background(hass)
 
         return True
 

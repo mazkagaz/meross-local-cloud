@@ -1,3 +1,12 @@
+## 2.4.1
+
+- Sonde du backend profils non bloquante : elle démarre en tâche de fond après
+  le montage des plateformes, avec un budget global de 20 s, 5 s par appareil
+  et abandon au premier échec. Le capteur **Broker profile backend** est créé
+  immédiatement (`starting`, puis `connected`/`error`).
+- Corrige le rechargement très long et l'absence de capteur lorsque les ACK
+  `System.All` timeoutaient.
+
 ## 2.4.0
 
 - Opt-in device-profile backend (`profile_backend`, disabled by default):

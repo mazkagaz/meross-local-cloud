@@ -91,6 +91,53 @@ async def test_adapter_builds_descriptors_and_summary():
         adapter.descriptors["u1"]["abilities"]
 
 
+async def test_adapter_aborts_after_the_first_descriptor_failure():
+    class FailingTransport(FakeTransport):
+        calls = 0
+
+        async def async_describe(self, device_uuid):
+            FailingTransport.calls += 1
+            raise TimeoutError("GET Appliance.System.All")
+
+    coordinator = SimpleNamespace(
+        credentials=SimpleNamespace(user_id="1", key="key"),
+        mqtt_address=("localhost", 2001),
+        mqtt_ssl_context=object(),
+        http_api_endpoint="https://broker:2004",
+        client=SimpleNamespace(
+            async_list_devices=AsyncMock(return_value=[
+                SimpleNamespace(uuid="u1"), SimpleNamespace(uuid="u2")])),
+    )
+    with patch(
+            "custom_components.meross_cloud.broker_adapter."
+            "BrokerMqttTransport", return_value=FailingTransport()), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
+                "async_fetch_revision", AsyncMock(
+                    return_value={"revision": "abc", "count": 3})), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
+                "async_fetch_catalog", AsyncMock(
+                    return_value={"revision": "abc"})):
+        adapter = BrokerProfileAdapter(SimpleNamespace(loop=None), coordinator)
+        await adapter.async_start()
+
+    assert FailingTransport.calls == 1
+    assert adapter.summary()["state"] == "error"
+    assert adapter.descriptors == {}
+    assert "TimeoutError" in adapter.last_error
+
+
+def test_sensor_shows_starting_before_the_probe_runs():
+    adapter = SimpleNamespace(summary=lambda: {
+        "state": "starting", "revision": None, "profiles": 0,
+        "devices": 0, "last_error": None,
+    })
+    sensor = BrokerProfileSensor(adapter)
+
+    assert sensor.native_value == "starting"
+
+
 def test_profile_sensor_exposes_adapter_summary():
     adapter = SimpleNamespace(summary=lambda: {
         "state": "connected", "revision": "abc", "profiles": 3,
