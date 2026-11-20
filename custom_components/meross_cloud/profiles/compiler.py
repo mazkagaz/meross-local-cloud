@@ -309,6 +309,9 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
     entity_category = _optional_string(
         prefix, raw, "entity_category", errors)
     unit = _optional_string(prefix, raw, "unit", errors)
+    min_value = _optional_number(prefix, raw, "min_value", errors)
+    max_value = _optional_number(prefix, raw, "max_value", errors)
+    step = _optional_number(prefix, raw, "step", errors)
 
     state = _compile_state(prefix, raw.get("state"), namespaces, channel,
                            errors)
@@ -332,6 +335,9 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
         device_class=device_class,
         entity_category=entity_category,
         unit=unit,
+        min_value=min_value,
+        max_value=max_value,
+        step=step,
         device=device,
         state=state,
         commands=commands,
@@ -384,6 +390,15 @@ def _compile_subdevices(profile_id: str, data: Dict[str, Any],
             entities=entities,
         ))
     return tuple(templates)
+
+
+def _optional_number(prefix: str, raw: Dict[str, Any], key: str,
+                     errors: List[str]) -> Optional[float]:
+    value = raw.get(key)
+    if value is not None and not _is_number(value):
+        errors.append(f"{prefix}: {key} must be a number")
+        return None
+    return float(value) if value is not None else None
 
 
 def _optional_string(prefix: str, raw: Dict[str, Any], key: str,

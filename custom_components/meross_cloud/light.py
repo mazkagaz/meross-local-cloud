@@ -17,6 +17,9 @@ from homeassistant.components.light import ColorMode, \
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from . import MerossDevice
 from .common import (DOMAIN, MANAGER, HA_LIGHT, DEVICE_LIST_COORDINATOR)
+from .profile_entities import (
+    async_setup_profile_entities,
+)
 from .version import MEROSS_INTEGRATION_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -333,6 +336,9 @@ class LightEntityWrapper(MerossDevice, LightEntity):
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
+    async_setup_profile_entities(
+        hass, config_entry, HA_LIGHT, async_add_entities)
+
     def entity_adder_callback():
         """Discover and adds new Meross entities"""
         manager: MerossManager = hass.data[DOMAIN][MANAGER]  # type

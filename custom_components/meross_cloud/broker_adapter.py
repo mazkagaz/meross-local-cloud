@@ -74,6 +74,22 @@ class BrokerProfileAdapter:
         self.compile_errors: list[str] = []
         self.runtimes: Dict[str, DeviceRuntime] = {}
         self.schedulers: Dict[str, DeviceScheduler] = {}
+        self._ready_listeners: list = []
+
+    def add_ready_listener(self, callback) -> None:
+        """Call callback once matching is done (or immediately if already)."""
+        if self.state == "connected":
+            callback()
+            return
+        self._ready_listeners.append(callback)
+
+    def _notify_ready(self) -> None:
+        listeners, self._ready_listeners = self._ready_listeners, []
+        for callback in listeners:
+            try:
+                callback()
+            except Exception:  # noqa: BLE001 - entity platforms must not fail
+                _LOGGER.exception("Profile entity listener failed")
 
     def start_background(self, hass: HomeAssistant) -> None:
         if self._task is None or self._task.done():
@@ -98,6 +114,8 @@ class BrokerProfileAdapter:
             _LOGGER.warning("Broker profile backend unavailable: %s", err)
         else:
             self.state = "error" if self.last_error else "connected"
+            if self.state == "connected":
+                self._notify_ready()
 
     async def _async_probe(self) -> None:
         mqtt_host, mqtt_port = self._coordinator.mqtt_address
@@ -223,6 +241,20 @@ class BrokerProfileAdapter:
                 device_uuid, runtime.profile, runtime, transport)
             self.schedulers[device_uuid] = scheduler
             scheduler.start()
+
+    async def async_send(self, device_uuid: str, namespace: str, method: str,
+                         payload) -> bool:
+        """Send a command for a profile entity and refresh its namespace."""
+        transport = self._transport
+        if transport is None or not hasattr(transport, "async_request"):
+            return False
+        response = await transport.async_request(
+            device_uuid, namespace, method, payload)
+        self._dispatch_message(response)
+        scheduler = self.schedulers.get(device_uuid)
+        if scheduler is not None:
+            scheduler.request_refresh(namespace)
+        return True
 
     def _dispatch_message(self, message) -> None:
         """Route one decoded MQTT message to the matching device runtime."""

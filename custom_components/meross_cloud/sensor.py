@@ -30,9 +30,12 @@ from .calibration import (
     set_adjust_status,
     adjust_status_name,
 )
-from .common import (DOMAIN, MANAGER, log_exception, HA_SENSOR,
-                     HA_SENSOR_POLL_INTERVAL_SECONDS, invoke_method_or_property,
-                     DEVICE_LIST_COORDINATOR, BROKER_ADAPTER)
+from .common import (
+    DOMAIN, MANAGER, log_exception, HA_SENSOR,
+    HA_SENSOR_POLL_INTERVAL_SECONDS, invoke_method_or_property,
+    DEVICE_LIST_COORDINATOR, BROKER_ADAPTER,
+)
+from .profile_entities import async_setup_profile_entities
 from .broker_profile_sensor import BrokerProfileSensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -414,6 +417,9 @@ class RollerShutterCalibrationSensorWrapper(MerossDevice, SensorEntity):
 # PLATFORM METHODS
 # ----------------------------------------------
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
+    async_setup_profile_entities(
+        hass, config_entry, HA_SENSOR, async_add_entities)
+
     def entity_adder_callback():
         """Discover and adds new Meross entities"""
         manager: MerossManager = hass.data[DOMAIN][MANAGER]  # type

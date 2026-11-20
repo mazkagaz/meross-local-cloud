@@ -6,10 +6,11 @@ layer and never creates Home Assistant entities or polls.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from .models import CompiledProfile, EntitySpec, StateSpec, SubDeviceTemplate
 from .paths import MISSING, get_path
@@ -45,6 +46,7 @@ class DeviceRuntime:
     updates: int = 0
     ignored: int = 0
     errors: List[str] = field(default_factory=list)
+    listeners: List[Callable[[], None]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         for entity in self.profile.entities.values():
@@ -89,9 +91,26 @@ class DeviceRuntime:
 
         if applied:
             self.updates += applied
+            self._notify()
         else:
             self.ignored += 1
         return applied
+
+    def add_listener(self, callback: Callable[[], None]) -> Callable[[], None]:
+        self.listeners.append(callback)
+
+        def remove() -> None:
+            with contextlib.suppress(ValueError):
+                self.listeners.remove(callback)
+
+        return remove
+
+    def _notify(self) -> None:
+        for callback in list(self.listeners):
+            try:
+                callback()
+            except Exception:  # noqa: BLE001 - a listener never breaks state
+                _LOGGER.debug("Runtime listener failed", exc_info=True)
 
     def _ignore(self, reason: str) -> int:
         self.ignored += 1

@@ -71,6 +71,9 @@ entities:
     unit: s
     device_class: duration
     entity_category: config
+    min_value: 10
+    max_value: 120
+    step: 1
     state:
       namespace: Appliance.RollerShutter.Config
       channel: $channel
@@ -91,6 +94,9 @@ entities:
     unit: s
     device_class: duration
     entity_category: config
+    min_value: 10
+    max_value: 120
+    step: 1
     state:
       namespace: Appliance.RollerShutter.Config
       channel: $channel

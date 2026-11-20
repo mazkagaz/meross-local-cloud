@@ -29,13 +29,14 @@ SENSORS = "sensors"
 HA_SWITCH = "switch"
 HA_LIGHT = "light"
 HA_SENSOR = "sensor"
+HA_BINARY_SENSOR = "binary_sensor"
 HA_COVER = "cover"
 HA_CLIMATE = "climate"
 HA_FAN = "fan"
 HA_HUMIDIFIER = "humidifier"
 HA_NUMBER = "number"
 HA_BUTTON = "button"
-MEROSS_PLATFORMS = (HA_SWITCH, HA_LIGHT, HA_COVER, HA_SENSOR, HA_CLIMATE, HA_HUMIDIFIER, HA_NUMBER, HA_BUTTON)
+MEROSS_PLATFORMS = (HA_SWITCH, HA_LIGHT, HA_COVER, HA_SENSOR, HA_BINARY_SENSOR, HA_CLIMATE, HA_HUMIDIFIER, HA_NUMBER, HA_BUTTON)
 CONNECTION_TIMEOUT_THRESHOLD = 5
 
 CONF_STORED_CREDS = "stored_credentials"
@@ -61,6 +62,7 @@ DIFFERENT_HOSTS_FOR_BROKER_AND_API = "different_hosts_for_broker_and_api"
 
 CONF_OPT_CUSTOM_USER_AGENT = "custom_user_agent"
 CONF_OPT_PROFILE_BACKEND = "profile_backend"
+CONF_OPT_PROFILE_ENTITIES = "profile_entities"
 BROKER_ADAPTER = "broker_profile_adapter"
 SHUTTER_CONFIG_CACHE = "shutter_config_cache"
 CONF_OPT_LAN = "lan_transport_mode"

@@ -636,6 +636,29 @@ def test_invalid_string_attributes_are_errors(field):
                for error in compiled.errors)
 
 
+def test_number_range_is_compiled():
+    compiled = compile_profile(meta(doc(entities=[entity(
+        key="level", platform="number",
+        min_value=10, max_value=120, step=1,
+        commands={"set_value": {"namespace": TOGGLE_NS,
+                                "payload": {"value": "$value"}}})])))
+
+    spec = compiled.entities["level"]
+    assert spec.min_value == 10
+    assert spec.max_value == 120
+    assert spec.step == 1
+
+
+@pytest.mark.parametrize("field", ["min_value", "max_value", "step"])
+def test_invalid_numeric_attributes_are_errors(field):
+    compiled = compile_profile(meta(doc(entities=[entity(
+        **{field: "x"})])))
+
+    assert compiled.entities == {}
+    assert any(f"{field} must be a number" in error
+               for error in compiled.errors)
+
+
 def test_capabilities_must_be_an_object():
     compiled = compile_profile(meta(doc(
         entities=[entity(capabilities=[])])))

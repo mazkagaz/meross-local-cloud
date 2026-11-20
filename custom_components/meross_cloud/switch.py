@@ -20,6 +20,9 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from . import MerossDevice
 from .common import (DOMAIN, MANAGER, DEVICE_LIST_COORDINATOR, HA_SWITCH)
+from .profile_entities import (
+    async_setup_profile_entities,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -155,6 +158,9 @@ class DndEntityWrapper(MerossDevice, SwitchEntity):
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
+    async_setup_profile_entities(
+        hass, config_entry, HA_SWITCH, async_add_entities)
+
     def entity_adder_callback():
         """Discover and adds new Meross entities"""
         manager: MerossManager = hass.data[DOMAIN][MANAGER]  # type

@@ -85,6 +85,9 @@ class EntitySpec:
     device_class: Optional[str] = None
     entity_category: Optional[str] = None
     unit: Optional[str] = None
+    min_value: Optional[float] = None
+    max_value: Optional[float] = None
+    step: Optional[float] = None
     device: str = "hub"
     state: Optional[StateSpec] = None
     commands: Dict[str, CommandSpec] = field(default_factory=dict)

@@ -21,6 +21,9 @@ from homeassistant.components.cover import (
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from . import MerossDevice
 from .common import (DOMAIN, MANAGER, HA_COVER, DEVICE_LIST_COORDINATOR)
+from .profile_entities import (
+    async_setup_profile_entities,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -164,6 +167,9 @@ class RollerShutterEntityWrapper(MerossDevice, CoverEntity):
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
+    async_setup_profile_entities(
+        hass, config_entry, HA_COVER, async_add_entities)
+
     def entity_adder_callback():
         """Discover and adds new Meross entities"""
         manager: MerossManager = hass.data[DOMAIN][MANAGER]
