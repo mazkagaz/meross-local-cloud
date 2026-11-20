@@ -44,6 +44,7 @@ class MRS100Simulator:
         self.state = 0
         self.config = {"signalOpen": 45000, "signalClose": 50000}
         self.adjust = 0
+        self.bus = None
         self.requests = []
         self.multiples = []
 
@@ -106,7 +107,202 @@ class MRS100Simulator:
                 "payload": self._body(namespace),
             } for namespace, _, _ in requests]})
 
+    def emit(self, namespace, payload, method="PUSH"):
+        if self.bus is not None:
+            self.bus.publish(self.uuid, namespace, payload, method)
+
     def push(self, adapter, namespace, payload, method="PUSH"):
         adapter._dispatch_message(SimpleNamespace(
             uuid=self.uuid, namespace=namespace, method=method,
             payload=payload))
+
+
+class MSS310Simulator:
+    uuid = "u1"
+    connected = True
+
+    def __init__(self, uuid="u1"):
+        self.uuid = uuid
+        self.onoff = 1
+        self.power = 10
+        self.voltage = 2300
+        self.current = 50
+        self.bus = None
+        self.requests = []
+        self.multiples = []
+
+    async def async_connect(self):
+        return None
+
+    async def async_stop(self):
+        return None
+
+    async def async_describe(self, device_uuid):
+        payload = {
+            "all": {"system": {
+                "hardware": {"type": "mss310", "subType": "un",
+                             "version": "1.0.0", "uuid": self.uuid,
+                             "macAddress": "AA:BB:CC:DD:EE:FF"},
+                "firmware": {"version": "3.0.0"},
+                "online": {"status": 1},
+            }, "digest": {"togglex": [{"channel": 0,
+                                       "onoff": self.onoff}]}},
+            "ability": {"Appliance.Control.ToggleX": {},
+                        "Appliance.Control.Electricity": {}},
+        }
+        return DeviceDescriptor(payload)
+
+    def _body(self, namespace):
+        if namespace == "Appliance.Control.ToggleX":
+            return {"channel": 0,
+                    "togglex": [{"channel": 0, "onoff": self.onoff}]}
+        if namespace == "Appliance.Control.Electricity":
+            return {"channel": 0, "electricity": {
+                "power": self.power, "voltage": self.voltage,
+                "current": self.current}}
+        return {}
+
+    async def async_request(self, uuid, namespace, method, payload):
+        self.requests.append((uuid, namespace, method, payload))
+        if method == "SET" and namespace == "Appliance.Control.ToggleX":
+            entries = payload.get("togglex") or []
+            if entries:
+                self.onoff = entries[0].get("onoff", self.onoff)
+        return SimpleNamespace(
+            uuid=uuid, namespace=namespace,
+            method="SETACK" if method == "SET" else "GETACK",
+            payload=self._body(namespace))
+
+    async def async_request_multiple(self, uuid, requests):
+        requests = list(requests)
+        self.multiples.append(requests)
+        return SimpleNamespace(
+            uuid=uuid, namespace="Appliance.Control.Multiple",
+            method="SETACK",
+            payload={"multiple": [{
+                "header": {"namespace": namespace, "method": "GETACK"},
+                "payload": self._body(namespace),
+            } for namespace, _, _ in requests]})
+
+    def emit(self, namespace, payload, method="PUSH"):
+        if self.bus is not None:
+            self.bus.publish(self.uuid, namespace, payload, method)
+
+
+class HubSimulator:
+    uuid = "hub1"
+    connected = True
+
+    def __init__(self, uuid="hub1"):
+        self.uuid = uuid
+        self.bus = None
+        self.requests = []
+        self.multiples = []
+        self.online = 1
+        self.temp_hum = {"latestTemperature": 215, "latestHumidity": 553,
+                         "voltage": 3000}
+        self.sensor_all = {"temperature": 215, "humidity": 553}
+        self.valve = {"mode": 1, "room": 44, "currentSet": 40,
+                      "heating": 1, "min": 10, "max": 70, "onoff": 1}
+
+    async def async_connect(self):
+        return None
+
+    async def async_stop(self):
+        return None
+
+    async def async_describe(self, device_uuid):
+        payload = {
+            "all": {"system": {
+                "hardware": {"type": "msh300", "subType": "un",
+                             "version": "1.0.0", "uuid": self.uuid,
+                             "macAddress": "AA:BB:CC:DD:EE:01"},
+                "firmware": {"version": "3.0.0"},
+                "online": {"status": 1},
+            }, "digest": {"hub": {"subdevice": [
+                {"id": "sub1", "ms100": {}},
+                {"id": "sensor1", "ms130": {}},
+                {"id": "valve1", "mts100": {}},
+            ]}}},
+            "ability": {
+                "Appliance.System.Online": {},
+                "Appliance.Hub.Sensor.TempHum": {},
+                "Appliance.Hub.Sensor.All": {},
+                "Appliance.Hub.Mts100.All": {},
+                "Appliance.Hub.Mts100.Mode": {},
+                "Appliance.Hub.Mts100.Temperature": {},
+            },
+        }
+        return DeviceDescriptor(payload)
+
+    def _body(self, namespace):
+        if namespace == "Appliance.System.Online":
+            return {"online": {"status": self.online}}
+        if namespace == "Appliance.Hub.Sensor.TempHum":
+            return {"tempHum": [dict(id="sub1", **self.temp_hum)]}
+        if namespace == "Appliance.Hub.Sensor.All":
+            return {"all": [{
+                "id": "sensor1",
+                "temperature": {"latest": self.sensor_all["temperature"]},
+                "humidity": {"latest": self.sensor_all["humidity"]},
+            }]}
+        if namespace == "Appliance.Hub.Mts100.All":
+            return {"all": [{
+                "id": "valve1",
+                "mode": {"state": self.valve["mode"]},
+                "temperature": {
+                    "room": self.valve["room"],
+                    "currentSet": self.valve["currentSet"],
+                    "heating": self.valve["heating"],
+                    "min": self.valve["min"], "max": self.valve["max"],
+                },
+                "togglex": {"onoff": self.valve["onoff"]},
+            }]}
+        if namespace == "Appliance.Hub.Mts100.Mode":
+            return {"mode": [{"id": "valve1", "state": self.valve["mode"]}]}
+        if namespace == "Appliance.Hub.Mts100.Temperature":
+            return {"temperature": [{"id": "valve1",
+                                     "currentSet": self.valve["currentSet"]}]}
+        return {}
+
+    def _apply_set(self, namespace, payload):
+        if namespace == "Appliance.Hub.Mts100.Mode":
+            for entry in payload.get("mode") or []:
+                if entry.get("id") == "valve1":
+                    self.valve["mode"] = entry.get("state", self.valve["mode"])
+        elif namespace == "Appliance.Hub.Mts100.Temperature":
+            for entry in payload.get("temperature") or []:
+                if entry.get("id") == "valve1":
+                    self.valve["currentSet"] = entry.get(
+                        "currentSet", self.valve["currentSet"])
+
+    async def async_request(self, uuid, namespace, method, payload):
+        self.requests.append((uuid, namespace, method, payload))
+        if method == "SET":
+            self._apply_set(namespace, payload)
+        return SimpleNamespace(
+            uuid=uuid, namespace=namespace,
+            method="SETACK" if method == "SET" else "GETACK",
+            payload=self._body(namespace))
+
+    async def async_request_multiple(self, uuid, requests):
+        requests = list(requests)
+        self.multiples.append(requests)
+        return SimpleNamespace(
+            uuid=uuid, namespace="Appliance.Control.Multiple",
+            method="SETACK",
+            payload={"multiple": [{
+                "header": {"namespace": namespace, "method": "GETACK"},
+                "payload": self._body(namespace),
+            } for namespace, _, _ in requests]})
+
+    def emit(self, namespace, payload=None, method="PUSH"):
+        if self.bus is not None:
+            self.bus.publish(self.uuid, namespace,
+                             self._body(namespace) if payload is None
+                             else payload, method)
+
+    def push_all(self):
+        self.emit("Appliance.Hub.Sensor.TempHum")
+        self.emit("Appliance.Hub.Sensor.All")
+        self.emit("Appliance.Hub.Mts100.All")
