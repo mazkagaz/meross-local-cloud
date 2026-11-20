@@ -42,6 +42,14 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 | Meross Local Pairer | 2.0.8 | HTTPS 2004 uniquement |
 | Home Assistant | 2025.6 | testé avec 2026.11 |
 
+## Canal de test (bêta)
+
+Les versions stables sont publiées depuis `main`. Les versions de test sont
+des **pre-releases** `X.Y.Z-beta.N` issues de la branche `dev` : pour les
+voir et les installer dans HACS, activer **« Afficher les versions bêta »**.
+Sans cette option, seules les versions stables sont proposées. Procédure
+complète : [docs/RELEASING.md](docs/RELEASING.md).
+
 ## Avant de commencer
 
 1. L'add-on **Meross Local Broker** est installé et démarré.
