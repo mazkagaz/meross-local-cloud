@@ -87,8 +87,50 @@ class BrokerProfileAdapter:
         self.compile_errors: list[str] = []
         self.runtimes: Dict[str, DeviceRuntime] = {}
         self.schedulers: Dict[str, DeviceScheduler] = {}
+        self.device_online: Dict[str, bool] = {}
         self._ready_listeners: list = []
+        self._listeners: list = []
         self.entities_only = False
+
+    def add_listener(self, callback):
+        """Notify callback when the adapter or a device availability changes."""
+        self._listeners.append(callback)
+
+        def remove() -> None:
+            if callback in self._listeners:
+                self._listeners.remove(callback)
+
+        return remove
+
+    def _notify_changed(self) -> None:
+        for callback in list(self._listeners):
+            try:
+                callback()
+            except Exception:  # noqa: BLE001 - entity refresh must not fail
+                _LOGGER.debug("Adapter listener failed", exc_info=True)
+
+    def async_update_devices(self, devices) -> None:
+        """Refresh per-device availability from a successful devList poll."""
+        changed = False
+        for device in devices:
+            online = bool(getattr(device, "online", False))
+            if self.device_online.get(device.uuid) != online:
+                self.device_online[device.uuid] = online
+                changed = True
+        if changed:
+            self._notify_changed()
+
+    def device_available(self, device_uuid: str) -> bool:
+        if self.state != "connected":
+            return False
+        return self.device_online.get(device_uuid, True)
+
+    def unknown_devices(self, devices) -> set[str]:
+        """UUIDs reported by devList that this adapter has not described."""
+        return {
+            device.uuid for device in devices
+            if device.uuid not in self.descriptors
+        }
 
     def add_ready_listener(self, callback) -> None:
         """Call callback once matching is done (or immediately if already)."""
@@ -117,6 +159,7 @@ class BrokerProfileAdapter:
                 await self._async_probe()
         except asyncio.CancelledError:
             self.state = "stopped"
+            self._notify_changed()
             raise
         except TimeoutError as err:
             self.last_error = f"timeout after {_TOTAL_BUDGET}s"
@@ -131,6 +174,7 @@ class BrokerProfileAdapter:
             if self.state == "connected":
                 self._notify_ready()
                 self._start_catalog_watch()
+        self._notify_changed()
 
     async def _async_probe(self) -> None:
         mqtt_host, mqtt_port = self._coordinator.mqtt_address
@@ -148,6 +192,7 @@ class BrokerProfileAdapter:
         if self._http is None:
             raise RuntimeError("Broker HTTP client is not ready")
         devices = await async_list_devices(self._http)
+        self.async_update_devices(devices)
         for device in devices:
             try:
                 async with asyncio.timeout(_DESCRIBE_TIMEOUT):
@@ -325,6 +370,7 @@ class BrokerProfileAdapter:
             _LOGGER.debug("Payload without a device uuid ignored",
                           exc_info=True)
             return
+        self._apply_online(device_uuid, message.namespace, message.payload)
         runtime = self.runtimes.get(device_uuid)
         if runtime is None:
             return
@@ -334,6 +380,26 @@ class BrokerProfileAdapter:
         except Exception as err:  # noqa: BLE001 - dispatch is best effort
             _LOGGER.debug("Payload dispatch failed for %s: %s",
                           device_uuid, err)
+
+    def _apply_online(self, device_uuid: str, namespace: str,
+                      payload: Any) -> None:
+        if not isinstance(payload, dict):
+            return
+        status = None
+        if namespace == "Appliance.System.Online":
+            status = (payload.get("online") or {}).get("status")
+        elif namespace == "Appliance.Hub.Online":
+            status = payload.get("status")
+        if status is None:
+            return
+        try:
+            online = int(status) == 1
+        except (TypeError, ValueError):
+            return
+        if self.device_online.get(device_uuid) == online:
+            return
+        self.device_online[device_uuid] = online
+        self._notify_changed()
 
     async def _async_fetch_profiles(self) -> None:
         endpoint = self._coordinator.http_api_endpoint
@@ -386,6 +452,7 @@ class BrokerProfileAdapter:
             await self._transport.async_stop()
             self._transport = None
         self.state = "stopped"
+        self._notify_changed()
 
     def summary(self) -> Dict[str, Any]:
         summary = {

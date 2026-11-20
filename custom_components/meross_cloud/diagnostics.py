@@ -14,6 +14,7 @@ from .common import (
     CONF_OPT_LAN,
     CONF_OVERRIDE_MQTT_ENDPOINT,
     CONF_STORED_CREDS,
+    BROKER_ADAPTER,
     DEVICE_LIST_COORDINATOR,
     DOMAIN,
     MANAGER,
@@ -65,11 +66,26 @@ def _device_diagnostics(manager) -> list[dict[str, Any]]:
     return devices
 
 
+def _broker_device_diagnostics(coordinator) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": device.name,
+            "uuid": device.uuid,
+            "type": device.device_type,
+            "firmware_version": device.firmware,
+            "hardware_version": device.hardware,
+            "online": "ONLINE" if device.online else "OFFLINE",
+        }
+        for device in (getattr(coordinator, "data", None) or {}).values()
+    ]
+
+
 async def async_get_config_entry_diagnostics(
         hass: HomeAssistant, entry: ConfigEntry) -> dict[str, Any]:
     runtime = hass.data.get(DOMAIN) or {}
     manager = runtime.get(MANAGER)
     coordinator = runtime.get(DEVICE_LIST_COORDINATOR)
+    adapter = runtime.get(BROKER_ADAPTER)
     tls_info = runtime.get("TLS_INFO") or {}
 
     return {
@@ -106,6 +122,9 @@ async def async_get_config_entry_diagnostics(
         },
         "runtime": {
             "manager_started": manager is not None,
-            "devices": _device_diagnostics(manager) if manager else [],
+            "devices": (
+                _device_diagnostics(manager) if manager
+                else _broker_device_diagnostics(coordinator)),
+            "profile_backend": adapter.summary() if adapter else None,
         },
     }

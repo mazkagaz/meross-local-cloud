@@ -65,6 +65,7 @@ CONF_OPT_CUSTOM_USER_AGENT = "custom_user_agent"
 CONF_OPT_PROFILE_BACKEND = "profile_backend"
 CONF_OPT_PROFILE_ENTITIES = "profile_entities"
 CONF_OPT_PROFILE_ENTITIES_ONLY = "profile_entities_only"
+PROFILE_ONLY = True
 BROKER_ADAPTER = "broker_profile_adapter"
 SHUTTER_CONFIG_CACHE = "shutter_config_cache"
 CONF_OPT_LAN = "lan_transport_mode"
@@ -108,6 +109,14 @@ def calculate_id(platform: str, uuid: str, channel: int, supplementary_classifie
             extrastr = ":" + extrastr
         return base + extrastr
     return base
+
+
+def device_internal_id(device_uuid: str,
+                       subdevice_id: str = None) -> str:
+    """Historical device-registry identifier used by meross_iot."""
+    if subdevice_id is None:
+        return f"#BASE:{device_uuid}"
+    return f"#BASE:{device_uuid}#SUB:{subdevice_id}"
 
 
 def dismiss_notification(hass, notification_id):

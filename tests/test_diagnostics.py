@@ -3,7 +3,9 @@ from types import SimpleNamespace
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.meross_cloud.broker_devices import BrokerDeviceInfo
 from custom_components.meross_cloud.common import (
+    BROKER_ADAPTER,
     CONF_CA_PEM,
     CONF_HTTP_ENDPOINT,
     CONF_OVERRIDE_MQTT_ENDPOINT,
@@ -84,3 +86,39 @@ async def test_diagnostics_redacts_secrets(hass, ca_pem):
     assert result["tls"]["mqtt"]["verified_context"] is True
     assert result["runtime"]["manager_started"] is True
     assert result["runtime"]["devices"][0]["uuid"] == "uuid-1"
+
+
+async def test_diagnostics_reports_the_profile_backend(hass, ca_pem):
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HTTP_ENDPOINT: "https://10.0.0.5:2004",
+            CONF_CA_PEM: ca_pem,
+            CONF_STORED_CREDS: {"token": "t", "key": "k", "user_id": "1"},
+        },
+    )
+    entry.add_to_hass(hass)
+    device = BrokerDeviceInfo(
+        uuid="uuid-1", name="volet", device_type="mrs100",
+        online=True, firmware="7.6.20", hardware="7.0.0")
+    coordinator = SimpleNamespace(data={"uuid-1": device})
+    adapter = SimpleNamespace(summary=lambda: {
+        "state": "connected", "devices_matched": 1})
+    hass.data[DOMAIN] = {
+        DEVICE_LIST_COORDINATOR: coordinator,
+        BROKER_ADAPTER: adapter,
+    }
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["runtime"]["manager_started"] is False
+    assert result["runtime"]["devices"] == [{
+        "name": "volet",
+        "uuid": "uuid-1",
+        "type": "mrs100",
+        "firmware_version": "7.6.20",
+        "hardware_version": "7.0.0",
+        "online": "ONLINE",
+    }]
+    assert result["runtime"]["profile_backend"] == {
+        "state": "connected", "devices_matched": 1}

@@ -48,6 +48,21 @@ class FakeAdapter:
         self.sent = []
         self.ready = []
         self.reloads = 0
+        self.device_online = {}
+        self.listeners = []
+
+    def add_listener(self, callback):
+        self.listeners.append(callback)
+
+        def remove():
+            if callback in self.listeners:
+                self.listeners.remove(callback)
+
+        return remove
+
+    def device_available(self, device_uuid):
+        return self.state == "connected" and self.device_online.get(
+            device_uuid, True)
 
     async def async_send(self, device_uuid, namespace, method, payload):
         self.sent.append((device_uuid, namespace, method, payload))
@@ -98,7 +113,7 @@ async def test_switch_state_ids_and_command(hass):
     component = await setup_entities(hass, adapter, HA_SWITCH)
     entity = next(iter(component.entities))
 
-    assert entity.unique_id == f"{DOMAIN}:u1:meross.mss310:switch"
+    assert entity.unique_id == "switch:u1:0"
     assert entity.is_on is False
 
     device.dispatch("Appliance.Control.ToggleX", "PUSH", {
@@ -196,23 +211,20 @@ async def test_sensor_value_and_entities_are_deduplicated(hass):
     assert added == []
 
 
-async def test_profile_entities_are_gated_by_the_option(hass):
+async def test_profile_entities_are_always_enabled(hass):
     device = runtime("mss310")
     adapter = FakeAdapter(device)
     hass.data[DOMAIN] = {
         BROKER_ADAPTER: adapter,
         "ADDED_ENTITIES_IDS": set(),
     }
-    component = EntityComponent(_LOGGER, HA_SWITCH, hass)
     added = []
 
-    def add(entities, update_before_add=False):
-        added.extend(entities)
+    async_setup_profile_entities(
+        hass, entry(False), HA_SWITCH,
+        lambda entities, update_before_add=False: added.extend(entities))
 
-    async_setup_profile_entities(hass, entry(False), HA_SWITCH, add)
-
-    assert added == []
-    assert not component.entities
+    assert len(added) == 1
 
 
 async def test_subdevice_entity_device_info(hass):
@@ -225,11 +237,12 @@ async def test_subdevice_entity_device_info(hass):
     component = await setup_entities(hass, adapter, HA_SENSOR)
     entity = next(
         item for item in component.entities
-        if item.unique_id.endswith("sub1:" + template.uid + ":temperature"))
+        if item._spec.key == "temperature")
 
     assert entity.native_value == 21.5
-    assert entity.device_info["identifiers"] == {(DOMAIN, "sub1")}
-    assert entity.device_info["via_device"] == (DOMAIN, "hub1")
+    assert entity.device_info["identifiers"] == {
+        (DOMAIN, "#BASE:hub1#SUB:sub1")}
+    assert entity.device_info["via_device"] == (DOMAIN, "#BASE:hub1")
 
 
 async def test_climate_entity(hass):
@@ -310,7 +323,7 @@ async def test_legacy_classifiers_for_shutter_entities(hass):
         "button:u1:0:calibrate", "button:u1:0:stop_calibration"]
 
 
-async def test_historical_entities_are_filtered_in_only_mode(hass):
+async def test_historical_entities_are_disabled(hass):
     from custom_components.meross_cloud.profile_entities import (
         historical_entities_allowed,
     )
@@ -322,10 +335,9 @@ async def test_historical_entities_are_filtered_in_only_mode(hass):
         "ADDED_ENTITIES_IDS": set(),
     }
 
-    assert historical_entities_allowed(hass, entry(), "u1") is True
-    assert historical_entities_allowed(hass, entry(only=True), "u1") is False
-    assert historical_entities_allowed(hass, entry(only=True), "u2") is True
-    assert historical_entities_allowed(hass, None, "u1") is True
+    assert historical_entities_allowed(hass, entry(), "u1") is False
+    assert historical_entities_allowed(hass, entry(only=True), "u2") is False
+    assert historical_entities_allowed(hass, None, "u1") is False
 
 
 async def setup_updates(hass, adapter):
@@ -364,13 +376,13 @@ async def test_update_entities_cover_hub_and_subdevices(hass):
     assert hub.latest_version == device.profile.version
     assert hub.release_summary == device.profile.description
     assert sub.title == "ms100 profile"
-    assert sub.device_info["via_device"] == (DOMAIN, "hub1")
+    assert sub.device_info["via_device"] == (DOMAIN, "#BASE:hub1")
 
     await hub.async_install(None, False)
     assert adapter.reloads == 1
 
 
-async def test_update_entities_are_gated(hass):
+async def test_update_entities_are_always_enabled(hass):
     device = runtime("mss310")
     adapter = FakeAdapter(device)
     hass.data[DOMAIN] = {
@@ -383,7 +395,22 @@ async def test_update_entities_are_gated(hass):
         hass, entry(False), lambda entities, update_before_add=False:
         added.extend(entities))
 
-    assert added == []
+    assert len(added) == 1
+
+
+async def test_device_offline_marks_its_entities_unavailable(hass):
+    device = runtime("mss310")
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_SWITCH)
+
+    entity = next(iter(component.entities))
+    assert entity.available is True
+
+    adapter.device_online["u1"] = False
+    adapter.listeners[0]()
+    await hass.async_block_till_done()
+
+    assert entity.available is False
 
 
 async def test_unavailable_backend_marks_entities_unavailable(hass):

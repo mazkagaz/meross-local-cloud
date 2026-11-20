@@ -33,7 +33,7 @@ from .calibration import (
 from .common import (
     DOMAIN, MANAGER, log_exception, HA_SENSOR,
     HA_SENSOR_POLL_INTERVAL_SECONDS, invoke_method_or_property,
-    DEVICE_LIST_COORDINATOR, BROKER_ADAPTER,
+    DEVICE_LIST_COORDINATOR, BROKER_ADAPTER, PROFILE_ONLY,
 )
 from .profile_entities import (
     async_setup_profile_entities,
@@ -423,6 +423,18 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
     async_setup_profile_entities(
         hass, config_entry, HA_SENSOR, async_add_entities)
 
+    adapter = hass.data[DOMAIN].get(BROKER_ADAPTER)
+    if adapter is not None:
+        async_add_entities([BrokerProfileSensor(adapter)], True)
+    else:
+        registry = er.async_get(hass)
+        entity_id = registry.async_get_entity_id(
+            "sensor", DOMAIN, BrokerProfileSensor._attr_unique_id)
+        if entity_id is not None:
+            registry.async_remove(entity_id)
+    if PROFILE_ONLY and MANAGER not in hass.data[DOMAIN]:
+        return
+
     def entity_adder_callback():
         """Discover and adds new Meross entities"""
         manager: MerossManager = hass.data[DOMAIN][MANAGER]  # type
@@ -492,16 +504,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
     coordinator.async_add_listener(entity_adder_callback)
     # Run the entity adder a first time during setup
     entity_adder_callback()
-
-    adapter = hass.data[DOMAIN].get(BROKER_ADAPTER)
-    if adapter is not None:
-        async_add_entities([BrokerProfileSensor(adapter)], True)
-    else:
-        registry = er.async_get(hass)
-        entity_id = registry.async_get_entity_id(
-            "sensor", DOMAIN, BrokerProfileSensor._attr_unique_id)
-        if entity_id is not None:
-            registry.async_remove(entity_id)
 
 
 # TODO: Implement entry unload

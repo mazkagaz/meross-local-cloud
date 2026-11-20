@@ -2,10 +2,12 @@
 import asyncio
 import logging
 import ssl
+from dataclasses import replace
 from datetime import datetime, timedelta
-from typing import Any, List, Tuple, Dict, Optional, Collection
+from typing import Any, List, Dict, Optional
 from urllib.parse import urlparse
 
+import aiohttp
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
@@ -17,18 +19,9 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from meross_iot.controller.device import BaseDevice
-from meross_iot.http_api import MerossHttpClient, ErrorCodes
-from meross_iot.manager import MerossManager
-from meross_iot.model.credentials import MerossCloudCreds
 from meross_iot.model.enums import OnlineStatus, Namespace
 from meross_iot.model.exception import CommandTimeoutError
 from meross_iot.model.http.device import HttpDeviceInfo
-from meross_iot.model.http.exception import (
-    TokenExpiredException,
-    TooManyTokensException,
-    UnauthorizedException,
-    HttpApiError, BadLoginException,
-)
 
 from .common import (
     ATTR_CONFIG,
@@ -40,7 +33,6 @@ from .common import (
     HA_LIGHT,
     HA_SENSOR,
     HA_SWITCH,
-    MANAGER,
     MEROSS_PLATFORMS,
     SENSORS,
     dismiss_notification,
@@ -50,30 +42,24 @@ from .common import (
     LIMITER,
     CONF_HTTP_ENDPOINT,
     HTTP_API_RE,
-    HTTP_UPDATE_INTERVAL, DEVICE_LIST_COORDINATOR, calculate_id, DEFAULT_USER_AGENT, CONF_OPT_CUSTOM_USER_AGENT,
-    CONF_OVERRIDE_MQTT_ENDPOINT, CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, TRANSPORT_MODES_TO_ENUM,
-    MEROSS_DEFAULT_CLOUD_API_URL, CONF_CA_PEM, CONF_CA_FINGERPRINT, MISSING_TRACKER,
-    CONF_OPT_PROFILE_BACKEND, CONF_OPT_PROFILE_ENTITIES_ONLY,
+    HTTP_UPDATE_INTERVAL, DEVICE_LIST_COORDINATOR, calculate_id,
+    CONF_OPT_CUSTOM_USER_AGENT, CONF_OVERRIDE_MQTT_ENDPOINT,
+    CONF_CA_PEM, CONF_CA_FINGERPRINT, MISSING_TRACKER,
     BROKER_ADAPTER, SHUTTER_CONFIG_CACHE, effective_user_agent
 )
 from .broker_config import RollerShutterConfigCache
-from .broker_devices import async_list_devices
+from .broker_devices import BrokerDeviceInfo, async_list_devices
 from .broker_http import (
     BrokerAuthError,
+    BrokerCredentials,
     BrokerHttpClient,
     BrokerHttpError,
     BrokerTokenError,
 )
 from .missing_devices import MissingDeviceTracker
 from .log_redaction import install as install_log_redaction
-from .version import MEROSS_INTEGRATION_VERSION, MEROSS_IOT_VERSION
-from .patches import (
-    apply_patches,
-    create_mqtt_ssl_context,
-    patch_mqtt_acks_on_user_topic,
-    patch_mqtt_client_ssl_context,
-    set_http_cert_validation,
-)
+from .version import MEROSS_INTEGRATION_VERSION
+from .patches import apply_patches
 from .tls import (
     async_fetch_ca,
     build_client_ssl_context,
@@ -103,7 +89,7 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 
-def print_startup_message(http_devices: List[HttpDeviceInfo]):
+def print_startup_message(http_devices: List[BrokerDeviceInfo]):
     http_info = "\n".join(
         [f"- {x.dev_name} ({x.device_type}) - {x.online_status}" for x in http_devices]
     )
@@ -114,7 +100,7 @@ def print_startup_message(http_devices: List[HttpDeviceInfo]):
         f"Meross Local Cloud\n"
         f"Fork of the Meross Cloud component by Alberto Geniola:\n"
         f"https://github.com/albertogeniola/meross-homeassistant\n"
-        f"Low level library version: {MEROSS_IOT_VERSION}\n"
+        f"Profile engine version: {MEROSS_INTEGRATION_VERSION}\n"
         f"-------------------------------\n"
         f"In case of errors or unexpected behavior, please report them here:\n"
         f"https://github.com/mazkagaz/meross-local-cloud/issues\n"
@@ -131,8 +117,8 @@ class MerossCoordinator(DataUpdateCoordinator):
                  hass: HomeAssistant,
                  config_entry: ConfigEntry,
                  http_api_endpoint: str,
-                 creds: MerossCloudCreds,
-                 mqtt_override_address: Optional[Tuple[str, int]],
+                 creds: BrokerCredentials,
+                 mqtt_override_address: Optional[tuple[str, int]],
                  update_interval: timedelta,
                  ua_header: str,
                  ca_pem: str,
@@ -149,10 +135,6 @@ class MerossCoordinator(DataUpdateCoordinator):
         self._setup_done = False
         self._ua_header = ua_header
         self._missing_tracker = MissingDeviceTracker(hass, config_entry.entry_id)
-
-        # Objects not to be initialized here
-        self._client = None
-        self._manager = None
 
         super().__init__(hass=hass, logger=_LOGGER, name="meross_http_coordinator", update_interval=update_interval,
                          update_method=self._async_fetch_http_data)
@@ -180,84 +162,47 @@ class MerossCoordinator(DataUpdateCoordinator):
         if self._setup_done:
             raise ValueError("This coordinator was already set up")
 
-        # Test the stored credentials if any. In case the credentials are invalid
-        # try to retrieve a new token
-        try:
-            self._client, _, creds_renewed = await get_or_test_creds(
-                http_api_url=self._http_api_endpoint,
-                creds=self._cached_creds,
-                ua_header=self._ua_header
-            )
-        except (BadLoginException, TokenExpiredException, UnauthorizedException) as err:
-            raise ConfigEntryAuthFailed from err
-        except HttpApiError as err:
-            raise ConfigEntryNotReady(f"Error communicating with API: {err}") from err
-
-        # If a new token was issued, store it into the current entry
-        if creds_renewed:
-            # Override the new credentials and store them into HA entry
-            self._cached_creds = self._client.cloud_credentials
-            self.hass.config_entries.async_update_entry(
-                entry=self._entry,
-                data={
-                    CONF_HTTP_ENDPOINT: self._cached_creds.domain,
-                    CONF_STORED_CREDS: {
-                        "token": self._cached_creds.token,
-                        "key": self._cached_creds.key,
-                        "user_id": self._cached_creds.user_id,
-                        "user_email": self._cached_creds.user_email,
-                        "issued_on": self._cached_creds.issued_on.isoformat(),
-                        "domain": self._cached_creds.domain,
-                        "mqtt_domain": self._cached_creds.mqtt_domain
-                    },
-                },
-            )
-
-        # Loading the CA is blocking; do it in an executor so paho does not
-        # trigger Home Assistant's event-loop warning on every setup.
         try:
             self._mqtt_ssl_context_verified = await self.hass.async_add_executor_job(
-                create_mqtt_ssl_context, self._ca_pem,
+                build_client_ssl_context, self._ca_pem,
                 self._ca_check_hostname)
         except ssl.SSLError as err:
             raise ConfigEntryNotReady(
                 f"Unable to trust the broker CA: {err}") from err
+
         self._broker_http = BrokerHttpClient(
             self._http_api_endpoint,
             lambda: self._cached_creds.token,
             self._mqtt_ssl_context_verified)
-        http_devices = await async_list_devices(self._broker_http)
-        patch_mqtt_client_ssl_context()
-        patch_mqtt_acks_on_user_topic()
 
-        def _create_manager() -> MerossManager:
-            manager = MerossManager(
-                http_client=self._client,
-                mqtt_override_server=self._mqtt_override_address,
-                auto_reconnect=True,
-                mqtt_skip_cert_validation=False,
-                ca_cert=None,
+        try:
+            async with asyncio.timeout(10):
+                http_devices = await async_list_devices(self._broker_http)
+        except (BrokerAuthError, BrokerTokenError) as err:
+            raise ConfigEntryAuthFailed from err
+        except (BrokerHttpError, TimeoutError, aiohttp.ClientError) as err:
+            raise ConfigEntryNotReady(
+                f"Error communicating with API: {err}") from err
+
+        if self._cached_creds.domain != self._http_api_endpoint:
+            _LOGGER.warning(
+                "Stored credentials domain <%s> differs from the configured "
+                "endpoint; using %s.",
+                self._cached_creds.domain, self._http_api_endpoint)
+            self._cached_creds = replace(
+                self._cached_creds, domain=self._http_api_endpoint)
+            self.hass.config_entries.async_update_entry(
+                entry=self._entry,
+                data={
+                    CONF_HTTP_ENDPOINT: self._http_api_endpoint,
+                    CONF_STORED_CREDS: self._cached_creds.as_dict(),
+                },
             )
-            manager._ha_ssl_context = self._mqtt_ssl_context_verified
-            return manager
-
-        # Now that we are logged in at HTTP api level, instantiate the manager.
-        self._manager = _create_manager()
 
         # Since we already have fetched for the DeviceList, publish it right away
         self.async_set_updated_data({device.uuid: device for device in http_devices})
 
-        # Print startup message, start the manager and issue a first discovery
         print_startup_message(http_devices=self.data.values())
-        _LOGGER.info("Starting meross manager")
-        try:
-            await self._manager.async_init()
-            _LOGGER.info("Discovering Meross devices...")
-            await self._manager.async_device_discovery()
-        except ssl.SSLCertVerificationError as err:
-            raise ConfigEntryNotReady(
-                "The broker TLS certificate could not be verified. Check the "
-                "broker CA or enable the certificate-skip option.") from err
 
         # Older versions could leave devices behind in the HA registry only:
         # seed them so the 48 h repair can offer to clean them up.
@@ -269,14 +214,6 @@ class MerossCoordinator(DataUpdateCoordinator):
         self._setup_done = True
 
     @property
-    def manager(self) -> MerossManager:
-        return self._manager
-
-    @property
-    def client(self) -> MerossHttpClient:
-        return self._client
-
-    @property
     def http_api_endpoint(self) -> str:
         return self._http_api_endpoint
 
@@ -285,11 +222,11 @@ class MerossCoordinator(DataUpdateCoordinator):
         return self._entry.entry_id
 
     @property
-    def credentials(self) -> MerossCloudCreds:
+    def credentials(self) -> BrokerCredentials:
         return self._cached_creds
 
     @property
-    def mqtt_address(self) -> Tuple[str, int]:
+    def mqtt_address(self) -> tuple[str, int]:
         if self._mqtt_override_address is not None:
             return self._mqtt_override_address
         host = urlparse(self._http_api_endpoint).hostname or "localhost"
@@ -454,39 +391,6 @@ class MerossDevice(Entity):
         self.hass.data[DOMAIN]["ADDED_ENTITIES_IDS"].remove(self.unique_id)
 
 
-async def get_or_test_creds(
-        creds: MerossCloudCreds = None,
-        http_api_url: str = MEROSS_DEFAULT_CLOUD_API_URL,
-        ua_header: str = DEFAULT_USER_AGENT
-) -> Tuple[MerossHttpClient, List[HttpDeviceInfo], bool]:
-
-    renewed = False
-    http_client = MerossHttpClient(
-        cloud_credentials=creds, ua_header=ua_header
-    )
-
-    # The local broker derives its advertised domain from the nginx backend
-    # scheme, so it can report http://…:2004 for an HTTPS listener. Always use
-    # the endpoint the user configured instead.
-    if http_api_url is not None and http_client.cloud_credentials.domain != http_api_url:
-        _LOGGER.warning(
-            "Stored credentials domain <%s> differs from the configured endpoint; "
-            "using %s.", http_client.cloud_credentials.domain, http_api_url)
-        http_client.cloud_credentials.domain = http_api_url
-        renewed = True
-
-    # Test device listing. If goes ok, return it immediately. This will make API fail and ask re-login
-    http_devices = await http_client.async_list_devices()
-    return http_client, http_devices, renewed
-
-
-def _http_info_changed(known: Collection[HttpDeviceInfo], discovered: Collection[HttpDeviceInfo]) -> bool:
-    """Tells when a new device is discovered among the known ones"""
-    known_ids = [dev.uuid for dev in known]
-    unknown = [dev for dev in discovered if dev.uuid not in known_ids]
-    return len(unknown) > 0
-
-
 async def _async_prepare_tls(
         hass: HomeAssistant, config_entry: ConfigEntry,
         endpoint: str, mqtt_host: Optional[str]):
@@ -591,17 +495,19 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         MEROSS_INTEGRATION_VERSION,
         ca_fingerprint[:16] if ca_fingerprint else "unknown",
         "enabled" if ca_check_hostname else "disabled")
-    set_http_cert_validation(http_ssl_context)
 
-    issued_on = datetime.fromisoformat(str_creds.get("issued_on"))
-    creds = MerossCloudCreds(
-        domain=str_creds.get("domain", MEROSS_DEFAULT_CLOUD_API_URL),
-        mqtt_domain=str_creds.get("mqtt_domain"),
-        token=str_creds.get("token"),
-        key=str_creds.get("key"),
-        user_id=str_creds.get("user_id"),
-        user_email=str_creds.get("user_email"),
-        issued_on=issued_on
+    try:
+        issued_on = datetime.fromisoformat(str_creds.get("issued_on"))
+    except (TypeError, ValueError):
+        issued_on = datetime.now()
+    creds = BrokerCredentials(
+        domain=str_creds.get("domain") or http_api_endpoint,
+        mqtt_domain=str_creds.get("mqtt_domain") or "",
+        token=str_creds.get("token") or "",
+        key=str_creds.get("key") or "",
+        user_id=str(str_creds.get("user_id") or ""),
+        user_email=str_creds.get("user_email") or "",
+        issued_on=issued_on,
     )
 
     # Initialize the HASS structure
@@ -635,11 +541,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             ca_check_hostname=ca_check_hostname,
         )
 
-        # Initiate the coordinator. This method will also make sure to login to the API,
-        # instantiates the manager, starts it and issues a first discovery.
+        # Initiate the coordinator. This validates the token and lists devices.
         await meross_coordinator.initial_setup()
-        manager = meross_coordinator.manager
-        hass.data[DOMAIN][MANAGER] = manager
         hass.data[DOMAIN][DEVICE_LIST_COORDINATOR] = meross_coordinator
         hass.data[DOMAIN][SHUTTER_CONFIG_CACHE] = RollerShutterConfigCache(
             BrokerHttpClient(
@@ -647,13 +550,11 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 lambda: meross_coordinator.credentials.token,
                 meross_coordinator.mqtt_ssl_context))
 
-        if config_entry.options.get(CONF_OPT_PROFILE_BACKEND, False):
-            from .broker_adapter import BrokerProfileAdapter
+        from .broker_adapter import BrokerProfileAdapter
 
-            adapter = BrokerProfileAdapter(hass, meross_coordinator)
-            adapter.entities_only = config_entry.options.get(
-                CONF_OPT_PROFILE_ENTITIES_ONLY, False)
-            hass.data[DOMAIN][BROKER_ADAPTER] = adapter
+        adapter = BrokerProfileAdapter(hass, meross_coordinator)
+        adapter.entities_only = True
+        hass.data[DOMAIN][BROKER_ADAPTER] = adapter
 
         if ca_pem and (
                 config_entry.data.get(CONF_CA_PEM) != ca_pem
@@ -667,72 +568,55 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 },
             )
 
-        # Once the manager is ok and the first discovery was issued, we can proceed with platforms setup.
+        # Mount the profile platforms, then start discovery in the background.
         await hass.config_entries.async_forward_entry_setups(config_entry, MEROSS_PLATFORMS)
 
+        reload_pending = False
+
         def _http_api_polled(*args, **kwargs):
-            # Whenever a new HTTP device is seen, we issue a discovery
-            discovered_devices = meross_coordinator.data
-            known_devices = manager.find_devices(device_uuids=discovered_devices.keys())
-            if _http_info_changed(known_devices, discovered_devices.values()):
-                _LOGGER.info("The HTTP API has found new devices that were unknown to us. Triggering discovery.")
-                hass.create_task(manager.async_device_discovery(update_subdevice_status=True,
-                                                                cached_http_device_list=discovered_devices.values()))
+            nonlocal reload_pending
+            devices = (meross_coordinator.data or {}).values()
+            adapter.async_update_devices(devices)
+            if reload_pending or adapter.state != "connected":
+                return
+            unknown = adapter.unknown_devices(devices)
+            if unknown:
+                reload_pending = True
+                _LOGGER.info(
+                    "The broker reported %d new device(s); reloading the "
+                    "integration to describe them", len(unknown))
+                hass.async_create_task(
+                    hass.config_entries.async_reload(config_entry.entry_id))
 
-        # Register a handler for HTTP events so that we can check for new devices and trigger
-        # a discovery when needed
-        config_entry.async_on_unload(meross_coordinator.async_add_listener(_http_api_polled))
-        config_entry.async_on_unload(config_entry.add_update_listener(update_listener))
+        config_entry.async_on_unload(
+            meross_coordinator.async_add_listener(_http_api_polled))
+        config_entry.async_on_unload(
+            config_entry.add_update_listener(update_listener))
 
-        adapter = hass.data[DOMAIN].get(BROKER_ADAPTER)
-        if adapter is not None:
-            adapter.start_background(hass)
+        adapter.start_background(hass)
 
         return True
 
-    except TooManyTokensException:
-        msg = (
-            "Too many tokens have been issued to this account. "
-            "The Remote API refused to issue a new one."
+    except (BrokerAuthError, BrokerTokenError) as ex:
+        _LOGGER.warning("Local broker authentication failed: %s", ex)
+        raise ConfigEntryAuthFailed("Invalid token or credentials")
+    except BrokerHttpError as ex:
+        msg = ("Your local broker login is invalid or the broker could not "
+               "be reached at the moment.")
+        notify_error(
+            hass,
+            "http_connection",
+            "Meross Local Cloud",
+            "Could not connect to the local broker. Please check"
+            " the broker address and the local login",
         )
-        notify_error(hass, "http_connection", "Meross Local Cloud", msg)
         log_exception(msg, logger=_LOGGER)
-        raise ConfigEntryAuthFailed("Too many tokens have been issued")
-
-    except (UnauthorizedException, HttpApiError) as ex:
-        # Do not retry setup: user must update its credentials
-        if ex is UnauthorizedException or ex.error_code in (
-                ErrorCodes.CODE_TOKEN_INVALID,
-                ErrorCodes.CODE_TOKEN_EXPIRED,
-                ErrorCodes.CODE_TOKEN_ERROR,
-        ):
-            raise ConfigEntryAuthFailed("Invalid token or credentials")
-        else:
-            msg = "Your local broker login is invalid or the broker could not be reached at the moment."
-            notify_error(
-                hass,
-                "http_connection",
-                "Meross Local Cloud",
-                "Could not connect to the local broker. Please check"
-                " the broker address and the local login",
-            )
-            log_exception(msg, logger=_LOGGER)
-            raise ConfigEntryNotReady()
+        raise ConfigEntryNotReady() from ex
 
 
 async def update_listener(hass, entry):
-    """Handle options update."""
-    # Update options
-    custom_ua = effective_user_agent(
-        entry.options.get(CONF_OPT_CUSTOM_USER_AGENT))
-    transport_mode = entry.options.get(CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY)
-    manager_transport_mode = TRANSPORT_MODES_TO_ENUM[transport_mode]
-    manager: MerossManager = hass.data[DOMAIN][MANAGER]
-    manager.default_transport_mode = manager_transport_mode
-    # So far, the underlying Meross Library requires some "monkey patching" to set the
-    # http user agent to be used. It's not nice, but until a public setter gets exposed, we need
-    # to do so.
-    manager._http_client._ua_header = custom_ua
+    """Options that survived D5 no longer affect the running transport."""
+    return
 
 
 async def async_unload_entry(hass, entry):
@@ -749,17 +633,11 @@ async def async_unload_entry(hass, entry):
     if adapter is not None:
         await adapter.async_stop()
 
-    _LOGGER.info("Stopping manager...")
-    manager = hass.data[DOMAIN][MANAGER]
-    # TODO: Invalidate the token?
-    manager.close()
-
     _LOGGER.info("Cleaning up memory...")
     for plat in MEROSS_PLATFORMS:
         if plat in hass.data[DOMAIN]:
             hass.data[DOMAIN][plat].clear()
             del hass.data[DOMAIN][plat]
-    del hass.data[DOMAIN][MANAGER]
     hass.data[DOMAIN].clear()
     del hass.data[DOMAIN]
 

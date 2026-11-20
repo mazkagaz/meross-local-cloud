@@ -50,6 +50,32 @@ class FakeAdapter:
         self.sent = []
         self.ready = []
         self.reloads = 0
+        self.device_online = {}
+        self.listeners = []
+
+    def add_listener(self, callback):
+        self.listeners.append(callback)
+
+        def remove():
+            if callback in self.listeners:
+                self.listeners.remove(callback)
+
+        return remove
+
+    def device_available(self, device_uuid):
+        return self.state == "connected" and self.device_online.get(
+            device_uuid, True)
+
+    def async_update_devices(self, devices):
+        changed = False
+        for item in devices:
+            online = bool(getattr(item, "online", False))
+            if self.device_online.get(item.uuid) != online:
+                self.device_online[item.uuid] = online
+                changed = True
+        if changed:
+            for callback in list(self.listeners):
+                callback()
 
     async def async_send(self, device_uuid, namespace, method, payload):
         self.sent.append((device_uuid, namespace, method, payload))
@@ -109,7 +135,8 @@ async def start_adapter_with_bus(hass, bus, profiles, uuids):
             patch(
                 "custom_components.meross_cloud.broker_adapter."
                 "async_list_devices", AsyncMock(return_value=[
-                    SimpleNamespace(uuid=uuid) for uuid in uuids])), \
+                    SimpleNamespace(uuid=uuid, online=True)
+                    for uuid in uuids])), \
             patch(
                 "custom_components.meross_cloud.broker_adapter."
                 "async_fetch_revision", AsyncMock(return_value={

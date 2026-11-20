@@ -26,6 +26,7 @@ from . import MerossDevice
 from .broker_config import ChannelState
 from .common import (
     DOMAIN, MANAGER, HA_NUMBER, DEVICE_LIST_COORDINATOR, SHUTTER_CONFIG_CACHE,
+    PROFILE_ONLY,
 )
 from .profile_entities import (
     async_setup_profile_entities,
@@ -154,6 +155,8 @@ class RollerShutterTimerNumber(MerossDevice, NumberEntity):
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
     async_setup_profile_entities(
         hass, config_entry, HA_NUMBER, async_add_entities)
+    if PROFILE_ONLY and MANAGER not in hass.data[DOMAIN]:
+        return
 
     def entity_adder_callback():
         manager: MerossManager = hass.data[DOMAIN][MANAGER]

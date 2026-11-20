@@ -9,7 +9,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 
-from .common import DOMAIN, MANAGER, MISSING_TRACKER
+from .common import (
+    DOMAIN, MANAGER, MISSING_TRACKER, device_internal_id,
+)
 from .missing_devices import issue_id
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 async def async_remove_device(hass: HomeAssistant, device_uuid: str) -> None:
     """Drop the device from the manager, the registries and the tracker."""
     domain_data = hass.data.get(DOMAIN, {})
-    internal_id = device_uuid
+    internal_id = device_internal_id(device_uuid)
     manager = domain_data.get(MANAGER)
     if manager is not None:
         found = manager.find_devices(device_uuids=[device_uuid])
@@ -31,11 +33,6 @@ async def async_remove_device(hass: HomeAssistant, device_uuid: str) -> None:
 
     registry = dr.async_get(hass)
     entry = registry.async_get_device({(DOMAIN, internal_id)})
-    if entry is None and internal_id == device_uuid:
-        # Forgotten devices are gone from the manager, so only the registry
-        # identifier is left; top-level Meross devices use "#BASE:<uuid>".
-        entry = registry.async_get_device(
-            {(DOMAIN, f"#BASE:{device_uuid}")})
     if entry is not None:
         registry.async_remove_device(entry.id)
 

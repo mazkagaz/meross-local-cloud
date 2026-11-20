@@ -1,4 +1,6 @@
 """F2 — D5 cutover: profile-only mode, legacy ids, rollback (H2)."""
+from types import SimpleNamespace
+
 from helpers import FakeAdapter, entry, runtime, setup_entities
 
 from custom_components.meross_cloud.common import DOMAIN, HA_SENSOR, HA_SWITCH
@@ -7,14 +9,12 @@ from custom_components.meross_cloud.profile_entities import (
 )
 
 
-async def test_f2_1_only_mode_uses_legacy_ids(hass):
+async def test_f2_1_profile_only_uses_legacy_ids(hass):
     device = runtime("mss310")
     adapter = FakeAdapter(device)
 
-    switches = await setup_entities(
-        hass, adapter, HA_SWITCH, entry(only=True))
-    sensors = await setup_entities(
-        hass, adapter, HA_SENSOR, entry(only=True))
+    switches = await setup_entities(hass, adapter, HA_SWITCH, entry())
+    sensors = await setup_entities(hass, adapter, HA_SENSOR, entry())
 
     assert [entity.unique_id for entity in switches.entities] == [
         "switch:u1:0"]
@@ -23,31 +23,30 @@ async def test_f2_1_only_mode_uses_legacy_ids(hass):
         "sensor:u1:0:power:W",
         "sensor:u1:0:voltage:V",
     ]
-    assert historical_entities_allowed(hass, entry(only=True), "u1") is False
+    assert historical_entities_allowed(hass, entry(), "u1") is False
 
 
-async def test_f2_2_rollback_restores_the_historical_path(hass):
+async def test_f2_2_options_no_longer_change_identity(hass):
     device = runtime("mss310")
     adapter = FakeAdapter(device)
 
     switches = await setup_entities(hass, adapter, HA_SWITCH, entry())
+    legacy = await setup_entities(
+        hass, adapter, HA_SWITCH, entry(only=True))
 
-    entity = next(iter(switches.entities))
-    assert entity.unique_id.startswith(f"{DOMAIN}:u1:")
-    assert historical_entities_allowed(hass, entry(), "u1") is True
+    assert [e.unique_id for e in switches.entities] == [
+        e.unique_id for e in legacy.entities] == ["switch:u1:0"]
 
 
-async def test_f2_3_unmatched_device_keeps_the_historical_fallback(hass):
+async def test_f2_3_unmatched_devices_have_no_historical_fallback(hass):
     device = runtime("mss310")
     adapter = FakeAdapter(device)
 
-    sensors = await setup_entities(
-        hass, adapter, HA_SENSOR, entry(only=True))
+    sensors = await setup_entities(hass, adapter, HA_SENSOR, entry())
 
-    assert all(":u1:" in entity.unique_id
-               or entity.unique_id.startswith("sensor:u1:")
+    assert all(entity.unique_id.startswith("sensor:u1:")
                for entity in sensors.entities)
-    assert historical_entities_allowed(hass, entry(only=True), "u2") is True
+    assert historical_entities_allowed(hass, entry(), "u2") is False
 
 
 async def test_f2_4_hub_subdevice_identity_and_via_device(hass):
@@ -57,28 +56,43 @@ async def test_f2_4_hub_subdevice_identity_and_via_device(hass):
     device.add_subdevice("sub1", template)
     adapter = FakeAdapter(device)
 
-    sensors = await setup_entities(
-        hass, adapter, HA_SENSOR, entry(only=True))
+    sensors = await setup_entities(hass, adapter, HA_SENSOR, entry())
     temperature = next(
         entity for entity in sensors.entities
-        if entity.unique_id == "sensor:sub1:0:temperature:°C")
+        if entity._spec.key == "temperature")
 
-    assert temperature.device_info["identifiers"] == {(DOMAIN, "sub1")}
-    assert temperature.device_info["via_device"] == (DOMAIN, "hub1")
+    assert temperature.device_info["identifiers"] == {
+        (DOMAIN, "#BASE:hub1#SUB:sub1")}
+    assert temperature.device_info["via_device"] == (DOMAIN, "#BASE:hub1")
     ids = [entity.unique_id for entity in sensors.entities]
     assert len(ids) == len(set(ids))
+
+
+async def test_f2_6_devlist_poll_controls_entity_availability(hass):
+    device = runtime("mss310")
+    adapter = FakeAdapter(device)
+    switches = await setup_entities(hass, adapter, HA_SWITCH, entry())
+    entity = next(iter(switches.entities))
+
+    adapter.async_update_devices([
+        SimpleNamespace(uuid="u1", online=False)])
+    await hass.async_block_till_done()
+    assert entity.available is False
+
+    adapter.async_update_devices([
+        SimpleNamespace(uuid="u1", online=True)])
+    await hass.async_block_till_done()
+    assert entity.available is True
 
 
 async def test_f2_5_restart_keeps_the_same_ids(hass):
     device = runtime("mss310")
     adapter = FakeAdapter(device)
 
-    first = await setup_entities(
-        hass, adapter, HA_SWITCH, entry(only=True))
+    first = await setup_entities(hass, adapter, HA_SWITCH, entry())
     first_ids = [entity.unique_id for entity in first.entities]
 
-    second = await setup_entities(
-        hass, adapter, HA_SWITCH, entry(only=True))
+    second = await setup_entities(hass, adapter, HA_SWITCH, entry())
     second_ids = [entity.unique_id for entity in second.entities]
 
     assert first_ids == second_ids == ["switch:u1:0"]

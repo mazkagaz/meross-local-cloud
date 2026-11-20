@@ -19,7 +19,9 @@ from meross_iot.model.exception import CommandTimeoutError
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from . import MerossDevice
-from .common import (DOMAIN, MANAGER, DEVICE_LIST_COORDINATOR, HA_SWITCH)
+from .common import (
+    DOMAIN, MANAGER, DEVICE_LIST_COORDINATOR, HA_SWITCH, PROFILE_ONLY,
+)
 from .profile_entities import (
     async_setup_profile_entities,
     historical_entities_allowed,
@@ -161,6 +163,8 @@ class DndEntityWrapper(MerossDevice, SwitchEntity):
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
     async_setup_profile_entities(
         hass, config_entry, HA_SWITCH, async_add_entities)
+    if PROFILE_ONLY and MANAGER not in hass.data[DOMAIN]:
+        return
 
     def entity_adder_callback():
         """Discover and adds new Meross entities"""

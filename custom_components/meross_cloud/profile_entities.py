@@ -42,10 +42,11 @@ from homeassistant.helpers.entity import Entity, EntityCategory
 
 from .common import (
     BROKER_ADAPTER,
-    CONF_OPT_PROFILE_ENTITIES,
-    CONF_OPT_PROFILE_ENTITIES_ONLY,
     DOMAIN,
+    MANAGER,
+    PROFILE_ONLY,
     calculate_id,
+    device_internal_id,
 )
 from .profiles.paths import substitute
 
@@ -76,14 +77,15 @@ def _device_info(device_uuid: str, subdevice_id: Optional[str] = None,
                  template=None) -> Dict[str, Any]:
     if subdevice_id is not None:
         return {
-            "identifiers": {(DOMAIN, subdevice_id)},
+            "identifiers": {
+                (DOMAIN, device_internal_id(device_uuid, subdevice_id))},
             "name": (template.name if template is not None else None)
             or subdevice_id,
             "manufacturer": "Meross",
-            "via_device": (DOMAIN, device_uuid),
+            "via_device": (DOMAIN, device_internal_id(device_uuid)),
         }
     return {
-        "identifiers": {(DOMAIN, device_uuid)},
+        "identifiers": {(DOMAIN, device_internal_id(device_uuid))},
         "manufacturer": "Meross",
     }
 
@@ -103,6 +105,7 @@ class ProfileBaseEntity(Entity):
         self._subdevice_id, self._template = (
             subdevice if subdevice is not None else (None, None))
         self._remove_listener = None
+        self._remove_adapter_listener = None
         if legacy:
             device_id = (self._subdevice_id if self._subdevice_id is not None
                          else device_uuid)
@@ -122,7 +125,7 @@ class ProfileBaseEntity(Entity):
 
     @property
     def available(self) -> bool:
-        return self._adapter.state == "connected"
+        return self._adapter.device_available(self._device_uuid)
 
     @property
     def device_info(self) -> Dict[str, Any]:
@@ -132,11 +135,16 @@ class ProfileBaseEntity(Entity):
     async def async_added_to_hass(self) -> None:
         self._remove_listener = self._runtime.add_listener(
             self._on_runtime_update)
+        self._remove_adapter_listener = self._adapter.add_listener(
+            self._on_runtime_update)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._remove_listener is not None:
             self._remove_listener()
             self._remove_listener = None
+        if self._remove_adapter_listener is not None:
+            self._remove_adapter_listener()
+            self._remove_adapter_listener = None
 
     def _on_runtime_update(self) -> None:
         self.hass.loop.call_soon_threadsafe(self._write_state)
@@ -472,7 +480,7 @@ class ProfileUpdateEntity(UpdateEntity):
 
     @property
     def available(self) -> bool:
-        return self._adapter.state == "connected"
+        return self._adapter.device_available(self._device_uuid)
 
     @property
     def device_info(self) -> Dict[str, Any]:
@@ -498,9 +506,6 @@ class ProfileUpdateEntity(UpdateEntity):
 
 def async_setup_profile_updates(hass, config_entry, async_add_entities
                                 ) -> None:
-    if config_entry is None or not config_entry.options.get(
-            CONF_OPT_PROFILE_ENTITIES, False):
-        return
     data = hass.data.get(DOMAIN, {})
     adapter = data.get(BROKER_ADAPTER)
     if adapter is None:
@@ -543,20 +548,15 @@ PLATFORM_CLASSES = {
 
 
 def historical_entities_allowed(hass, config_entry, device_uuid: str) -> bool:
-    """False when a device is owned by the profile entity layer."""
-    if config_entry is None or not config_entry.options.get(
-            CONF_OPT_PROFILE_ENTITIES_ONLY, False):
+    """Historical entities only run in the legacy test harness (D5-b)."""
+    if not PROFILE_ONLY:
         return True
-    adapter = hass.data.get(DOMAIN, {}).get(BROKER_ADAPTER)
-    return adapter is None or device_uuid not in adapter.runtimes
+    return MANAGER in (hass.data.get(DOMAIN) or {})
 
 
 def async_setup_profile_entities(hass, config_entry, platform: str,
                                  async_add_entities) -> None:
     """Register the platform entities once the profile backend is ready."""
-    if config_entry is None or not config_entry.options.get(
-            CONF_OPT_PROFILE_ENTITIES, False):
-        return
     data = hass.data.get(DOMAIN, {})
     adapter = data.get(BROKER_ADAPTER)
     if adapter is None:
@@ -566,8 +566,6 @@ def async_setup_profile_entities(hass, config_entry, platform: str,
         return
 
     added = data.setdefault("ADDED_ENTITIES_IDS", set())
-    legacy = bool(config_entry.options.get(
-        CONF_OPT_PROFILE_ENTITIES_ONLY, False))
 
     def add_now() -> None:
         entities: List[Entity] = []
@@ -577,7 +575,7 @@ def async_setup_profile_entities(hass, config_entry, platform: str,
                 return
             entity = entity_class(
                 adapter, device_uuid, runtime, spec, subdevice,
-                legacy=legacy)
+                legacy=True)
             if entity.unique_id in added:
                 return
             added.add(entity.unique_id)

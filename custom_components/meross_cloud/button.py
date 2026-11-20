@@ -24,7 +24,9 @@ from .calibration import (
     async_stop_monitor,
     set_adjust_status,
 )
-from .common import DOMAIN, MANAGER, HA_BUTTON, DEVICE_LIST_COORDINATOR
+from .common import (
+    DOMAIN, MANAGER, HA_BUTTON, DEVICE_LIST_COORDINATOR, PROFILE_ONLY,
+)
 from .profile_entities import (
     async_setup_profile_entities,
     historical_entities_allowed,
@@ -83,6 +85,8 @@ class RollerShutterCalibrationButton(MerossDevice, ButtonEntity):
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
     async_setup_profile_entities(
         hass, config_entry, HA_BUTTON, async_add_entities)
+    if PROFILE_ONLY and MANAGER not in hass.data[DOMAIN]:
+        return
 
     def entity_adder_callback():
         manager: MerossManager = hass.data[DOMAIN][MANAGER]
