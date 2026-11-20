@@ -29,6 +29,7 @@ _LOGGER = logging.getLogger(__name__)
 _DESCRIBE_TIMEOUT = 5
 _TOTAL_BUDGET = 20
 _MAX_COMPILE_ERRORS = 20
+CATALOG_CHECK_INTERVAL = 60.0
 
 
 def _subdevice_descriptors(descriptor) -> list[Dict[str, Any]]:
@@ -58,6 +59,8 @@ class BrokerProfileAdapter:
         self._coordinator = coordinator
         self._transport: Optional[BrokerMqttTransport] = None
         self._task: Optional[asyncio.Task] = None
+        self._watch_task: Optional[asyncio.Task] = None
+        self._entry_id = getattr(coordinator, "config_entry_id", None)
         self.state = "idle"
         self.revision: Optional[str] = None
         self.catalog_version: Optional[str] = None
@@ -116,6 +119,7 @@ class BrokerProfileAdapter:
             self.state = "error" if self.last_error else "connected"
             if self.state == "connected":
                 self._notify_ready()
+                self._start_catalog_watch()
 
     async def _async_probe(self) -> None:
         mqtt_host, mqtt_port = self._coordinator.mqtt_address
@@ -242,6 +246,41 @@ class BrokerProfileAdapter:
             self.schedulers[device_uuid] = scheduler
             scheduler.start()
 
+    def _start_catalog_watch(self) -> None:
+        if not self._entry_id:
+            return
+        if self._watch_task is None or self._watch_task.done():
+            self._watch_task = self._hass.async_create_task(
+                self._async_watch_catalog())
+
+    async def _async_watch_catalog(self) -> None:
+        """Reload the config entry when the broker catalog revision changes."""
+        try:
+            while True:
+                await asyncio.sleep(CATALOG_CHECK_INTERVAL)
+                try:
+                    revision = await async_fetch_revision(
+                        self._coordinator.client,
+                        self._coordinator.http_api_endpoint)
+                except Exception as err:  # noqa: BLE001 - retry next tick
+                    _LOGGER.debug("Catalog revision check failed: %s", err)
+                    continue
+                observed = revision.get("revision")
+                if not observed or not self.revision or observed == self.revision:
+                    continue
+                _LOGGER.info(
+                    "Device profile catalog changed (%s -> %s), reloading "
+                    "the integration entry", self.revision[:16],
+                    observed[:16])
+                if self._entry_id is None:
+                    return
+                await self._hass.config_entries.async_reload(self._entry_id)
+                return
+        except asyncio.CancelledError:
+            raise
+        except Exception as err:  # noqa: BLE001 - watch is best effort
+            _LOGGER.debug("Catalog watcher stopped: %s", err)
+
     async def async_send(self, device_uuid: str, namespace: str, method: str,
                          payload) -> bool:
         """Send a command for a profile entity and refresh its namespace."""
@@ -300,6 +339,11 @@ class BrokerProfileAdapter:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+        watch_task, self._watch_task = self._watch_task, None
+        if watch_task is not None and not watch_task.done():
+            watch_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await watch_task
         for scheduler in self.schedulers.values():
             await scheduler.async_stop()
         self.schedulers.clear()

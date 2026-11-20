@@ -253,6 +253,66 @@ async def test_hub_subdevice_payload_updates_the_template_state():
     assert state.entities["temperature"].values == {"value": 210}
 
 
+async def test_catalog_change_reloads_the_entry(hass, monkeypatch):
+    import asyncio
+
+    from custom_components.meross_cloud import broker_adapter as module
+
+    monkeypatch.setattr(module, "CATALOG_CHECK_INTERVAL", 0.01)
+    coordinator = SimpleNamespace(
+        config_entry_id="entry-1",
+        client=object(),
+        http_api_endpoint="https://broker:2004",
+    )
+    adapter = BrokerProfileAdapter(hass, coordinator)
+    adapter.revision = "rev1"
+    reload = AsyncMock()
+    monkeypatch.setattr(hass.config_entries, "async_reload", reload)
+    fetch = AsyncMock(side_effect=[
+        {"revision": "rev1"}, {"revision": "rev2"}])
+
+    with patch.object(module, "async_fetch_revision", fetch):
+        task = hass.async_create_task(adapter._async_watch_catalog())
+        for _ in range(100):
+            if reload.await_count:
+                break
+            await asyncio.sleep(0.01)
+        await task
+
+    reload.assert_awaited_once_with("entry-1")
+
+
+async def test_unchanged_catalog_does_not_reload(hass, monkeypatch):
+    import asyncio
+
+    from custom_components.meross_cloud import broker_adapter as module
+
+    monkeypatch.setattr(module, "CATALOG_CHECK_INTERVAL", 0.01)
+    coordinator = SimpleNamespace(
+        config_entry_id="entry-1",
+        client=object(),
+        http_api_endpoint="https://broker:2004",
+    )
+    adapter = BrokerProfileAdapter(hass, coordinator)
+    adapter.revision = "rev1"
+    reload = AsyncMock()
+    monkeypatch.setattr(hass.config_entries, "async_reload", reload)
+
+    async def same(*args):
+        return {"revision": "rev1"}
+
+    with patch.object(module, "async_fetch_revision", AsyncMock(
+            side_effect=same)):
+        task = hass.async_create_task(adapter._async_watch_catalog())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        import contextlib
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+    reload.assert_not_awaited()
+
+
 async def test_matching_device_is_compiled_lazily():
     adapter = await run_adapter({
         "schema_version": 1,

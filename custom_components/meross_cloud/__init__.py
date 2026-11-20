@@ -266,6 +266,10 @@ class MerossCoordinator(DataUpdateCoordinator):
         return self._http_api_endpoint
 
     @property
+    def config_entry_id(self) -> str:
+        return self._entry.entry_id
+
+    @property
     def credentials(self) -> MerossCloudCreds:
         return self._cached_creds
 
