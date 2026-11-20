@@ -1,0 +1,154 @@
+schema_version: 2
+profile:
+  id: meross.msh300
+  version: "2026.11.0"
+  requires_engine: ">=2.2"
+  description: "Hub MSH300 : sous-appareils MS100 (temp/humidité) et MTS100 (thermostat)."
+match:
+  kind: hub
+  type: [msh]
+payloads:
+  Appliance.System.Online:
+    methods: [GETACK, PUSH]
+    fields:
+      online:
+        type: object
+        fields:
+          status: { type: integer }
+entities:
+  - key: online
+    platform: binary_sensor
+    name: "Hub online"
+    device_class: connectivity
+    entity_category: diagnostic
+    state:
+      namespace: Appliance.System.Online
+      fields: { value: online.status }
+subdevices:
+  - name: ms100
+    match:
+      type: [ms1]
+    payloads:
+      Appliance.Hub.Sensor.TempHum:
+        methods: [GETACK, PUSH]
+        fields:
+          tempHum:
+            type: array
+            items:
+              type: object
+              fields:
+                id: { type: string }
+                latestTemperature: { type: integer, unit: "°C", scale: 0.1 }
+                latestHumidity: { type: integer, unit: "%", scale: 0.1 }
+                voltage: { type: integer, unit: V, scale: 0.001 }
+    entities:
+      - key: temperature
+        platform: sensor
+        name: "Temperature"
+        device_class: temperature
+        unit: "°C"
+        state:
+          namespace: Appliance.Hub.Sensor.TempHum
+          fields: { value: latestTemperature }
+          scale: 0.1
+
+      - key: humidity
+        platform: sensor
+        name: "Humidity"
+        device_class: humidity
+        unit: "%"
+        state:
+          namespace: Appliance.Hub.Sensor.TempHum
+          fields: { value: latestHumidity }
+          scale: 0.1
+
+      - key: voltage
+        platform: sensor
+        name: "Voltage"
+        device_class: voltage
+        unit: V
+        entity_category: diagnostic
+        state:
+          namespace: Appliance.Hub.Sensor.TempHum
+          fields: { value: voltage }
+          scale: 0.001
+
+  - name: mts100
+    match:
+      type: [mts1]
+    payloads:
+      Appliance.Hub.Mts100.All:
+        methods: [GET, GETACK, PUSH]
+        fields:
+          all:
+            type: array
+            items:
+              type: object
+              fields:
+                id: { type: string }
+                mode:
+                  type: object
+                  fields:
+                    state: { type: integer }
+                temperature:
+                  type: object
+                  fields:
+                    room: { type: integer }
+                    currentSet: { type: integer }
+                    heating: { type: integer }
+                    min: { type: integer }
+                    max: { type: integer }
+                togglex:
+                  type: object
+                  fields:
+                    onoff: { type: integer, values: { 0: off, 1: on } }
+      Appliance.Hub.Mts100.Mode:
+        methods: [GET, SET, GETACK, SETACK, PUSH]
+        fields:
+          mode:
+            type: array
+            items:
+              type: object
+              fields:
+                id: { type: string }
+                state: { type: integer }
+      Appliance.Hub.Mts100.Temperature:
+        methods: [GET, SET, GETACK, SETACK, PUSH]
+        fields:
+          temperature:
+            type: array
+            items:
+              type: object
+              fields:
+                id: { type: string }
+                currentSet: { type: integer }
+    entities:
+      - key: climate
+        platform: climate
+        name: "Thermostat"
+        capabilities:
+          hvac_modes: ["off", heat]
+          min_temp: 5
+          max_temp: 35
+          temp_step: 0.5
+        state:
+          namespace: Appliance.Hub.Mts100.All
+          fields:
+            current_temperature: temperature.room
+            target_temperature: temperature.currentSet
+            heating: temperature.heating
+            mode: mode.state
+            onoff: togglex.onoff
+            min_temp: temperature.min
+            max_temp: temperature.max
+        commands:
+          turn_on:
+            namespace: Appliance.Hub.Mts100.Mode
+            payload: { mode: [{ id: $id, state: 1 }] }
+          turn_off:
+            namespace: Appliance.Hub.Mts100.Mode
+            payload: { mode: [{ id: $id, state: 0 }] }
+          set_temperature:
+            namespace: Appliance.Hub.Mts100.Temperature
+            payload: { temperature: [{ id: $id, currentSet: $value }] }
+            value_scale: 2

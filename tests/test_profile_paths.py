@@ -101,6 +101,13 @@ def test_substitute_replaces_only_whole_strings():
     }
 
 
+def test_id_token_is_supported_for_subdevices():
+    assert substitute(
+        {"mode": [{"id": "$id", "state": 1}]}, {"id": "sub1"}) == {
+        "mode": [{"id": "sub1", "state": 1}]}
+    assert validate_tokens({"id": "$id"}) == ()
+
+
 def test_substitute_rejects_partial_and_unknown_tokens():
     with pytest.raises(UnknownToken):
         substitute("$channel_x", {"channel": 0})

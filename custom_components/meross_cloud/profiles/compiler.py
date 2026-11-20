@@ -42,6 +42,8 @@ _REQUIRED_VALUE_COMMANDS = {
     "number": frozenset({"set_value"}),
     "select": frozenset({"set_option"}),
     "light": frozenset({"set_brightness", "set_rgb"}),
+    "climate": frozenset({"set_temperature"}),
+    "fan": frozenset({"set_speed"}),
 }
 _KEY_RE = re.compile(r"^[a-z0-9_]+$")
 _DEFAULT_PERIOD_S = 60.0
@@ -311,7 +313,8 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
     state = _compile_state(prefix, raw.get("state"), namespaces, channel,
                            errors)
     commands = _compile_commands(
-        prefix, platform, raw.get("commands"), namespaces, channel, errors)
+        prefix, platform, raw.get("commands"), namespaces, channel, errors,
+        allow_subdevice=allow_subdevice)
     quirks = _compile_entity_quirks(prefix, raw.get("quirks"), errors)
     capabilities = raw.get("capabilities")
     if capabilities is not None and not isinstance(capabilities, dict):
@@ -468,7 +471,8 @@ def _compile_state(prefix: str, raw: Any,
 def _compile_commands(prefix: str, platform: str, raw: Any,
                       namespaces: Dict[str, NamespaceSpec],
                       entity_channel: Optional[int],
-                      errors: List[str]) -> Dict[str, CommandSpec]:
+                      errors: List[str], *,
+                      allow_subdevice: bool) -> Dict[str, CommandSpec]:
     if raw is None:
         return {}
     if not isinstance(raw, dict):
@@ -501,6 +505,10 @@ def _compile_commands(prefix: str, platform: str, raw: Any,
             errors.append(
                 f"{prefix}: command {name}: $channel used without an "
                 "entity channel")
+        if "$id" in tokens and not allow_subdevice:
+            errors.append(
+                f"{prefix}: command {name}: $id is only valid in a "
+                "subdevice template")
         if (name in _REQUIRED_VALUE_COMMANDS.get(platform, ())
                 and "$value" not in tokens):
             errors.append(

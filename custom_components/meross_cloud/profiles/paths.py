@@ -16,7 +16,7 @@ MISSING = object()
 MAX_DEPTH = 16
 MAX_KEY_LENGTH = 64
 RESERVED_KEYS = frozenset({"__proto__", "constructor", "prototype"})
-ALLOWED_TOKENS = ("$channel", "$value")
+ALLOWED_TOKENS = ("$channel", "$value", "$id")
 
 _SEGMENT_RE = re.compile(r"([A-Za-z0-9_]+)(?:\[([0-9]+)\])?")
 

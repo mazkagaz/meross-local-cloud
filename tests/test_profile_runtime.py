@@ -244,6 +244,87 @@ def test_oversized_payload_is_rejected():
     assert any("size limit" in error for error in device.errors)
 
 
+def pilot_hub():
+    compiled = compiled_fixture("msh300")
+    templates = {template.name: template for template in compiled.subdevices}
+    device = DeviceRuntime("hub1", compiled)
+    device.add_subdevice("sub1", templates["ms100"])
+    device.add_subdevice("valve1", templates["mts100"])
+    return device
+
+
+def test_ms100_temperature_humidity_frame():
+    device = pilot_hub()
+
+    applied = device.dispatch("Appliance.Hub.Sensor.TempHum", "PUSH", {
+        "tempHum": [{
+            "id": "sub1",
+            "latestTemperature": 215,
+            "latestHumidity": 553,
+            "voltage": 3000,
+        }],
+    })
+
+    entities = device.subdevices["sub1"].entities
+    assert applied == 3
+    assert entities["temperature"].values["value"] == pytest.approx(21.5)
+    assert entities["humidity"].values["value"] == pytest.approx(55.3)
+    assert entities["voltage"].values["value"] == pytest.approx(3.0)
+
+
+def test_mts100_all_frame():
+    device = pilot_hub()
+
+    applied = device.dispatch("Appliance.Hub.Mts100.All", "PUSH", {
+        "all": [{
+            "id": "valve1",
+            "mode": {"state": 1},
+            "temperature": {"room": 44, "currentSet": 40, "heating": 1,
+                            "min": 10, "max": 70},
+            "togglex": {"onoff": 1},
+        }],
+    })
+
+    values = device.subdevices["valve1"].entities["climate"].values
+    assert applied == 7
+    assert values["current_temperature"] == 44
+    assert values["target_temperature"] == 40
+    assert values["heating"] == 1
+    assert values["mode"] == 1
+    assert values["onoff"] == 1
+    assert values["min_temp"] == 10
+    assert values["max_temp"] == 70
+
+
+def test_mts200_mode_frame():
+    device = DeviceRuntime("thermostat", compiled_fixture("mts200"))
+
+    applied = device.dispatch("Appliance.Control.Thermostat.Mode", "PUSH", {
+        "mode": [{
+            "channel": 0, "onoff": 1, "mode": 1, "state": 1,
+            "currentTemp": 177, "targetTemp": 200, "min": 50, "max": 350,
+        }],
+    })
+
+    values = device.entities["climate"].values
+    assert applied == 7
+    assert values["current_temperature"] == 177
+    assert values["target_temperature"] == 200
+    assert values["mode"] == 1
+
+
+def test_fan_frame():
+    device = DeviceRuntime("fan", compiled_fixture("mfc"))
+
+    applied = device.dispatch("Appliance.Control.Fan", "PUSH", {
+        "fan": [{"channel": 0, "speed": 2, "maxSpeed": 3}],
+    })
+
+    values = device.entities["fan"].values
+    assert applied == 2
+    assert values == {"speed": 2, "max_speed": 3}
+
+
 def hub_data():
     return {
         "schema_version": 2,

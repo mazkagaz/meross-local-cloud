@@ -248,12 +248,22 @@ def test_value_is_required_for_number_commands():
     ("select", "set_option"),
     ("light", "set_brightness"),
     ("light", "set_rgb"),
+    ("climate", "set_temperature"),
+    ("fan", "set_speed"),
 ])
 def test_value_is_required_for_value_commands(platform, command):
+    capabilities = None
+    if platform == "climate":
+        capabilities = {"hvac_modes": ["off"]}
+    elif platform == "fan":
+        capabilities = {"fan_modes": ["auto"]}
+    extra = {"capabilities": capabilities} if capabilities else {}
+
     compiled = compile_profile(meta(doc(entities=[entity(
         platform=platform,
         commands={command: {"namespace": TOGGLE_NS,
                             "payload": {"value": 3}}},
+        **extra,
     )])))
 
     assert compiled.entities == {}
@@ -708,6 +718,9 @@ def test_lazy_compilation_cache_uses_id_version_and_digest():
                 "calibration_status"}),
     ("mss310", {"switch", "power", "voltage", "current"}),
     ("msl120", {"light"}),
+    ("msh300", {"online"}),
+    ("mts200", {"climate"}),
+    ("mfc", {"fan"}),
 ])
 def test_canonical_profiles_compile(name, expected):
     data = fixture_data(name)
@@ -716,7 +729,33 @@ def test_canonical_profiles_compile(name, expected):
 
     assert compiled.errors == []
     assert set(compiled.entities) == expected
-    assert compiled.schema_version == 1
+    assert compiled.schema_version == data["schema_version"]
+
+
+def test_hub_pilot_templates_compile_with_id_commands():
+    data = fixture_data("msh300")
+
+    compiled = compile_profile(meta(data, digest="hash"))
+
+    assert compiled.errors == []
+    templates = {template.name: template for template in compiled.subdevices}
+    assert set(templates) == {"ms100", "mts100"}
+    assert set(templates["ms100"].entities) == {
+        "temperature", "humidity", "voltage"}
+    climate = templates["mts100"].entities["climate"]
+    assert climate.platform == "climate"
+    assert climate.commands["set_temperature"].payload == {
+        "temperature": [{"id": "$id", "currentSet": "$value"}]}
+
+
+def test_id_token_is_refused_outside_a_subdevice_template():
+    compiled = compile_profile(meta(doc(entities=[entity(commands={
+        "turn_on": {"namespace": TOGGLE_NS,
+                    "payload": {"id": "$id", "onoff": 1}}})])))
+
+    assert compiled.entities == {}
+    assert any("$id is only valid in a subdevice template" in error
+               for error in compiled.errors)
 
 
 def test_canonical_profile_entities_carry_stable_ids():
@@ -727,7 +766,9 @@ def test_canonical_profile_entities_carry_stable_ids():
         "Appliance.Control.Electricity"
 
 
-@pytest.mark.parametrize("name", ["mrs100", "mss310", "msl120"])
+@pytest.mark.parametrize("name", [
+    "mrs100", "mss310", "msl120", "msh300", "mts200", "mfc",
+])
 def test_fixtures_match_the_canonical_broker_profiles(name):
     canonical = BROKER_PROFILES / f"{name}.yaml"
     if not canonical.exists():

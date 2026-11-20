@@ -1,0 +1,57 @@
+schema_version: 2
+profile:
+  id: meross.mts200
+  version: "2026.11.0"
+  requires_engine: ">=2.2"
+  description: "Thermostat MTS200/MTS300 : température, mode et consigne."
+match:
+  type: [mts2, mts3]
+payloads:
+  Appliance.Control.Thermostat.Mode:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      mode:
+        type: array
+        items:
+          type: object
+          fields:
+            channel: { type: integer }
+            onoff: { type: integer, values: { 0: off, 1: on } }
+            mode: { type: integer }
+            state: { type: integer }
+            currentTemp: { type: integer, unit: "°C", scale: 0.1 }
+            targetTemp: { type: integer, unit: "°C", scale: 0.1 }
+            min: { type: integer }
+            max: { type: integer }
+entities:
+  - key: climate
+    platform: climate
+    channel: 0
+    name: "Thermostat"
+    capabilities:
+      hvac_modes: ["off", heat, cool, auto]
+      min_temp: 5
+      max_temp: 35
+      temp_step: 0.5
+    state:
+      namespace: Appliance.Control.Thermostat.Mode
+      channel: $channel
+      fields:
+        current_temperature: mode[0].currentTemp
+        target_temperature: mode[0].targetTemp
+        mode: mode[0].mode
+        onoff: mode[0].onoff
+        state: mode[0].state
+        min_temp: mode[0].min
+        max_temp: mode[0].max
+    commands:
+      turn_on:
+        namespace: Appliance.Control.Thermostat.Mode
+        payload: { mode: [{ channel: $channel, onoff: 1 }] }
+      turn_off:
+        namespace: Appliance.Control.Thermostat.Mode
+        payload: { mode: [{ channel: $channel, onoff: 0 }] }
+      set_temperature:
+        namespace: Appliance.Control.Thermostat.Mode
+        payload: { mode: [{ channel: $channel, targetTemp: $value }] }
+        value_scale: 10

@@ -1,0 +1,38 @@
+schema_version: 2
+profile:
+  id: meross.mfc
+  version: "2026.11.0"
+  requires_engine: ">=2.2"
+  description: "Ventilateur MFC : vitesse et vitesse maximale."
+match:
+  type: [mfc]
+payloads:
+  Appliance.Control.Fan:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      fan:
+        type: array
+        items:
+          type: object
+          fields:
+            channel: { type: integer }
+            speed: { type: integer }
+            maxSpeed: { type: integer }
+entities:
+  - key: fan
+    platform: fan
+    channel: 0
+    name: "Fan"
+    capabilities:
+      features: [set_speed]
+      fan_modes: ["auto", "low", "medium", "high"]
+    state:
+      namespace: Appliance.Control.Fan
+      channel: $channel
+      fields:
+        speed: "fan[0].speed"
+        max_speed: "fan[0].maxSpeed"
+    commands:
+      set_speed:
+        namespace: Appliance.Control.Fan
+        payload: { fan: [{ channel: $channel, speed: $value }] }
