@@ -289,6 +289,12 @@ class BrokerProfileAdapter:
         except Exception as err:  # noqa: BLE001 - watch is best effort
             _LOGGER.debug("Catalog watcher stopped: %s", err)
 
+    async def async_reload_entry(self) -> bool:
+        if not self._entry_id or not hasattr(self._hass, "config_entries"):
+            return False
+        await self._hass.config_entries.async_reload(self._entry_id)
+        return True
+
     async def async_send(self, device_uuid: str, namespace: str, method: str,
                          payload) -> bool:
         """Send a command for a profile entity and refresh its namespace."""

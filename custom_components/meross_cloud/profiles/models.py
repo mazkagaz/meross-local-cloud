@@ -113,6 +113,7 @@ class CompiledProfile:
     profile_id: str
     version: Optional[str]
     schema_version: Optional[int]
+    description: Optional[str] = None
     namespaces: Dict[str, NamespaceSpec] = field(default_factory=dict)
     entities: Dict[str, EntitySpec] = field(default_factory=dict)
     subdevices: Tuple[SubDeviceTemplate, ...] = ()

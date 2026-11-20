@@ -758,6 +758,7 @@ def test_canonical_profiles_compile(name, expected):
     assert compiled.errors == []
     assert set(compiled.entities) == expected
     assert compiled.schema_version == data["schema_version"]
+    assert compiled.description == data["profile"].get("description")
 
 
 def test_hub_pilot_templates_compile_with_id_commands():

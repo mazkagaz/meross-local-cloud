@@ -15,9 +15,11 @@ from custom_components.meross_cloud.common import (
     HA_NUMBER,
     HA_SENSOR,
     HA_SWITCH,
+    HA_UPDATE,
 )
 from custom_components.meross_cloud.profile_entities import (
     async_setup_profile_entities,
+    async_setup_profile_updates,
 )
 from custom_components.meross_cloud.profiles.compiler import compile_profile
 from custom_components.meross_cloud.profiles.models import ProfileMeta
@@ -42,9 +44,14 @@ class FakeAdapter:
         self.schedulers = {}
         self.sent = []
         self.ready = []
+        self.reloads = 0
 
     async def async_send(self, device_uuid, namespace, method, payload):
         self.sent.append((device_uuid, namespace, method, payload))
+        return True
+
+    async def async_reload_entry(self):
+        self.reloads += 1
         return True
 
     def add_ready_listener(self, callback):
@@ -217,6 +224,64 @@ async def test_subdevice_entity_device_info(hass):
     assert entity.native_value == 21.5
     assert entity.device_info["identifiers"] == {(DOMAIN, "sub1")}
     assert entity.device_info["via_device"] == (DOMAIN, "hub1")
+
+
+async def setup_updates(hass, adapter):
+    hass.data[DOMAIN] = {
+        BROKER_ADAPTER: adapter,
+        "ADDED_ENTITIES_IDS": set(),
+    }
+    component = EntityComponent(_LOGGER, HA_UPDATE, hass)
+
+    def add(entities, update_before_add=False):
+        hass.async_create_task(component.async_add_entities(
+            entities, update_before_add=update_before_add))
+
+    async_setup_profile_updates(hass, entry(), add)
+    await hass.async_block_till_done()
+    return component
+
+
+async def test_update_entities_cover_hub_and_subdevices(hass):
+    device = runtime("msh300", uuid="hub1")
+    template = next(
+        item for item in device.profile.subdevices if item.name == "ms100")
+    device.add_subdevice("sub1", template)
+    adapter = FakeAdapter(device)
+
+    component = await setup_updates(hass, adapter)
+
+    assert len(component.entities) == 2
+    hub = next(
+        item for item in component.entities
+        if item.unique_id == f"{DOMAIN}:hub1:update:meross.msh300")
+    sub = next(
+        item for item in component.entities
+        if item.unique_id.endswith("sub1:update:" + template.uid))
+    assert hub.installed_version == device.profile.version
+    assert hub.latest_version == device.profile.version
+    assert hub.release_summary == device.profile.description
+    assert sub.title == "ms100 profile"
+    assert sub.device_info["via_device"] == (DOMAIN, "hub1")
+
+    await hub.async_install(None, False)
+    assert adapter.reloads == 1
+
+
+async def test_update_entities_are_gated(hass):
+    device = runtime("mss310")
+    adapter = FakeAdapter(device)
+    hass.data[DOMAIN] = {
+        BROKER_ADAPTER: adapter,
+        "ADDED_ENTITIES_IDS": set(),
+    }
+    added = []
+
+    async_setup_profile_updates(
+        hass, entry(False), lambda entities, update_before_add=False:
+        added.extend(entities))
+
+    assert added == []
 
 
 async def test_unavailable_backend_marks_entities_unavailable(hass):

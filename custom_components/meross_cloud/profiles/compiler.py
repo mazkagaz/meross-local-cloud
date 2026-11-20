@@ -61,10 +61,14 @@ def _is_number(value: Any) -> bool:
 def compile_profile(profile: ProfileMeta) -> CompiledProfile:
     """Compile one profile; entity errors stay isolated."""
     data = profile.data if isinstance(profile.data, dict) else {}
+    profile_doc = data.get("profile")
+    description = (profile_doc.get("description")
+                   if isinstance(profile_doc, dict) else None)
     compiled = CompiledProfile(
         profile_id=profile.id,
         version=profile.version,
         schema_version=data.get("schema_version"),
+        description=description if isinstance(description, str) else None,
     )
     compiled.namespaces = _compile_namespaces(profile.id, data, compiled)
     _check_root_quirks(profile.id, data, compiled)

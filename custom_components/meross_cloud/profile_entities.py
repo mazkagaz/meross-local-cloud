@@ -26,6 +26,10 @@ from homeassistant.components.light import (
 from homeassistant.components.number import NumberDeviceClass, NumberEntity
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.update import (
+    UpdateEntity,
+    UpdateEntityFeature,
+)
 from homeassistant.helpers.entity import Entity, EntityCategory
 
 from .common import (
@@ -58,6 +62,22 @@ def _as_bool(value: Any) -> bool:
     return bool(value)
 
 
+def _device_info(device_uuid: str, subdevice_id: Optional[str] = None,
+                 template=None) -> Dict[str, Any]:
+    if subdevice_id is not None:
+        return {
+            "identifiers": {(DOMAIN, subdevice_id)},
+            "name": (template.name if template is not None else None)
+            or subdevice_id,
+            "manufacturer": "Meross",
+            "via_device": (DOMAIN, device_uuid),
+        }
+    return {
+        "identifiers": {(DOMAIN, device_uuid)},
+        "manufacturer": "Meross",
+    }
+
+
 class ProfileBaseEntity(Entity):
     """Common runtime plumbing for one compiled entity."""
 
@@ -88,17 +108,8 @@ class ProfileBaseEntity(Entity):
 
     @property
     def device_info(self) -> Dict[str, Any]:
-        if self._subdevice_id is not None:
-            return {
-                "identifiers": {(DOMAIN, self._subdevice_id)},
-                "name": self._template.name or self._subdevice_id,
-                "manufacturer": "Meross",
-                "via_device": (DOMAIN, self._device_uuid),
-            }
-        return {
-            "identifiers": {(DOMAIN, self._device_uuid)},
-            "manufacturer": "Meross",
-        }
+        return _device_info(
+            self._device_uuid, self._subdevice_id, self._template)
 
     async def async_added_to_hass(self) -> None:
         self._remove_listener = self._runtime.add_listener(
@@ -301,6 +312,86 @@ class ProfileNumber(ProfileBaseEntity, NumberEntity):
 class ProfileButton(ProfileBaseEntity, ButtonEntity):
     async def async_press(self) -> None:
         await self._send("press")
+
+
+class ProfileUpdateEntity(UpdateEntity):
+    """Surface the profile applied to a device and allow re-applying it."""
+
+    _attr_should_poll = False
+    _attr_supported_features = UpdateEntityFeature.INSTALL
+
+    def __init__(self, adapter, device_uuid: str, runtime,
+                 subdevice_id: Optional[str] = None, template=None) -> None:
+        self._adapter = adapter
+        self._device_uuid = device_uuid
+        self._runtime = runtime
+        self._subdevice_id = subdevice_id
+        self._template = template
+        if subdevice_id is not None:
+            self._attr_unique_id = (
+                f"{DOMAIN}:{subdevice_id}:update:{template.uid}")
+            self._attr_title = f"{template.name or subdevice_id} profile"
+        else:
+            self._attr_unique_id = (
+                f"{DOMAIN}:{device_uuid}:update:{runtime.profile.profile_id}")
+            self._attr_title = f"{runtime.profile.profile_id} profile"
+
+    @property
+    def available(self) -> bool:
+        return self._adapter.state == "connected"
+
+    @property
+    def device_info(self) -> Dict[str, Any]:
+        return _device_info(
+            self._device_uuid, self._subdevice_id, self._template)
+
+    @property
+    def installed_version(self) -> Optional[str]:
+        return self._runtime.profile.version
+
+    @property
+    def latest_version(self) -> Optional[str]:
+        return self._runtime.profile.version
+
+    @property
+    def release_summary(self) -> Optional[str]:
+        return self._runtime.profile.description
+
+    async def async_install(self, version: Optional[str],
+                            backup: bool, **kwargs: Any) -> None:
+        await self._adapter.async_reload_entry()
+
+
+def async_setup_profile_updates(hass, config_entry, async_add_entities
+                                ) -> None:
+    if config_entry is None or not config_entry.options.get(
+            CONF_OPT_PROFILE_ENTITIES, False):
+        return
+    data = hass.data.get(DOMAIN, {})
+    adapter = data.get(BROKER_ADAPTER)
+    if adapter is None:
+        return
+    added = data.setdefault("ADDED_ENTITIES_IDS", set())
+
+    def add_now() -> None:
+        entities: List[Entity] = []
+
+        def add(device_uuid, runtime, subdevice_id=None, template=None):
+            entity = ProfileUpdateEntity(
+                adapter, device_uuid, runtime, subdevice_id, template)
+            if entity.unique_id in added:
+                return
+            added.add(entity.unique_id)
+            entities.append(entity)
+
+        for device_uuid, runtime in adapter.runtimes.items():
+            add(device_uuid, runtime)
+            for subdevice_id, subdevice in runtime.subdevices.items():
+                add(device_uuid, runtime, subdevice_id, subdevice.template)
+        if entities:
+            async_add_entities(entities, False)
+
+    adapter.add_ready_listener(add_now)
 
 
 PLATFORM_CLASSES = {
