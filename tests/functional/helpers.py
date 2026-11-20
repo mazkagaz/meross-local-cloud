@@ -6,6 +6,7 @@ import logging
 import time
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 import yaml
 from homeassistant.helpers.entity_component import EntityComponent
@@ -89,6 +90,40 @@ async def setup_entities(hass, adapter, platform, config_entry):
     async_setup_profile_entities(hass, config_entry, platform, add)
     await hass.async_block_till_done()
     return component
+
+
+async def start_adapter_with_bus(hass, bus, profiles, uuids):
+    from custom_components.meross_cloud.broker_adapter import (
+        BrokerProfileAdapter,
+    )
+
+    coordinator = SimpleNamespace(
+        credentials=SimpleNamespace(user_id="1", key="key", token="t"),
+        mqtt_address=("localhost", 2001),
+        mqtt_ssl_context=object(),
+        http_api_endpoint="https://broker:2004",
+    )
+    with patch(
+            "custom_components.meross_cloud.broker_adapter."
+            "BrokerMqttTransport", return_value=bus), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
+                "async_list_devices", AsyncMock(return_value=[
+                    SimpleNamespace(uuid=uuid) for uuid in uuids])), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
+                "async_fetch_revision", AsyncMock(return_value={
+                    "revision": "rev1", "count": len(profiles)})), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
+                "async_fetch_catalog", AsyncMock(return_value={
+                    "schema_version": 1, "revision": "rev1",
+                    "profiles": [catalog_entry(name)
+                                 for name in profiles]})):
+        adapter = BrokerProfileAdapter(hass, coordinator)
+        await adapter.async_start()
+    bus.message_listener = adapter._dispatch_message
+    return adapter
 
 
 async def wait_for(predicate, timeout=2.0):

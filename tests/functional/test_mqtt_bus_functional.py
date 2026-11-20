@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from device_simulator import HubSimulator, MSS310Simulator
-from helpers import catalog_entry, wait_for
+from helpers import start_adapter_with_bus, wait_for
 from mqtt_bus import InMemoryMqttBus
 
 from custom_components.meross_cloud.broker_adapter import BrokerProfileAdapter
@@ -15,40 +15,10 @@ MTS_MODE = "Appliance.Hub.Mts100.Mode"
 MTS_TEMPERATURE = "Appliance.Hub.Mts100.Temperature"
 
 
-async def start_adapter(hass, bus, profiles, uuids):
-    coordinator = SimpleNamespace(
-        credentials=SimpleNamespace(user_id="1", key="key", token="t"),
-        mqtt_address=("localhost", 2001),
-        mqtt_ssl_context=object(),
-        http_api_endpoint="https://broker:2004",
-    )
-    with patch(
-            "custom_components.meross_cloud.broker_adapter."
-            "BrokerMqttTransport", return_value=bus), \
-            patch(
-                "custom_components.meross_cloud.broker_adapter."
-                "async_list_devices", AsyncMock(return_value=[
-                    SimpleNamespace(uuid=uuid) for uuid in uuids])), \
-            patch(
-                "custom_components.meross_cloud.broker_adapter."
-                "async_fetch_revision", AsyncMock(return_value={
-                    "revision": "rev1", "count": len(profiles)})), \
-            patch(
-                "custom_components.meross_cloud.broker_adapter."
-                "async_fetch_catalog", AsyncMock(return_value={
-                    "schema_version": 1, "revision": "rev1",
-                    "profiles": [catalog_entry(name)
-                                 for name in profiles]})):
-        adapter = BrokerProfileAdapter(hass, coordinator)
-        await adapter.async_start()
-    bus.message_listener = adapter._dispatch_message
-    return adapter
-
-
 async def test_mss310_over_the_bus(hass):
     bus = InMemoryMqttBus()
     simulator = bus.add(MSS310Simulator())
-    adapter = await start_adapter(hass, bus, ["mss310"], ["u1"])
+    adapter = await start_adapter_with_bus(hass, bus, ["mss310"], ["u1"])
     runtime = adapter.runtimes["u1"]
     try:
         assert await wait_for(lambda: bus.multiples)
@@ -85,7 +55,7 @@ async def test_mss310_over_the_bus(hass):
 async def test_hub_subdevices_over_the_bus(hass):
     bus = InMemoryMqttBus()
     hub = bus.add(HubSimulator())
-    adapter = await start_adapter(hass, bus, ["msh300"], ["hub1"])
+    adapter = await start_adapter_with_bus(hass, bus, ["msh300"], ["hub1"])
     runtime = adapter.runtimes["hub1"]
     try:
         assert adapter.subdevices_matched == 3
