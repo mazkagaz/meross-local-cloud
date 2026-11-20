@@ -1,0 +1,69 @@
+schema_version: 2
+profile:
+  id: meross.mod
+  version: "2026.11.0"
+  requires_engine: ">=2.2"
+  description: "Diffuseur/humidificateur MOD : diffusion et éclairage."
+match:
+  type: [mod]
+payloads:
+  Appliance.Control.Diffuser.Spray:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      spray:
+        type: object
+        fields:
+          channel: { type: integer }
+          mode: { type: integer }
+          lmTime: { type: integer }
+  Appliance.Control.Diffuser.Light:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      light:
+        type: object
+        fields:
+          channel: { type: integer }
+          onoff: { type: integer, values: { 0: off, 1: on } }
+          luminance: { type: integer, unit: "%" }
+          rgb: { type: integer }
+          mode: { type: integer }
+entities:
+  - key: spray
+    platform: humidifier
+    channel: 0
+    name: "Diffusion"
+    state:
+      namespace: Appliance.Control.Diffuser.Spray
+      channel: $channel
+      fields: { mode: spray.mode }
+    commands:
+      turn_on:
+        namespace: Appliance.Control.Diffuser.Spray
+        payload: { spray: { channel: $channel, mode: 1 } }
+      turn_off:
+        namespace: Appliance.Control.Diffuser.Spray
+        payload: { spray: { channel: $channel, mode: 0 } }
+
+  - key: light
+    platform: light
+    channel: 0
+    state:
+      namespace: Appliance.Control.Diffuser.Light
+      channel: $channel
+      fields:
+        onoff: light.onoff
+        brightness: light.luminance
+        rgb: light.rgb
+    commands:
+      turn_on:
+        namespace: Appliance.Control.Diffuser.Light
+        payload: { channel: $channel, light: { onoff: 1 } }
+      turn_off:
+        namespace: Appliance.Control.Diffuser.Light
+        payload: { channel: $channel, light: { onoff: 0 } }
+      set_brightness:
+        namespace: Appliance.Control.Diffuser.Light
+        payload: { channel: $channel, light: { luminance: $value } }
+      set_rgb:
+        namespace: Appliance.Control.Diffuser.Light
+        payload: { channel: $channel, light: { rgb: $value } }

@@ -249,6 +249,7 @@ def pilot_hub():
     templates = {template.name: template for template in compiled.subdevices}
     device = DeviceRuntime("hub1", compiled)
     device.add_subdevice("sub1", templates["ms100"])
+    device.add_subdevice("sensor1", templates["ms130"])
     device.add_subdevice("valve1", templates["mts100"])
     return device
 
@@ -270,6 +271,85 @@ def test_ms100_temperature_humidity_frame():
     assert entities["temperature"].values["value"] == pytest.approx(21.5)
     assert entities["humidity"].values["value"] == pytest.approx(55.3)
     assert entities["voltage"].values["value"] == pytest.approx(3.0)
+
+
+def test_ms130_sensor_all_frame():
+    device = pilot_hub()
+
+    applied = device.dispatch("Appliance.Hub.Sensor.All", "PUSH", {
+        "all": [{
+            "id": "sensor1",
+            "temperature": {"latest": 215},
+            "humidity": {"latest": 553},
+        }],
+    })
+
+    entities = device.subdevices["sensor1"].entities
+    assert applied == 2
+    assert entities["temperature"].values["value"] == pytest.approx(21.5)
+    assert entities["humidity"].values["value"] == pytest.approx(55.3)
+
+
+def test_generic_switch_frame():
+    device = DeviceRuntime("plug", compiled_fixture("mss"))
+
+    applied = device.dispatch(TOGGLE_NS, "PUSH", {
+        "channel": 0, "togglex": [{"channel": 0, "onoff": 1}]})
+
+    assert applied == 1
+    assert device.entities["switch"].values == {"onoff": 1}
+
+
+def test_generic_light_frame():
+    device = DeviceRuntime("bulb", compiled_fixture("msl"))
+
+    applied = device.dispatch("Appliance.Control.Light", "PUSH", {
+        "channel": 0,
+        "light": {"onoff": 1, "luminance": 80, "rgb": 255},
+    })
+
+    assert applied == 3
+    assert device.entities["light"].values == {
+        "onoff": 1, "brightness": 80, "rgb": 255}
+
+
+def test_generic_shutter_frame():
+    device = DeviceRuntime("shutter", compiled_fixture("mrs"))
+
+    applied = device.dispatch("Appliance.RollerShutter.Position", "PUSH", {
+        "channel": 0, "position": 60, "state": 1})
+
+    assert applied == 2
+    assert device.entities["cover"].values == {
+        "position": 60, "state": 1}
+
+
+def test_dimmer_frame():
+    device = DeviceRuntime("dimmer", compiled_fixture("mss5"))
+
+    applied = device.dispatch("Appliance.Control.Light", "PUSH", {
+        "channel": 0, "light": {"onoff": 1, "luminance": 40}})
+
+    assert applied == 2
+    assert device.entities["light"].values == {
+        "onoff": 1, "brightness": 40}
+
+
+def test_diffuser_frames():
+    device = DeviceRuntime("diffuser", compiled_fixture("mod"))
+
+    spray = device.dispatch("Appliance.Control.Diffuser.Spray", "PUSH", {
+        "spray": {"channel": 0, "mode": 1}})
+    light = device.dispatch("Appliance.Control.Diffuser.Light", "PUSH", {
+        "channel": 0,
+        "light": {"onoff": 1, "luminance": 50, "rgb": 100},
+    })
+
+    assert spray == 1
+    assert light == 3
+    assert device.entities["spray"].values == {"mode": 1}
+    assert device.entities["light"].values == {
+        "onoff": 1, "brightness": 50, "rgb": 100}
 
 
 def test_mts100_all_frame():

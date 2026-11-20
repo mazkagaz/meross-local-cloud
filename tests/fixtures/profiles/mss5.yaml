@@ -1,0 +1,41 @@
+schema_version: 2
+profile:
+  id: meross.mss5
+  version: "2026.11.0"
+  requires_engine: ">=2.2"
+  description: "Variateur Mss5 exposé comme éclairage."
+match:
+  type: [mss5]
+  abilities:
+    all: [Appliance.Control.Light]
+payloads:
+  Appliance.Control.Light:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      channel: { type: integer }
+      light:
+        type: object
+        fields:
+          onoff: { type: integer, values: { 0: off, 1: on } }
+          luminance: { type: integer, unit: "%" }
+          capacity: { type: integer }
+entities:
+  - key: light
+    platform: light
+    channel: 0
+    state:
+      namespace: Appliance.Control.Light
+      channel: $channel
+      fields:
+        onoff: light.onoff
+        brightness: light.luminance
+    commands:
+      turn_on:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { onoff: 1 } }
+      turn_off:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { onoff: 0 } }
+      set_brightness:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { luminance: $value } }

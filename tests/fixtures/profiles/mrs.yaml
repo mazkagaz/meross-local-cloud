@@ -1,0 +1,47 @@
+schema_version: 2
+profile:
+  id: meross.mrs
+  version: "2026.11.0"
+  requires_engine: ">=2.2"
+  description: "Famille volets roulants Meross (position et commandes)."
+match:
+  type: [mrs]
+  abilities:
+    all: [Appliance.RollerShutter.State]
+payloads:
+  Appliance.RollerShutter.State:
+    methods: [GETACK, SETACK, PUSH]
+    fields:
+      channel: { type: integer }
+      state:
+        type: integer
+        values: { 0: stop, 1: open, 2: close }
+  Appliance.RollerShutter.Position:
+    methods: [GETACK, SETACK, PUSH]
+    fields:
+      channel: { type: integer }
+      position: { type: integer, unit: "%" }
+      state: { type: integer }
+entities:
+  - key: cover
+    platform: cover
+    channel: 0
+    state:
+      namespace: Appliance.RollerShutter.Position
+      channel: $channel
+      fields:
+        position: position
+        state: state
+    commands:
+      open:
+        namespace: Appliance.RollerShutter.State
+        payload: { channel: $channel, state: 1 }
+      close:
+        namespace: Appliance.RollerShutter.State
+        payload: { channel: $channel, state: 2 }
+      stop:
+        namespace: Appliance.RollerShutter.State
+        payload: { channel: $channel, state: 0 }
+      set_position:
+        namespace: Appliance.RollerShutter.Position
+        payload: { channel: $channel, position: $value }

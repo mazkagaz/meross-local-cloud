@@ -1,0 +1,46 @@
+schema_version: 2
+profile:
+  id: meross.msl
+  version: "2026.11.0"
+  requires_engine: ">=2.2"
+  description: "Famille éclairages Meross (état, luminosité, couleur)."
+match:
+  type: [msl, msl100, msl320, msl320cp]
+  abilities:
+    all: [Appliance.Control.Light]
+payloads:
+  Appliance.Control.Light:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      channel: { type: integer }
+      light:
+        type: object
+        fields:
+          onoff: { type: integer, values: { 0: off, 1: on } }
+          luminance: { type: integer, unit: "%" }
+          rgb: { type: integer }
+          capacity: { type: integer }
+entities:
+  - key: light
+    platform: light
+    channel: 0
+    state:
+      namespace: Appliance.Control.Light
+      channel: $channel
+      fields:
+        onoff: light.onoff
+        brightness: light.luminance
+        rgb: light.rgb
+    commands:
+      turn_on:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { onoff: 1 } }
+      turn_off:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { onoff: 0 } }
+      set_brightness:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { luminance: $value } }
+      set_rgb:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { rgb: $value } }

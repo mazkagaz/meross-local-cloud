@@ -721,6 +721,11 @@ def test_lazy_compilation_cache_uses_id_version_and_digest():
     ("msh300", {"online"}),
     ("mts200", {"climate"}),
     ("mfc", {"fan"}),
+    ("mss", {"switch"}),
+    ("msl", {"light"}),
+    ("mrs", {"cover"}),
+    ("mss5", {"light"}),
+    ("mod", {"spray", "light"}),
 ])
 def test_canonical_profiles_compile(name, expected):
     data = fixture_data(name)
@@ -739,9 +744,10 @@ def test_hub_pilot_templates_compile_with_id_commands():
 
     assert compiled.errors == []
     templates = {template.name: template for template in compiled.subdevices}
-    assert set(templates) == {"ms100", "mts100"}
+    assert set(templates) == {"ms100", "ms130", "mts100"}
     assert set(templates["ms100"].entities) == {
         "temperature", "humidity", "voltage"}
+    assert set(templates["ms130"].entities) == {"temperature", "humidity"}
     climate = templates["mts100"].entities["climate"]
     assert climate.platform == "climate"
     assert climate.commands["set_temperature"].payload == {
@@ -768,6 +774,7 @@ def test_canonical_profile_entities_carry_stable_ids():
 
 @pytest.mark.parametrize("name", [
     "mrs100", "mss310", "msl120", "msh300", "mts200", "mfc",
+    "mss", "msl", "mrs", "mss5", "mod",
 ])
 def test_fixtures_match_the_canonical_broker_profiles(name):
     canonical = BROKER_PROFILES / f"{name}.yaml"

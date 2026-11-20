@@ -73,6 +73,47 @@ subdevices:
           fields: { value: voltage }
           scale: 0.001
 
+  - name: ms130
+    match:
+      type: [ms130]
+    payloads:
+      Appliance.Hub.Sensor.All:
+        methods: [GET, GETACK, PUSH]
+        fields:
+          all:
+            type: array
+            items:
+              type: object
+              fields:
+                id: { type: string }
+                temperature:
+                  type: object
+                  fields:
+                    latest: { type: integer, unit: "°C", scale: 0.1 }
+                humidity:
+                  type: object
+                  fields:
+                    latest: { type: integer, unit: "%", scale: 0.1 }
+    entities:
+      - key: temperature
+        platform: sensor
+        name: "Temperature"
+        device_class: temperature
+        unit: "°C"
+        state:
+          namespace: Appliance.Hub.Sensor.All
+          fields: { value: temperature.latest }
+          scale: 0.1
+      - key: humidity
+        platform: sensor
+        name: "Humidity"
+        device_class: humidity
+        unit: "%"
+        state:
+          namespace: Appliance.Hub.Sensor.All
+          fields: { value: humidity.latest }
+          scale: 0.1
+
   - name: mts100
     match:
       type: [mts1]
