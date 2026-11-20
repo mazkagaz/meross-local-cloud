@@ -37,6 +37,13 @@ def test_profile_layer_covers_every_entity_platform():
     assert covered == set(MEROSS_PLATFORMS)
 
 
+def test_manifest_and_changelog_versions_agree():
+    manifest = json.loads((COMPONENT / "manifest.json").read_text())
+    changelog = (
+        Path(__file__).resolve().parents[1] / "CHANGELOG.md").read_text()
+    assert changelog.startswith(f"## {manifest['version']} ")
+
+
 def test_dependency_is_paho_only_and_pinned():
     manifest = json.loads((COMPONENT / "manifest.json").read_text())
     assert manifest["requirements"] == ["paho-mqtt==2.1.0"]

@@ -17,20 +17,22 @@ local est proposé : aucun identifiant du cloud officiel n'est utilisé.
 4. Télécharger l'intégration, redémarrer Home Assistant.
 5. **Paramètres → Appareils et services → Ajouter une intégration →
    Meross Local Cloud**, puis saisir :
-   - HTTP : `http://homeassistant.local:2003`
-   - MQTT : `homeassistant.local:2001`
+   - adresse du broker : hôte ou IP (préremplie si le broker est découvert) ;
+   - HTTPS : `2004`, MQTT : `2001` ;
    - le **login local** de l'add-on (un nom d'utilisateur suffit, ce n'est pas
-     obligatoirement un email)
-   - **Skip MQTT certificate validation** coché.
+     obligatoirement un email).
 
 N'utilisez pas les identifiants du cloud Meross officiel : l'intégration ne
-contacte que le broker local.
+contacte que le broker local. Le broker **1.2.0** et TLS sont obligatoires.
 
 ## Apports du fork
 
-- entités `number` pour les durées d'ouverture et de fermeture ;
-- boutons de démarrage/arrêt de calibration ;
-- capteur de statut de calibration.
+- backend entièrement piloté par les profils d'appareils du broker, sans
+  `meross_iot` ;
+- catalogue profils signé, scheduler central et disponibilité par appareil ;
+- entités `number` pour les durées d'ouverture/fermeture, boutons de
+  calibration et capteur de statut ;
+- réparations pour les appareils absents, dissociés ou sans profil.
 
 La procédure détaillée, les entités et le dépannage sont dans le
 [README](https://github.com/mazkagaz/meross-local-cloud#readme).

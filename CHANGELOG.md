@@ -1,3 +1,39 @@
+## 3.0.0-beta.1 — backend profils obligatoire
+
+Version de **test** (pré-release, branche `dev`). Pour l’installer, activer
+« Afficher les versions bêta » dans HACS.
+
+Changement structurant : l’intégration ne dépend plus de `meross_iot`. Toutes
+les entités proviennent désormais du catalogue de profils du broker.
+
+- Suppression de `MerossManager`, des patches MQTT, de la calibration legacy et
+  des plateformes historiques.
+- Dépendance unique : `paho-mqtt==2.1.0`.
+- `unique_id` et identifiants d’appareil historiques conservés, y compris
+  `#BASE:<uuid>` et `#BASE:<hub>#SUB:<id>` ; les identifiants de la bêta 2.5
+  sont nettoyés au démarrage.
+- Disponibilité par appareil pilotée par `devList`, les pushes `Online` et
+  l’état de la connexion MQTT.
+- Nouvel appareil détecté : rechargement automatique de l’intégration.
+- Appareil sans profil : aucune entité et réparation explicite
+  « Aucun profil pour … ». Ajouter le profil au catalogue suffit ensuite.
+- Unbind : suppression immédiate de l’appareil, de ses subdevices et entités.
+- Options réduites à l’user-agent HTTP personnalisé ; un changement recharge
+  l’intégration.
+
+**Prérequis** : broker **1.2.0** ou plus récent (catalogue signé et endpoints
+profils). Le pairer reste compatible.
+
+**Limites connues** : les fonctions absentes du catalogue (garage, DND,
+température de couleur, certaines consommations/énergie, familles D2b non
+portées) ne créent plus d’entités tant que leur profil n’est pas publié. Les
+profils MRS100 actuels décrivent encore des chemins de payload à corriger ; le
+tuning est prévu après validation de la bêta.
+
+**Validation** : suivre [docs/D5-VALIDATION.md](docs/D5-VALIDATION.md).
+Retour arrière : réinstaller la version stable **2.4.6** dans HACS, puis
+redémarrer Home Assistant.
+
 ## 2.5.0-beta.1 — validation D5
 
 Version de **test** (pré-release, branche `dev`). Pour l’installer, activer

@@ -14,8 +14,8 @@ le workflow de release refuse un tag dont la version diffère.
 
 | Canal | Version | Tag | Release GitHub |
 | ----- | ------- | --- | -------------- |
-| stable | `2.5.0` | `v2.5.0` | normale |
-| test | `2.5.0-beta.1` | `v2.5.0-beta.1` | **pre-release** |
+| stable | `3.0.0` | `v3.0.0` | normale |
+| test | `3.0.0-beta.1` | `v3.0.0-beta.1` | **pre-release** |
 
 ## Publier une version de test
 
@@ -23,8 +23,8 @@ le workflow de release refuse un tag dont la version diffère.
 2. Commit, puis taguer et pousser :
 
 ```bash
-git tag v2.5.0-beta.1
-git push origin v2.5.0-beta.1
+git tag v3.0.0-beta.1
+git push origin v3.0.0-beta.1
 ```
 
 3. Le workflow `Release` vérifie manifest ↔ tag et crée une **pre-release**.
@@ -39,8 +39,8 @@ git push origin v2.5.0-beta.1
 3. Taguer et pousser depuis `main` :
 
 ```bash
-git tag v2.5.0
-git push origin v2.5.0
+git tag v3.0.0
+git push origin v3.0.0
 ```
 
 4. Le workflow valide la version et publie la release normale.
@@ -52,12 +52,11 @@ Aucune release n’est supprimée.
 
 ## Broker (add-on)
 
-La branche `dev` existe aussi côté broker, mais le magasin d’add-ons n’a pas
-de canal bêta équivalent à HACS : une version présente dans le dépôt suivi est
-proposée aux utilisateurs. Pour tester le broker sans publier :
+Le magasin d’add-ons n’a pas de canal bêta équivalent à HACS : une version
+présente dans le dépôt suivi est proposée aux utilisateurs. Les releases
+stables du broker se font uniquement depuis `main` ; sa CI teste `main` et
+`dev`.
 
-- build local de l’add-on, ou
-- dépôt `meross-local-broker-dev` séparé, ajouté uniquement au HA de test.
-
-`main` reste la seule source des images publiques ; la CI du broker teste
-`main` et `dev`.
+L’intégration 3.0 exige un broker **1.2.0** ou plus récent (catalogue signé et
+endpoints profils). Avant de publier une bêta, vérifier que le broker installé
+expose bien ces endpoints.

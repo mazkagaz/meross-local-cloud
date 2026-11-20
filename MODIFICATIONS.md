@@ -26,28 +26,22 @@ direct-HTTP modules are excluded. The only local change is the addition of
 | File | Change |
 |---|---|
 | `hacs.json` | Fork name; HACS custom-repository metadata |
-| `custom_components/meross_cloud/manifest.json` | Fork name, documentation/issue URLs, codeowner placeholder, version 1.4.0; requirements unchanged (`meross_iot==0.4.9.2`) |
-| `README.md`, `info.md` | Fork install/usage notes and attribution |
-| `CHANGELOG.md` | 1.3.11-1.4.0 fork entries |
-| `custom_components/meross_cloud/patches.py` | Runtime fixes plus an opt-in HTTP TLS bypass scoped to `meross_iot` |
-| `custom_components/meross_cloud/common.py` | Registered the `number` and `button` platforms |
-| `custom_components/meross_cloud/number.py` | **New**: roller-shutter open/close duration entities |
-| `custom_components/meross_cloud/button.py` | **New**: roller-shutter start/stop calibration buttons |
-| `custom_components/meross_cloud/calibration.py` | **New**: raw `Appliance.RollerShutter.Adjust` send/GET helpers and status store |
-| `custom_components/meross_cloud/sensor.py` | Adds the roller-shutter calibration status sensor |
-| `pytest.ini`, `tests/` | **New**: Home Assistant runtime tests for the calibration button/sensor |
+| `custom_components/meross_cloud/manifest.json` | Fork name, URLs, version 3.0.0-beta.1; requirement `paho-mqtt==2.1.0` |
+| `README.md`, `info.md` | Profile-only install/usage notes and attribution |
+| `CHANGELOG.md` | Fork entries up to 3.0.0-beta.1 |
+| `custom_components/meross_cloud/broker_adapter.py` | **New**: catalog verification, matching, runtimes, schedulers, availability and repairs |
+| `custom_components/meross_cloud/broker_http.py` | **New**: signed local-broker HTTP client |
+| `custom_components/meross_cloud/broker_transport.py` | **New**: MQTT transport over the vendored merossclient |
+| `custom_components/meross_cloud/profiles/` | **New**: declarative profile compiler, runtime and scheduler |
+| `custom_components/meross_cloud/profile_entities.py` | **New**: profile-driven HA entities with historical identifiers |
+| `custom_components/meross_cloud/*.py` platforms | Reduced to profile entity setup |
+| `custom_components/meross_cloud/missing_devices.py`, `repairs.py` | Missing-device tracking, Unbind and unsupported-profile repairs |
+| `pytest.ini`, `tests/` | Unit, contract and H2 functional suites, including in-memory MQTT simulators |
 
-The fork now adds functional roller-shutter timing entities and calibration
-buttons. MRS100 cover support still comes from the upstream
-`RollerShutterTimerMixin` and the local broker abilities; the fork adds
-`number.py`/`button.py` and registers those platforms.
+The fork now drives every entity from the broker profile catalog. The
+integration no longer embeds `meross_iot`, its manager or its monkey patches;
+`paho-mqtt` is the only runtime dependency. Roller-shutter durations,
+calibration status and profile update entities are described by the catalog
+and rendered by the profile entity layer.
 
-Calibration is sent with the raw string namespace
-`Appliance.RollerShutter.Adjust` because `meross_iot` 0.4.9.2's `Namespace`
-enum lacks a member for it. The manager accepts raw namespace strings. The
-library also drops incoming `Adjust` push notifications, so the status sensor
-polls `GET Adjust` instead.
-
-New files (`number.py`, `button.py`, `calibration.py`, `NOTICE`,
-`MODIFICATIONS.md`, `LEGAL.md`, `configure.sh`, `push.sh`) are copyright 2026
-the MRS100 fork contributors, MIT.
+Files added by the fork are copyright 2026 the MRS100 fork contributors, MIT.
