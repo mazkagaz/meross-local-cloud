@@ -39,6 +39,12 @@ class _BrokerAppClient(MQTTAppClient):
             return
         _LOGGER.debug("MQTT RX %s %s %s", getattr(mqtt_msg, "topic", None),
                       namespace, method)
+        transaction = self._transactions.get(messageid)
+        if transaction is not None:
+            # Solicited replies are consumed by their requester (describe or
+            # the central scheduler), so they must not be dispatched twice.
+            transaction.set_result(message)
+            return
         listener = getattr(self, "message_listener", None)
         if listener is not None:
             try:
@@ -46,12 +52,6 @@ class _BrokerAppClient(MQTTAppClient):
             except Exception:  # noqa: BLE001 - dispatch must not break MQTT
                 _LOGGER.debug("MQTT payload listener failed",
                               exc_info=True)
-        transaction = self._transactions.get(messageid)
-        if transaction is None:
-            _LOGGER.debug("MQTT RX without pending transaction: %s",
-                          messageid)
-            return
-        transaction.set_result(message)
 
 
 class BrokerMqttTransport:
@@ -90,10 +90,10 @@ class BrokerMqttTransport:
         _LOGGER.debug("Broker MQTT transport connected to %s:%s",
                       self._host, self._port)
 
-    async def async_describe(self, device_uuid: str) -> DeviceDescriptor:
+    def _device_client(self, device_uuid: str) -> MQTTAppClient.Client:
         if self._connection is None:
             raise RuntimeError("MQTT transport is not connected")
-        client = MQTTAppClient.Client(
+        return MQTTAppClient.Client(
             f"broker_cloud:{device_uuid}",
             _LOGGER,
             uuid=device_uuid,
@@ -102,6 +102,27 @@ class BrokerMqttTransport:
             loop=self._loop,
             timeout=self._timeout,
         )
+
+    async def async_request(self, device_uuid: str, namespace: str,
+                            method: str, payload) -> MerossResponse:
+        client = self._device_client(device_uuid)
+        try:
+            return await client.async_request(
+                namespace, method, payload, timeout=self._timeout)
+        finally:
+            client.shutdown()
+
+    async def async_request_multiple(self, device_uuid: str,
+                                     requests) -> MerossResponse:
+        client = self._device_client(device_uuid)
+        try:
+            return await client.async_request_multiple(
+                requests, timeout=self._timeout)
+        finally:
+            client.shutdown()
+
+    async def async_describe(self, device_uuid: str) -> DeviceDescriptor:
+        client = self._device_client(device_uuid)
         _LOGGER.debug("Requesting System.All/Ability for %s", device_uuid)
         try:
             descriptor = await client.async_identify(timeout=self._timeout)

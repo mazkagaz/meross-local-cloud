@@ -14,6 +14,7 @@ from .profiles import (
     ENGINE_VERSION,
     CompiledProfile,
     DeviceRuntime,
+    DeviceScheduler,
     MatchContext,
     ProfileCompiler,
     ProfileMeta,
@@ -72,6 +73,7 @@ class BrokerProfileAdapter:
         self.match_ambiguities = 0
         self.compile_errors: list[str] = []
         self.runtimes: Dict[str, DeviceRuntime] = {}
+        self.schedulers: Dict[str, DeviceScheduler] = {}
 
     def start_background(self, hass: HomeAssistant) -> None:
         if self._task is None or self._task.done():
@@ -132,6 +134,7 @@ class BrokerProfileAdapter:
                 "subdevices": _subdevice_descriptors(descriptor),
             }
         self._match_profiles()
+        self._start_schedulers()
         if self.descriptors:
             _LOGGER.info(
                 "Broker profile backend: revision %s, %d profile(s), "
@@ -208,6 +211,19 @@ class BrokerProfileAdapter:
                 bindings[subdevice["id"]] = templates[result.profile.id]
         return bindings
 
+    def _start_schedulers(self) -> None:
+        """Start one central polling task per device (opt-in backend only)."""
+        transport = self._transport
+        if transport is None or not (
+                hasattr(transport, "async_request")
+                and hasattr(transport, "async_request_multiple")):
+            return
+        for device_uuid, runtime in self.runtimes.items():
+            scheduler = DeviceScheduler(
+                device_uuid, runtime.profile, runtime, transport)
+            self.schedulers[device_uuid] = scheduler
+            scheduler.start()
+
     def _dispatch_message(self, message) -> None:
         """Route one decoded MQTT message to the matching device runtime."""
         try:
@@ -252,6 +268,9 @@ class BrokerProfileAdapter:
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+        for scheduler in self.schedulers.values():
+            await scheduler.async_stop()
+        self.schedulers.clear()
         if self._transport is not None:
             await self._transport.async_stop()
             self._transport = None
@@ -283,6 +302,12 @@ class BrokerProfileAdapter:
                 for runtime in self.runtimes.values()
                 for error in runtime.errors
             ][:_MAX_COMPILE_ERRORS],
+            "scheduler_polls": sum(
+                scheduler.polls for scheduler in self.schedulers.values()),
+            "scheduler_batches": sum(
+                scheduler.batches for scheduler in self.schedulers.values()),
+            "scheduler_errors": sum(
+                scheduler.errors for scheduler in self.schedulers.values()),
         }
         if self.registry is not None:
             summary.update(self.registry.summary())

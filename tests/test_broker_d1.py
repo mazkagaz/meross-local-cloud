@@ -115,6 +115,18 @@ async def test_app_client_notifies_the_payload_listener(hass):
     deliver({"payload": {}})
     deliver({"header": {}, "payload": {}})
 
+    from unittest.mock import Mock
+    transaction = Mock()
+    connection._transactions["m2"] = transaction
+    deliver({
+        "header": {
+            "messageId": "m2", "namespace": "Appliance.System.All",
+            "method": "GETACK", "from": "/appliance/uuid/publish",
+        },
+        "payload": {"all": {}},
+    })
+
+    transaction.set_result.assert_called_once()
     assert len(seen) == 1
     assert seen[0].namespace == "Appliance.Control.ToggleX"
 

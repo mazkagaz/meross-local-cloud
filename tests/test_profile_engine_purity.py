@@ -7,11 +7,15 @@ PACKAGE = Path(__file__).resolve().parents[1] / "custom_components" / \
     "meross_cloud" / "profiles"
 ALLOWED_IMPORTS = {
     "__future__",
+    "asyncio",
+    "contextlib",
     "dataclasses",
     "json",
     "logging",
+    "math",
     "packaging",
     "re",
+    "time",
     "typing",
 }
 FORBIDDEN_CALLS = {

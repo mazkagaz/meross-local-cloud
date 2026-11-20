@@ -20,12 +20,14 @@ from .models import (
 from .paths import MISSING, get_path, parse_path, substitute
 from .registry import ProfileRegistry
 from .runtime import DeviceRuntime, EntityState, SubDeviceRuntime
+from .scheduler import DeviceScheduler
 
 __all__ = [
     "ENGINE_VERSION",
     "CommandSpec",
     "CompiledProfile",
     "DeviceRuntime",
+    "DeviceScheduler",
     "EntitySpec",
     "EntityState",
     "MISSING",
