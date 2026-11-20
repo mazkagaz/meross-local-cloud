@@ -45,6 +45,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r tests/requirements_test.txt
 
+      - name: Prepare test reports
+        run: mkdir -p reports
+
       - name: Fast suites (unit and integration)
         run: python -m pytest tests --ignore=tests/functional -q
 
