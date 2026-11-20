@@ -267,6 +267,8 @@ async def test_matching_device_is_compiled_lazily():
     assert summary["profiles_compiled"] == 1
     assert summary["match_ambiguities"] == 0
     assert summary["compile_errors"] == []
+    assert summary["catalog_revision"] == "abc"
+    assert summary["profiles_overridden"] == 0
     assert adapter.compiler.cache_size == 1
 
 

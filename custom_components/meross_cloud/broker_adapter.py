@@ -343,4 +343,8 @@ class BrokerProfileAdapter:
         }
         if self.registry is not None:
             summary.update(self.registry.summary())
+            summary["profiles_overridden"] = sum(
+                1 for profile in self.registry.profiles.values()
+                if profile.source == "override")
+        summary["catalog_revision"] = self.catalog_version
         return summary
