@@ -57,6 +57,7 @@ from .common import (
     effective_user_agent
 )
 from .broker_config import RollerShutterConfigCache
+from .broker_http import BrokerHttpClient
 from .missing_devices import MissingDeviceTracker
 from .log_redaction import install as install_log_redaction
 from .version import MEROSS_INTEGRATION_VERSION, MEROSS_IOT_VERSION
@@ -627,7 +628,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         hass.data[DOMAIN][MANAGER] = manager
         hass.data[DOMAIN][DEVICE_LIST_COORDINATOR] = meross_coordinator
         hass.data[DOMAIN][SHUTTER_CONFIG_CACHE] = RollerShutterConfigCache(
-            meross_coordinator.client, meross_coordinator.http_api_endpoint)
+            BrokerHttpClient(
+                meross_coordinator.http_api_endpoint,
+                lambda: meross_coordinator.credentials.token,
+                meross_coordinator.mqtt_ssl_context))
 
         if config_entry.options.get(CONF_OPT_PROFILE_BACKEND, False):
             from .broker_adapter import BrokerProfileAdapter

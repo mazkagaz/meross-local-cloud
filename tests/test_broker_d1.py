@@ -147,23 +147,19 @@ def test_vendored_descriptor_reads_broker_payload():
     assert "Appliance.RollerShutter.State" in descriptor.ability
 
 
-async def test_profile_fetch_signs_the_profiles_path():
-    client = SimpleNamespace(cloud_credentials=object())
-    post = AsyncMock(return_value={"revision": "abc", "count": 3})
-    with patch(
-            "custom_components.meross_cloud.broker_profiles."
-            "MerossHttpClient._async_authenticated_post", post):
-        result = await async_fetch_revision(client, "https://broker:2004")
+async def test_profile_fetch_uses_the_signed_http_client():
+    http = SimpleNamespace(
+        async_post=AsyncMock(return_value={"revision": "abc", "count": 3}))
+
+    result = await async_fetch_revision(http)
 
     assert result["count"] == 3
-    assert post.await_args.kwargs["url"] == \
-        "https://broker:2004/v1/Device/profiles/rev"
-    assert post.await_args.kwargs["cloud_creds"] is client.cloud_credentials
+    http.async_post.assert_awaited_once_with("/v1/Device/profiles/rev")
 
 
 async def test_adapter_builds_descriptors_and_summary():
     coordinator = SimpleNamespace(
-        credentials=SimpleNamespace(user_id="1", key="key"),
+        credentials=SimpleNamespace(user_id="1", key="key", token="t"),
         mqtt_address=("localhost", 2001),
         mqtt_ssl_context=object(),
         http_api_endpoint="https://broker:2004",
@@ -201,7 +197,7 @@ async def test_adapter_aborts_after_the_first_descriptor_failure():
             raise TimeoutError("GET Appliance.System.All")
 
     coordinator = SimpleNamespace(
-        credentials=SimpleNamespace(user_id="1", key="key"),
+        credentials=SimpleNamespace(user_id="1", key="key", token="t"),
         mqtt_address=("localhost", 2001),
         mqtt_ssl_context=object(),
         http_api_endpoint="https://broker:2004",

@@ -114,7 +114,7 @@ def profile_entry(name):
 
 def coordinator():
     return SimpleNamespace(
-        credentials=SimpleNamespace(user_id="1", key="key"),
+        credentials=SimpleNamespace(user_id="1", key="key", token="t"),
         mqtt_address=("localhost", 2001),
         mqtt_ssl_context=object(),
         http_api_endpoint="https://broker:2004",
@@ -347,6 +347,8 @@ async def test_catalog_change_reloads_the_entry(hass, monkeypatch):
         config_entry_id="entry-1",
         client=object(),
         http_api_endpoint="https://broker:2004",
+        credentials=SimpleNamespace(token="t"),
+        mqtt_ssl_context=object(),
     )
     adapter = BrokerProfileAdapter(hass, coordinator)
     adapter.revision = "rev1"
@@ -376,6 +378,8 @@ async def test_unchanged_catalog_does_not_reload(hass, monkeypatch):
         config_entry_id="entry-1",
         client=object(),
         http_api_endpoint="https://broker:2004",
+        credentials=SimpleNamespace(token="t"),
+        mqtt_ssl_context=object(),
     )
     adapter = BrokerProfileAdapter(hass, coordinator)
     adapter.revision = "rev1"

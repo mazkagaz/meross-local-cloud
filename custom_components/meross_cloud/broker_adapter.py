@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 from homeassistant.core import HomeAssistant
 
+from .broker_http import BrokerHttpClient
 from .broker_profiles import (
     async_fetch_catalog,
     async_fetch_public_key,
@@ -267,9 +268,11 @@ class BrokerProfileAdapter:
             while True:
                 await asyncio.sleep(CATALOG_CHECK_INTERVAL)
                 try:
-                    revision = await async_fetch_revision(
-                        self._coordinator.client,
-                        self._coordinator.http_api_endpoint)
+                    http = BrokerHttpClient(
+                        self._coordinator.http_api_endpoint,
+                        lambda: self._coordinator.credentials.token,
+                        self._coordinator.mqtt_ssl_context)
+                    revision = await async_fetch_revision(http)
                 except Exception as err:  # noqa: BLE001 - retry next tick
                     _LOGGER.debug("Catalog revision check failed: %s", err)
                     continue
@@ -328,13 +331,16 @@ class BrokerProfileAdapter:
                           device_uuid, err)
 
     async def _async_fetch_profiles(self) -> None:
-        client = self._coordinator.client
         endpoint = self._coordinator.http_api_endpoint
-        revision = await async_fetch_revision(client, endpoint)
-        catalog = await async_fetch_catalog(client, endpoint)
+        http = BrokerHttpClient(
+            endpoint,
+            lambda: self._coordinator.credentials.token,
+            self._coordinator.mqtt_ssl_context)
+        revision = await async_fetch_revision(http)
+        catalog = await async_fetch_catalog(http)
         self.signature_status = "absent"
         if isinstance(catalog, dict) and catalog.get("signature"):
-            public = await async_fetch_public_key(client, endpoint)
+            public = await async_fetch_public_key(http)
             pem = public.get("public_key") if isinstance(public, dict) else None
             if not pem or not verify_catalog(catalog, pem):
                 self.signature_status = "invalid"

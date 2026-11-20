@@ -3,38 +3,25 @@ from __future__ import annotations
 
 import base64
 import json
-import logging
 from typing import Any, Dict
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
-from meross_iot.http_api import MerossHttpClient
 
-_LOGGER = logging.getLogger(__name__)
-
-
-async def _async_post(client: MerossHttpClient, endpoint: str,
-                      path: str) -> Any:
-    return await MerossHttpClient._async_authenticated_post(
-        url=f"{endpoint.rstrip('/')}{path}",
-        params_data={},
-        cloud_creds=client.cloud_credentials,
-    )
+from .broker_http import BrokerHttpClient
 
 
-async def async_fetch_revision(client: MerossHttpClient,
-                               endpoint: str) -> Dict[str, Any]:
-    return await _async_post(client, endpoint, "/v1/Device/profiles/rev")
+async def async_fetch_revision(http: BrokerHttpClient) -> Dict[str, Any]:
+    return await http.async_post("/v1/Device/profiles/rev")
 
 
-async def async_fetch_catalog(client: MerossHttpClient,
-                              endpoint: str) -> Dict[str, Any]:
-    return await _async_post(client, endpoint, "/v1/Device/profiles")
+async def async_fetch_catalog(http: BrokerHttpClient) -> Dict[str, Any]:
+    return await http.async_post("/v1/Device/profiles")
 
 
-async def async_fetch_public_key(client: MerossHttpClient,
-                                 endpoint: str) -> Dict[str, Any]:
-    return await _async_post(client, endpoint, "/v1/Device/profiles/pubkey")
+async def async_fetch_public_key(http: BrokerHttpClient
+                                 ) -> Dict[str, Any]:
+    return await http.async_post("/v1/Device/profiles/pubkey")
 
 
 def catalog_body(payload: Dict[str, Any]) -> Dict[str, Any]:

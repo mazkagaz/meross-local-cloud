@@ -13,7 +13,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, Optional
 
-from meross_iot.http_api import MerossHttpClient
+from .broker_http import BrokerHttpClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -103,27 +103,22 @@ def _parse_channels(entry: Dict[str, Any]) -> Dict[int, ChannelState]:
 
 
 async def async_fetch_roller_shutter_config(
-        client: MerossHttpClient, endpoint: str) -> Any:
-    return await MerossHttpClient._async_authenticated_post(
-        url=f"{endpoint.rstrip('/')}{CONFIG_PATH}",
-        params_data={},
-        cloud_creds=client.cloud_credentials,
-    )
+        http: BrokerHttpClient) -> Any:
+    return await http.async_post(CONFIG_PATH)
 
 
-FetchFunc = Callable[[MerossHttpClient, str], Awaitable[Any]]
+FetchFunc = Callable[[BrokerHttpClient], Awaitable[Any]]
 
 
 class RollerShutterConfigCache:
     """Account-wide cache for POST /v1/Device/rollerShutterConfig."""
 
-    def __init__(self, client: MerossHttpClient, endpoint: str,
+    def __init__(self, http: BrokerHttpClient,
                  ttl: float = DEFAULT_TTL,
                  failure_ttl: float = FAILURE_TTL,
                  clock: Callable[[], float] = time.monotonic,
                  fetch: FetchFunc = async_fetch_roller_shutter_config) -> None:
-        self._client = client
-        self._endpoint = endpoint
+        self._http = http
         self._ttl = ttl
         self._failure_ttl = failure_ttl
         self._clock = clock
@@ -196,7 +191,7 @@ class RollerShutterConfigCache:
                     return
             try:
                 async with asyncio.timeout(FETCH_TIMEOUT):
-                    raw = await self._fetch(self._client, self._endpoint)
+                    raw = await self._fetch(self._http)
             except Exception as err:  # noqa: BLE001 - endpoint may be absent
                 self.last_error = f"{type(err).__name__}: {err}"
                 self._healthy = False

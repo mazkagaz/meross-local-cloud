@@ -4,10 +4,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from custom_components.meross_cloud.broker_config import (
-    CONFIG_PATH,
     ChannelState,
     RollerShutterConfigCache,
-    async_fetch_roller_shutter_config,
 )
 
 
@@ -24,8 +22,7 @@ class Clock:
 
 def cache(fetch, ttl=600, failure_ttl=60, clock=None):
     return RollerShutterConfigCache(
-        SimpleNamespace(cloud_credentials=object()),
-        "https://broker:2004",
+        SimpleNamespace(),
         ttl=ttl,
         failure_ttl=failure_ttl,
         clock=clock or Clock(),
@@ -204,27 +201,10 @@ async def test_hanging_fetch_times_out(monkeypatch):
 
     monkeypatch.setattr(broker_config, "FETCH_TIMEOUT", 0.01)
 
-    async def hang(client, endpoint):
+    async def hang(_http):
         await asyncio.sleep(1)
 
     config = cache(hang)
 
     assert await config.async_get("u1") is None
     assert "TimeoutError" in config.last_error
-
-
-async def test_endpoint_path_and_authentication():
-    credentials = object()
-    client = SimpleNamespace(cloud_credentials=credentials)
-    post = AsyncMock(return_value={})
-    with patch(
-            "meross_iot.http_api.MerossHttpClient."
-            "_async_authenticated_post", post):
-        result = await async_fetch_roller_shutter_config(
-            client, "https://broker:2004/")
-
-    assert result == {}
-    assert post.await_args.kwargs["url"] == \
-        f"https://broker:2004{CONFIG_PATH}"
-    assert post.await_args.kwargs["params_data"] == {}
-    assert post.await_args.kwargs["cloud_creds"] is credentials

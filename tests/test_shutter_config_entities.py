@@ -84,11 +84,7 @@ class FakeManager:
 
 async def setup(hass, fetch, with_cache=True):
     device = FakeShutter()
-    cache = RollerShutterConfigCache(
-        SimpleNamespace(cloud_credentials=object()),
-        "https://broker:2004",
-        fetch=fetch,
-    )
+    cache = RollerShutterConfigCache(SimpleNamespace(), fetch=fetch)
     hass.data[DOMAIN] = {
         MANAGER: FakeManager(device),
         DEVICE_LIST_COORDINATOR: FakeCoordinator(device.uuid),
