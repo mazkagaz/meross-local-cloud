@@ -253,6 +253,90 @@ async def test_hub_subdevice_payload_updates_the_template_state():
     assert state.entities["temperature"].values == {"value": 210}
 
 
+def signed_catalog(catalog):
+    import base64
+    import json
+
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+        Ed25519PrivateKey,
+    )
+
+    key = Ed25519PrivateKey.generate()
+    body = {k: v for k, v in catalog.items()
+            if k not in ("signature", "algorithm")}
+    signature = key.sign(json.dumps(
+        body, sort_keys=True, separators=(",", ":")).encode())
+    catalog["signature"] = base64.b64encode(signature).decode()
+    catalog["algorithm"] = "ed25519"
+    public_key = key.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo).decode()
+    return catalog, {"public_key": public_key, "fingerprint": "fp"}
+
+
+async def run_signed_adapter(catalog, public):
+    coordinator_stub = coordinator()
+    with patch(
+            "custom_components.meross_cloud.broker_adapter."
+            "BrokerMqttTransport", return_value=FakeTransport()), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
+                "async_fetch_revision", AsyncMock(
+                    return_value={"revision": "abc", "count": 1})), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
+                "async_fetch_catalog", AsyncMock(return_value=catalog)), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
+                "async_fetch_public_key", AsyncMock(return_value=public)):
+        adapter = BrokerProfileAdapter(
+            SimpleNamespace(loop=None), coordinator_stub)
+        await adapter.async_start()
+    return adapter
+
+
+async def test_signed_catalog_is_verified():
+    catalog = {
+        "schema_version": 1, "revision": "abc",
+        "profiles": [profile_entry("mss310")],
+    }
+    signed, public = signed_catalog(catalog)
+
+    adapter = await run_signed_adapter(signed, public)
+
+    summary = adapter.summary()
+    assert summary["state"] == "connected"
+    assert summary["catalog_signature"] == "valid"
+    assert summary["catalog_key_fingerprint"] == "fp"
+
+
+async def test_invalid_catalog_signature_is_refused():
+    catalog = {
+        "schema_version": 1, "revision": "abc",
+        "profiles": [profile_entry("mss310")],
+    }
+    signed, public = signed_catalog(catalog)
+    signed["profiles"][0]["version"] = "tampered"
+
+    adapter = await run_signed_adapter(signed, public)
+
+    summary = adapter.summary()
+    assert summary["state"] == "error"
+    assert summary["catalog_signature"] == "invalid"
+    assert "signature" in adapter.last_error
+
+
+async def test_unsigned_catalog_is_reported():
+    adapter = await run_adapter({
+        "schema_version": 1,
+        "revision": "abc",
+        "profiles": [profile_entry("mss310")],
+    })
+
+    assert adapter.summary()["catalog_signature"] == "absent"
+
+
 async def test_catalog_change_reloads_the_entry(hass, monkeypatch):
     import asyncio
 

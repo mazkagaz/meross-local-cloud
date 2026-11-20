@@ -8,7 +8,12 @@ from typing import Any, Dict, Optional
 
 from homeassistant.core import HomeAssistant
 
-from .broker_profiles import async_fetch_catalog, async_fetch_revision
+from .broker_profiles import (
+    async_fetch_catalog,
+    async_fetch_public_key,
+    async_fetch_revision,
+    verify_catalog,
+)
 from .broker_transport import BrokerMqttTransport
 from .profiles import (
     ENGINE_VERSION,
@@ -64,6 +69,8 @@ class BrokerProfileAdapter:
         self.state = "idle"
         self.revision: Optional[str] = None
         self.catalog_version: Optional[str] = None
+        self.signature_status = "unknown"
+        self.public_key_fingerprint: Optional[str] = None
         self.registry: Optional[ProfileRegistry] = None
         self.profile_count = 0
         self.descriptors: Dict[str, Dict[str, Any]] = {}
@@ -247,7 +254,8 @@ class BrokerProfileAdapter:
             scheduler.start()
 
     def _start_catalog_watch(self) -> None:
-        if not self._entry_id:
+        if not self._entry_id or not hasattr(
+                self._hass, "async_create_task"):
             return
         if self._watch_task is None or self._watch_task.done():
             self._watch_task = self._hass.async_create_task(
@@ -318,6 +326,15 @@ class BrokerProfileAdapter:
         endpoint = self._coordinator.http_api_endpoint
         revision = await async_fetch_revision(client, endpoint)
         catalog = await async_fetch_catalog(client, endpoint)
+        self.signature_status = "absent"
+        if isinstance(catalog, dict) and catalog.get("signature"):
+            public = await async_fetch_public_key(client, endpoint)
+            pem = public.get("public_key") if isinstance(public, dict) else None
+            if not pem or not verify_catalog(catalog, pem):
+                self.signature_status = "invalid"
+                raise ValueError("invalid profile catalog signature")
+            self.signature_status = "valid"
+            self.public_key_fingerprint = public.get("fingerprint")
         self.revision = revision.get("revision")
         self.profile_count = int(revision.get("count") or 0)
         self.catalog_version = catalog.get("revision")
@@ -391,4 +408,6 @@ class BrokerProfileAdapter:
                 1 for profile in self.registry.profiles.values()
                 if profile.source == "override")
         summary["catalog_revision"] = self.catalog_version
+        summary["catalog_signature"] = self.signature_status
+        summary["catalog_key_fingerprint"] = self.public_key_fingerprint
         return summary
