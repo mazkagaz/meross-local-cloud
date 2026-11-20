@@ -88,6 +88,7 @@ class BrokerProfileAdapter:
         self.runtimes: Dict[str, DeviceRuntime] = {}
         self.schedulers: Dict[str, DeviceScheduler] = {}
         self._ready_listeners: list = []
+        self.entities_only = False
 
     def add_ready_listener(self, callback) -> None:
         """Call callback once matching is done (or immediately if already)."""
@@ -427,4 +428,5 @@ class BrokerProfileAdapter:
         summary["catalog_revision"] = self.catalog_version
         summary["catalog_signature"] = self.signature_status
         summary["catalog_key_fingerprint"] = self.public_key_fingerprint
+        summary["entities_only"] = self.entities_only
         return summary

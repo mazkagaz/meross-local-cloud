@@ -53,8 +53,8 @@ from .common import (
     HTTP_UPDATE_INTERVAL, DEVICE_LIST_COORDINATOR, calculate_id, DEFAULT_USER_AGENT, CONF_OPT_CUSTOM_USER_AGENT,
     CONF_OVERRIDE_MQTT_ENDPOINT, CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, TRANSPORT_MODES_TO_ENUM,
     MEROSS_DEFAULT_CLOUD_API_URL, CONF_CA_PEM, CONF_CA_FINGERPRINT, MISSING_TRACKER,
-    CONF_OPT_PROFILE_BACKEND, BROKER_ADAPTER, SHUTTER_CONFIG_CACHE,
-    effective_user_agent
+    CONF_OPT_PROFILE_BACKEND, CONF_OPT_PROFILE_ENTITIES_ONLY,
+    BROKER_ADAPTER, SHUTTER_CONFIG_CACHE, effective_user_agent
 )
 from .broker_config import RollerShutterConfigCache
 from .broker_devices import async_list_devices
@@ -651,6 +651,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             from .broker_adapter import BrokerProfileAdapter
 
             adapter = BrokerProfileAdapter(hass, meross_coordinator)
+            adapter.entities_only = config_entry.options.get(
+                CONF_OPT_PROFILE_ENTITIES_ONLY, False)
             hass.data[DOMAIN][BROKER_ADAPTER] = adapter
 
         if ca_pem and (

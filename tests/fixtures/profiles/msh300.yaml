@@ -45,6 +45,7 @@ subdevices:
       - key: temperature
         platform: sensor
         name: "Temperature"
+        legacy_classifiers: [temperature, "°C"]
         device_class: temperature
         unit: "°C"
         state:
@@ -55,6 +56,7 @@ subdevices:
       - key: humidity
         platform: sensor
         name: "Humidity"
+        legacy_classifiers: [humidity, "%"]
         device_class: humidity
         unit: "%"
         state:
@@ -65,6 +67,7 @@ subdevices:
       - key: voltage
         platform: sensor
         name: "Voltage"
+        legacy_classifiers: [voltage, V]
         device_class: voltage
         unit: V
         entity_category: diagnostic
@@ -98,6 +101,7 @@ subdevices:
       - key: temperature
         platform: sensor
         name: "Temperature"
+        legacy_classifiers: [temperature, "°C"]
         device_class: temperature
         unit: "°C"
         state:
@@ -107,6 +111,7 @@ subdevices:
       - key: humidity
         platform: sensor
         name: "Humidity"
+        legacy_classifiers: [humidity, "%"]
         device_class: humidity
         unit: "%"
         state:
