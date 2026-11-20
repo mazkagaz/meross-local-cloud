@@ -584,6 +584,30 @@ def test_invalid_state_digest_is_an_error(digest, expected):
     assert any(expected in error for error in compiled.errors)
 
 
+def test_per_field_scale_and_offset_are_compiled():
+    compiled = compile_profile(meta(doc(entities=[entity(state={
+        "namespace": TOGGLE_NS,
+        "fields": {"onoff": {"path": "togglex[0].onoff",
+                             "scale": 0.1, "offset": 2}},
+    })])))
+
+    field = compiled.entities["switch"].state.fields["onoff"]
+    assert field.path == "togglex[0].onoff"
+    assert field.scale == 0.1
+    assert field.offset == 2
+
+
+@pytest.mark.parametrize("key", ["scale", "offset"])
+def test_invalid_per_field_scale_is_an_error(key):
+    compiled = compile_profile(meta(doc(entities=[entity(state={
+        "namespace": TOGGLE_NS,
+        "fields": {"onoff": {"path": "togglex[0].onoff", key: "x"}},
+    })])))
+
+    assert compiled.entities == {}
+    assert any(key in error for error in compiled.errors)
+
+
 def test_invalid_state_scale_is_an_error():
     compiled = compile_profile(meta(doc(entities=[entity(state={
         "namespace": TOGGLE_NS,

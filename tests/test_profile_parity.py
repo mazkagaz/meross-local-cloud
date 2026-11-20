@@ -67,8 +67,8 @@ SIMPLE_CASES = {
         (THERMOSTAT, {"mode": [{"channel": 0, "onoff": 1, "mode": 1,
                                "state": 1, "currentTemp": 177,
                                "targetTemp": 200, "min": 50, "max": 350}]},
-         {"climate": {"current_temperature": 177,
-                      "target_temperature": 200, "mode": 1}}),
+         {"climate": {"current_temperature": 17.7,
+                      "target_temperature": 20.0, "mode": 1}}),
     ],
     "mfc": [
         (FAN, {"fan": [{"channel": 0, "speed": 2, "maxSpeed": 3}]},
@@ -126,5 +126,5 @@ def test_hub_profile_golden_frames():
     assert runtime.subdevices["sensor1"].entities[
         "temperature"].values["value"] == pytest.approx(21.5)
     climate = runtime.subdevices["valve1"].entities["climate"].values
-    assert climate["current_temperature"] == 44
-    assert climate["target_temperature"] == 40
+    assert climate["current_temperature"] == pytest.approx(22.0)
+    assert climate["target_temperature"] == pytest.approx(20.0)

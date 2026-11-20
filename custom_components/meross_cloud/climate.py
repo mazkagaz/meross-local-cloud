@@ -15,6 +15,7 @@ from typing import Optional, List, Dict
 
 from . import MerossDevice
 from .common import (DOMAIN, MANAGER, HA_CLIMATE, DEVICE_LIST_COORDINATOR)
+from .profile_entities import async_setup_profile_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -259,6 +260,9 @@ class ThermostatEntityWrapper(MerossDevice, ClimateEntity):
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entities):
+    async_setup_profile_entities(
+        hass, config_entry, HA_CLIMATE, async_add_entities)
+
     def entity_adder_callback():
         """Discover and adds new Meross entities"""
         manager: MerossManager = hass.data[DOMAIN][MANAGER]  # type

@@ -54,12 +54,21 @@ class NamespaceSpec:
 
 
 @dataclass(frozen=True)
+class FieldSpec:
+    """A state field path with optional per-field scaling."""
+
+    path: str
+    scale: Optional[float] = None
+    offset: Optional[float] = None
+
+
+@dataclass(frozen=True)
 class StateSpec:
     """Where an entity reads its state from."""
 
     namespace: str
     channel: Optional[int] = None
-    fields: Dict[str, str] = field(default_factory=dict)
+    fields: Dict[str, FieldSpec] = field(default_factory=dict)
     digest: Optional[str] = None
     scale: Optional[float] = None
 

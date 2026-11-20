@@ -9,6 +9,7 @@ from .models import (
     CommandSpec,
     CompiledProfile,
     EntitySpec,
+    FieldSpec,
     NamespaceSpec,
     PollingSpec,
     ProfileMeta,
@@ -429,11 +430,25 @@ def _compile_state(prefix: str, raw: Any,
         errors.append(f"{prefix}: unknown state namespace {namespace!r}")
 
     fields_raw = raw.get("fields")
-    fields: Dict[str, str] = {}
+    fields: Dict[str, FieldSpec] = {}
     if not isinstance(fields_raw, dict) or not fields_raw:
         errors.append(f"{prefix}: state.fields must be a non-empty object")
     else:
-        for prop, path in fields_raw.items():
+        for prop, raw_field in fields_raw.items():
+            path = raw_field
+            scale = offset = None
+            if isinstance(raw_field, dict):
+                path = raw_field.get("path")
+                scale = raw_field.get("scale")
+                offset = raw_field.get("offset")
+                if scale is not None and not _is_number(scale):
+                    errors.append(
+                        f"{prefix}: invalid scale for {prop!r}")
+                    scale = None
+                if offset is not None and not _is_number(offset):
+                    errors.append(
+                        f"{prefix}: invalid offset for {prop!r}")
+                    offset = None
             if not isinstance(prop, str) or not isinstance(path, str) \
                     or not path:
                 errors.append(
@@ -444,7 +459,10 @@ def _compile_state(prefix: str, raw: Any,
             except InvalidPath as err:
                 errors.append(f"{prefix}: invalid state path {path!r}: {err}")
                 continue
-            fields[prop] = path
+            fields[prop] = FieldSpec(
+                path=path,
+                scale=float(scale) if scale is not None else None,
+                offset=float(offset) if offset is not None else None)
 
     state_channel = raw.get("channel")
     channel: Optional[int] = None

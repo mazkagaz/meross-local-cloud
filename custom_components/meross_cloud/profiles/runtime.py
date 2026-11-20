@@ -129,9 +129,9 @@ class DeviceRuntime:
             payload_channel = document.get("channel")
             if payload_channel is not None and payload_channel != spec.channel:
                 return 0
-        for prop, path in spec.fields.items():
+        for prop, field in spec.fields.items():
             try:
-                value = get_path(document, path)
+                value = get_path(document, field.path)
                 if value is MISSING:
                     continue
                 if isinstance(value, (dict, list)):
@@ -139,14 +139,19 @@ class DeviceRuntime:
                         f"{entity.key}: unexpected {type(value).__name__} "
                         f"for {prop}")
                     continue
-                if spec.scale is not None:
+                if (field.scale is not None or field.offset is not None
+                        or spec.scale is not None):
                     if isinstance(value, bool) or not isinstance(
                             value, (int, float)):
                         self._error(
                             f"{entity.key}: cannot scale "
                             f"{type(value).__name__} for {prop}")
                         continue
-                    value = value * spec.scale
+                    value = (value * (field.scale if field.scale is not None
+                                      else 1)
+                             + (field.offset or 0))
+                    if spec.scale is not None:
+                        value = value * spec.scale
                 state.values[prop] = value
                 applied += 1
             except Exception as err:  # noqa: BLE001 - never break dispatch

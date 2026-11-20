@@ -14,11 +14,18 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from homeassistant.components.button import ButtonEntity
+from homeassistant.components.climate import (
+    ClimateEntity,
+    ClimateEntityFeature,
+    HVACMode,
+)
 from homeassistant.components.cover import (
     CoverDeviceClass,
     CoverEntity,
     CoverEntityFeature,
 )
+from homeassistant.components.fan import FanEntity, FanEntityFeature
+from homeassistant.components.humidifier import HumidifierEntity
 from homeassistant.components.light import (
     ColorMode,
     LightEntity,
@@ -30,6 +37,7 @@ from homeassistant.components.update import (
     UpdateEntity,
     UpdateEntityFeature,
 )
+from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity import Entity, EntityCategory
 
 from .common import (
@@ -314,6 +322,122 @@ class ProfileButton(ProfileBaseEntity, ButtonEntity):
         await self._send("press")
 
 
+class ProfileClimate(ProfileBaseEntity, ClimateEntity):
+    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        capabilities = self._spec.capabilities or {}
+        modes = []
+        for mode in capabilities.get("hvac_modes", ["off", "heat"]):
+            try:
+                modes.append(HVACMode(mode))
+            except ValueError:
+                continue
+        self._attr_hvac_modes = modes or [HVACMode.OFF, HVACMode.HEAT]
+        self._attr_min_temp = capabilities.get("min_temp", 5)
+        self._attr_max_temp = capabilities.get("max_temp", 35)
+        self._attr_target_temperature_step = capabilities.get(
+            "temp_step", 0.5)
+        features = ClimateEntityFeature.TARGET_TEMPERATURE
+        if "turn_on" in self._spec.commands:
+            features |= ClimateEntityFeature.TURN_ON
+        if "turn_off" in self._spec.commands:
+            features |= ClimateEntityFeature.TURN_OFF
+        self._attr_supported_features = features
+
+    @property
+    def current_temperature(self) -> Optional[float]:
+        value = self._values().get("current_temperature")
+        return float(value) if isinstance(value, (int, float)) else None
+
+    @property
+    def target_temperature(self) -> Optional[float]:
+        value = self._values().get("target_temperature")
+        return float(value) if isinstance(value, (int, float)) else None
+
+    @property
+    def hvac_mode(self) -> HVACMode:
+        values = self._values()
+        onoff = values.get("onoff")
+        mode = values.get("mode")
+        if onoff == 0 or (onoff is None and mode == 0):
+            return HVACMode.OFF
+        if HVACMode.HEAT in self._attr_hvac_modes:
+            return HVACMode.HEAT
+        return self._attr_hvac_modes[0]
+
+    async def async_set_temperature(self, **kwargs: Any) -> None:
+        temperature = kwargs.get("temperature")
+        if temperature is not None:
+            await self._send("set_temperature", temperature)
+
+    async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
+        if hvac_mode == HVACMode.OFF:
+            await self._send("turn_off")
+        else:
+            await self._send("turn_on")
+
+    async def async_turn_on(self) -> None:
+        await self._send("turn_on")
+
+    async def async_turn_off(self) -> None:
+        await self._send("turn_off")
+
+
+class ProfileFan(ProfileBaseEntity, FanEntity):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._attr_supported_features = FanEntityFeature.SET_SPEED
+
+    @property
+    def is_on(self) -> bool:
+        return bool(self.percentage)
+
+    @property
+    def percentage(self) -> Optional[int]:
+        values = self._values()
+        speed = values.get("speed")
+        maximum = values.get("max_speed")
+        if not isinstance(speed, (int, float)):
+            return None
+        if not isinstance(maximum, (int, float)) or maximum <= 0:
+            return 100 if speed else 0
+        return round(speed * 100 / maximum)
+
+    async def async_set_percentage(self, percentage: int) -> None:
+        values = self._values()
+        maximum = values.get("max_speed")
+        maximum = maximum if isinstance(maximum, (int, float)) and maximum else 100
+        await self._send("set_speed", round(percentage * maximum / 100))
+
+    async def async_turn_on(self, percentage: Optional[int] = None,
+                            preset_mode: Optional[str] = None,
+                            **kwargs: Any) -> None:
+        if percentage is not None:
+            await self.async_set_percentage(percentage)
+        else:
+            await self._send("turn_on")
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._send("turn_off")
+
+
+class ProfileHumidifier(ProfileBaseEntity, HumidifierEntity):
+    @property
+    def is_on(self) -> bool:
+        values = self._values()
+        if "onoff" in values:
+            return _as_bool(values.get("onoff"))
+        return bool(values.get("mode"))
+
+    async def async_turn_on(self) -> None:
+        await self._send("turn_on")
+
+    async def async_turn_off(self) -> None:
+        await self._send("turn_off")
+
+
 class ProfileUpdateEntity(UpdateEntity):
     """Surface the profile applied to a device and allow re-applying it."""
 
@@ -402,6 +526,9 @@ PLATFORM_CLASSES = {
     "cover": ProfileCover,
     "number": ProfileNumber,
     "button": ProfileButton,
+    "climate": ProfileClimate,
+    "fan": ProfileFan,
+    "humidifier": ProfileHumidifier,
 }
 
 

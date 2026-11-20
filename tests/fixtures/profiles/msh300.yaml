@@ -175,13 +175,13 @@ subdevices:
         state:
           namespace: Appliance.Hub.Mts100.All
           fields:
-            current_temperature: temperature.room
-            target_temperature: temperature.currentSet
+            current_temperature: { path: temperature.room, scale: 0.5 }
+            target_temperature: { path: temperature.currentSet, scale: 0.5 }
             heating: temperature.heating
             mode: mode.state
             onoff: togglex.onoff
-            min_temp: temperature.min
-            max_temp: temperature.max
+            min_temp: { path: temperature.min, scale: 0.5 }
+            max_temp: { path: temperature.max, scale: 0.5 }
         commands:
           turn_on:
             namespace: Appliance.Hub.Mts100.Mode

@@ -367,13 +367,13 @@ def test_mts100_all_frame():
 
     values = device.subdevices["valve1"].entities["climate"].values
     assert applied == 7
-    assert values["current_temperature"] == 44
-    assert values["target_temperature"] == 40
+    assert values["current_temperature"] == pytest.approx(22.0)
+    assert values["target_temperature"] == pytest.approx(20.0)
     assert values["heating"] == 1
     assert values["mode"] == 1
     assert values["onoff"] == 1
-    assert values["min_temp"] == 10
-    assert values["max_temp"] == 70
+    assert values["min_temp"] == pytest.approx(5.0)
+    assert values["max_temp"] == pytest.approx(35.0)
 
 
 def test_mts200_mode_frame():
@@ -388,8 +388,8 @@ def test_mts200_mode_frame():
 
     values = device.entities["climate"].values
     assert applied == 7
-    assert values["current_temperature"] == 177
-    assert values["target_temperature"] == 200
+    assert values["current_temperature"] == pytest.approx(17.7)
+    assert values["target_temperature"] == pytest.approx(20.0)
     assert values["mode"] == 1
 
 

@@ -10,7 +10,10 @@ from custom_components.meross_cloud.common import (
     BROKER_ADAPTER,
     DOMAIN,
     HA_BUTTON,
+    HA_CLIMATE,
     HA_COVER,
+    HA_FAN,
+    HA_HUMIDIFIER,
     HA_LIGHT,
     HA_NUMBER,
     HA_SENSOR,
@@ -224,6 +227,55 @@ async def test_subdevice_entity_device_info(hass):
     assert entity.native_value == 21.5
     assert entity.device_info["identifiers"] == {(DOMAIN, "sub1")}
     assert entity.device_info["via_device"] == (DOMAIN, "hub1")
+
+
+async def test_climate_entity(hass):
+    device = runtime("mts200")
+    device.entities["climate"].values.update({
+        "current_temperature": 17.7, "target_temperature": 20.0,
+        "onoff": 1, "mode": 1,
+    })
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_CLIMATE)
+    entity = next(iter(component.entities))
+
+    assert entity.current_temperature == 17.7
+    assert entity.target_temperature == 20.0
+    assert entity.hvac_mode == "heat"
+
+    await entity.async_set_temperature(temperature=22.5)
+    assert adapter.sent[-1][3] == {
+        "mode": [{"channel": 0, "targetTemp": 225}]}
+    await entity.async_set_hvac_mode("off")
+    assert adapter.sent[-1][3] == {
+        "mode": [{"channel": 0, "onoff": 0}]}
+
+
+async def test_fan_entity(hass):
+    device = runtime("mfc")
+    device.entities["fan"].values.update({"speed": 2, "max_speed": 3})
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_FAN)
+    entity = next(iter(component.entities))
+
+    assert entity.is_on is True
+    assert entity.percentage == 67
+    await entity.async_set_percentage(100)
+    assert adapter.sent[-1][3] == {
+        "fan": [{"channel": 0, "speed": 3}]}
+
+
+async def test_humidifier_entity(hass):
+    device = runtime("mod")
+    device.entities["spray"].values["mode"] = 1
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_HUMIDIFIER)
+    entity = next(iter(component.entities))
+
+    assert entity.is_on is True
+    await entity.async_turn_off()
+    assert adapter.sent[-1][3] == {
+        "spray": {"channel": 0, "mode": 0}}
 
 
 async def setup_updates(hass, adapter):
