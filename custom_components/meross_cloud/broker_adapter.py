@@ -324,7 +324,10 @@ class BrokerProfileAdapter:
                     http = BrokerHttpClient(
                         self._coordinator.http_api_endpoint,
                         lambda: self._coordinator.credentials.token,
-                        self._coordinator.mqtt_ssl_context)
+                        self._coordinator.mqtt_ssl_context,
+                        user_agent=getattr(
+                            self._coordinator, "user_agent",
+                            "MerossHA/unknown"))
                     revision = await async_fetch_revision(http)
                 except Exception as err:  # noqa: BLE001 - retry next tick
                     _LOGGER.debug("Catalog revision check failed: %s", err)
@@ -454,7 +457,9 @@ class BrokerProfileAdapter:
         http = BrokerHttpClient(
             endpoint,
             lambda: self._coordinator.credentials.token,
-            self._coordinator.mqtt_ssl_context)
+            self._coordinator.mqtt_ssl_context,
+            user_agent=getattr(
+                self._coordinator, "user_agent", "MerossHA/unknown"))
         self._http = http
         revision = await async_fetch_revision(http)
         catalog = await async_fetch_catalog(http)

@@ -7,20 +7,18 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .common import (
+    BROKER_ADAPTER,
     CONF_CA_FINGERPRINT,
     CONF_CA_PEM,
     CONF_HTTP_ENDPOINT,
     CONF_OPT_CUSTOM_USER_AGENT,
-    CONF_OPT_LAN,
     CONF_OVERRIDE_MQTT_ENDPOINT,
     CONF_STORED_CREDS,
-    BROKER_ADAPTER,
     DEVICE_LIST_COORDINATOR,
     DOMAIN,
-    MANAGER,
 )
-from .tls import certificate_hostnames, fingerprint, is_ca, parse_certificate
-from .version import MEROSS_INTEGRATION_VERSION, MEROSS_IOT_VERSION
+from .tls import fingerprint, is_ca, parse_certificate
+from .version import MEROSS_INTEGRATION_VERSION
 
 TO_REDACT = {
     "token",
@@ -50,23 +48,7 @@ def _ca_diagnostics(entry: ConfigEntry) -> dict[str, Any]:
     }
 
 
-def _device_diagnostics(manager) -> list[dict[str, Any]]:
-    devices = []
-    for device in manager.find_devices():
-        devices.append({
-            "name": device.name,
-            "uuid": device.uuid,
-            "type": device.type,
-            "firmware_version": device.firmware_version,
-            "hardware_version": device.hardware_version,
-            "online": (
-                device.online_status.name if device.online_status else None
-            ),
-        })
-    return devices
-
-
-def _broker_device_diagnostics(coordinator) -> list[dict[str, Any]]:
+def _device_diagnostics(coordinator) -> list[dict[str, Any]]:
     return [
         {
             "name": device.name,
@@ -83,7 +65,6 @@ def _broker_device_diagnostics(coordinator) -> list[dict[str, Any]]:
 async def async_get_config_entry_diagnostics(
         hass: HomeAssistant, entry: ConfigEntry) -> dict[str, Any]:
     runtime = hass.data.get(DOMAIN) or {}
-    manager = runtime.get(MANAGER)
     coordinator = runtime.get(DEVICE_LIST_COORDINATOR)
     adapter = runtime.get(BROKER_ADAPTER)
     tls_info = runtime.get("TLS_INFO") or {}
@@ -91,7 +72,6 @@ async def async_get_config_entry_diagnostics(
     return {
         "version": {
             "integration": MEROSS_INTEGRATION_VERSION,
-            "meross_iot": MEROSS_IOT_VERSION,
         },
         "entry": {
             "http_endpoint": entry.data.get(CONF_HTTP_ENDPOINT),
@@ -99,7 +79,6 @@ async def async_get_config_entry_diagnostics(
             "options": {
                 "custom_user_agent": entry.options.get(
                     CONF_OPT_CUSTOM_USER_AGENT),
-                "lan_transport_mode": entry.options.get(CONF_OPT_LAN),
             },
             "stored_credentials": async_redact_data(
                 entry.data.get(CONF_STORED_CREDS) or {}, TO_REDACT),
@@ -120,11 +99,6 @@ async def async_get_config_entry_diagnostics(
                     getattr(coordinator, "_mqtt_ssl_context_verified", None)),
             },
         },
-        "runtime": {
-            "manager_started": manager is not None,
-            "devices": (
-                _device_diagnostics(manager) if manager
-                else _broker_device_diagnostics(coordinator)),
-            "profile_backend": adapter.summary() if adapter else None,
-        },
+        "devices": _device_diagnostics(coordinator),
+        "profile_backend": adapter.summary() if adapter else None,
     }

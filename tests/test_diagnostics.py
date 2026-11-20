@@ -12,7 +12,6 @@ from custom_components.meross_cloud.common import (
     CONF_STORED_CREDS,
     DEVICE_LIST_COORDINATOR,
     DOMAIN,
-    MANAGER,
 )
 from custom_components.meross_cloud.diagnostics import (
     async_get_config_entry_diagnostics,
@@ -42,19 +41,13 @@ async def test_diagnostics_redacts_secrets(hass, ca_pem):
     )
     entry.add_to_hass(hass)
 
-    device = SimpleNamespace(
-        name="volet",
-        uuid="uuid-1",
-        type="mrs100",
-        firmware_version="7.6.20",
-        hardware_version="7.0.0",
-        online_status=SimpleNamespace(name="ONLINE"),
-    )
-    manager = SimpleNamespace(find_devices=lambda: [device])
+    device = BrokerDeviceInfo(
+        uuid="uuid-1", name="volet", device_type="mrs100",
+        online=True, firmware="7.6.20", hardware="7.0.0")
     coordinator = SimpleNamespace(
+        data={"uuid-1": device},
         _mqtt_ssl_context_verified=object())
     hass.data[DOMAIN] = {
-        MANAGER: manager,
         DEVICE_LIST_COORDINATOR: coordinator,
         "TLS_INFO": {
             "http_verified": True,
@@ -84,8 +77,8 @@ async def test_diagnostics_redacts_secrets(hass, ca_pem):
         "10.0.0.5", "homeassistant.local"]
     assert result["tls"]["http"]["check_hostname"] is True
     assert result["tls"]["mqtt"]["verified_context"] is True
-    assert result["runtime"]["manager_started"] is True
-    assert result["runtime"]["devices"][0]["uuid"] == "uuid-1"
+    assert result["devices"][0]["uuid"] == "uuid-1"
+    assert result["profile_backend"] is None
 
 
 async def test_diagnostics_reports_the_profile_backend(hass, ca_pem):
@@ -111,8 +104,7 @@ async def test_diagnostics_reports_the_profile_backend(hass, ca_pem):
 
     result = await async_get_config_entry_diagnostics(hass, entry)
 
-    assert result["runtime"]["manager_started"] is False
-    assert result["runtime"]["devices"] == [{
+    assert result["devices"] == [{
         "name": "volet",
         "uuid": "uuid-1",
         "type": "mrs100",
@@ -120,5 +112,5 @@ async def test_diagnostics_reports_the_profile_backend(hass, ca_pem):
         "hardware_version": "7.0.0",
         "online": "ONLINE",
     }]
-    assert result["runtime"]["profile_backend"] == {
+    assert result["profile_backend"] == {
         "state": "connected", "devices_matched": 1}

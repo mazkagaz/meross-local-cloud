@@ -10,7 +10,7 @@
     "@mazkagaz"
   ],
   "requirements": [
-    "meross_iot==0.4.9.2"
+    "paho-mqtt==2.1.0"
   ],
   "loggers": [
     "custom_components.meross_cloud"

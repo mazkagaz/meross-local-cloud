@@ -63,9 +63,7 @@
     "step": {
       "init": {
         "data": {
-          "custom_user_agent": "Cabecera User-Agent personalizada",
-          "lan_transport_mode": "Opciones de comunicación con los dispositivos",
-          "profile_backend": "Activar la sonda del motor de perfiles de dispositivos (avanzado, recargar tras el cambio)"
+          "custom_user_agent": "Cabecera User-Agent personalizada"
         },
         "title": "Opciones de Meross Local Cloud"
       }

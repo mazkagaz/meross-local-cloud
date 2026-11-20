@@ -14,35 +14,19 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady, ConfigEntryAuthFailed
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from meross_iot.controller.device import BaseDevice
-from meross_iot.model.enums import OnlineStatus, Namespace
-from meross_iot.model.exception import CommandTimeoutError
-from meross_iot.model.http.device import HttpDeviceInfo
 
 from .common import (
     ATTR_CONFIG,
-    CLOUD_HANDLER,
     DOMAIN,
-    HA_CLIMATE,
-    HA_COVER,
-    HA_FAN,
-    HA_LIGHT,
-    HA_SENSOR,
-    HA_SWITCH,
     MEROSS_PLATFORMS,
-    SENSORS,
-    dismiss_notification,
     notify_error,
     log_exception,
     CONF_STORED_CREDS,
-    LIMITER,
     CONF_HTTP_ENDPOINT,
     HTTP_API_RE,
-    HTTP_UPDATE_INTERVAL, DEVICE_LIST_COORDINATOR, calculate_id,
+    HTTP_UPDATE_INTERVAL, DEVICE_LIST_COORDINATOR,
     CONF_OPT_CUSTOM_USER_AGENT, CONF_OVERRIDE_MQTT_ENDPOINT,
     CONF_CA_PEM, CONF_CA_FINGERPRINT, MISSING_TRACKER,
     BROKER_ADAPTER, SHUTTER_CONFIG_CACHE, effective_user_agent
@@ -59,7 +43,6 @@ from .broker_http import (
 from .missing_devices import MissingDeviceTracker
 from .log_redaction import install as install_log_redaction
 from .version import MEROSS_INTEGRATION_VERSION
-from .patches import apply_patches
 from .tls import (
     async_fetch_ca,
     build_client_ssl_context,
@@ -70,8 +53,6 @@ from .tls import (
     is_ca,
     parse_certificate,
 )
-
-apply_patches()
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -173,7 +154,8 @@ class MerossCoordinator(DataUpdateCoordinator):
         self._broker_http = BrokerHttpClient(
             self._http_api_endpoint,
             lambda: self._cached_creds.token,
-            self._mqtt_ssl_context_verified)
+            self._mqtt_ssl_context_verified,
+            user_agent=self._ua_header)
 
         try:
             async with asyncio.timeout(10):
@@ -226,6 +208,10 @@ class MerossCoordinator(DataUpdateCoordinator):
         return self._cached_creds
 
     @property
+    def user_agent(self) -> str:
+        return self._ua_header
+
+    @property
     def mqtt_address(self) -> tuple[str, int]:
         if self._mqtt_override_address is not None:
             return self._mqtt_override_address
@@ -235,160 +221,6 @@ class MerossCoordinator(DataUpdateCoordinator):
     @property
     def mqtt_ssl_context(self) -> ssl.SSLContext:
         return self._mqtt_ssl_context_verified
-
-
-class MerossDevice(Entity):
-    def __init__(self,
-                 device: BaseDevice,
-                 channel: int,
-                 device_list_coordinator: DataUpdateCoordinator[Dict[str, HttpDeviceInfo]],
-                 platform: str,
-                 supplementary_classifiers: Optional[List[str]] = None,
-                 override_channel_name: str = None):
-        self._coordinator = device_list_coordinator
-        self._device = device
-        self._channel_id = channel
-        self._last_http_state = None
-        self._cb_async_remove_listener = None
-
-        base_name = f"{device.name} ({device.type})"
-        if supplementary_classifiers is not None:
-            self._id = calculate_id(platform=platform, uuid=device.internal_id, channel=channel,
-                                    supplementary_classifiers=supplementary_classifiers)
-            base_name += f" " + " ".join(supplementary_classifiers)
-        else:
-            self._id = calculate_id(platform=platform, uuid=device.internal_id, channel=channel)
-
-        if override_channel_name:
-            channel_name = override_channel_name
-        elif device.channels is not None and len(device.channels) > 0:
-            channel_data = device.channels[channel]
-            channel_name = channel_data.name
-        else:
-            channel_name = None
-        self._entity_name = f"{base_name} - {channel_name}" if channel_name is not None else base_name
-
-    @property
-    def should_poll(self) -> bool:
-        return False
-
-    async def async_update(self):
-        if self.online:
-            try:
-                await self._device.async_update()
-            except CommandTimeoutError:
-                # Devices reconnect progressively after a broker/HA restart.
-                # Keep the last known state instead of logging a full traceback.
-                _LOGGER.debug(
-                    "Device %s did not answer the state request in time",
-                    self._device.uuid)
-            except Exception:
-                # A failing third-party device update must not prevent the
-                # entity from being added or kept in Home Assistant.
-                log_exception(logger=_LOGGER, device=self._device)
-
-    def _http_data_changed(self) -> None:
-        new_data = (self._coordinator.data or {}).get(self._device.uuid)
-        if new_data is None:
-            self.async_schedule_update_ha_state(force_refresh=False)
-            return
-        if self._last_http_state is not None and self._last_http_state.online_status != OnlineStatus.ONLINE and new_data.online_status == OnlineStatus.ONLINE:
-            self._last_http_state = new_data
-            self.async_schedule_update_ha_state(force_refresh=True)
-        else:
-            self._last_http_state = new_data
-            self.async_schedule_update_ha_state(force_refresh=False)
-
-    @property
-    def online(self) -> bool:
-        # The MQTT transport state is live; the HTTP list is only a discovery
-        # aid and can transiently report a stale or unknown status (broker
-        # restart, newly paired device, failed poll). A connected device must
-        # stay available even if HTTP disagrees.
-        if getattr(self._device, "online_status", None) == OnlineStatus.ONLINE:
-            return True
-        new_data = (self._coordinator.data or {}).get(self._device.uuid)
-        if new_data is not None:
-            return new_data.online_status == OnlineStatus.ONLINE
-        if self._last_http_state is not None:
-            return self._last_http_state.online_status == OnlineStatus.ONLINE
-        return False
-
-    @property
-    def unique_id(self) -> str:
-        return self._id
-
-    @property
-    def name(self) -> str:
-        return self._entity_name
-
-    @property
-    def device_info(self):
-        return {
-            'identifiers': {(DOMAIN, self._device.internal_id)},
-            'name': self._device.name,
-            'manufacturer': 'Meross',
-            'model': self._device.type + " " + self._device.hardware_version,
-            'sw_version': self._device.firmware_version
-        }
-
-    @property
-    def available(self) -> bool:
-        # An HTTP polling failure only affects discovery; it must not hide
-        # entities whose state is still served over MQTT.
-        return self.online
-
-    async def _async_push_notification_received(self, namespace: Namespace, data: dict, device_internal_id: str):
-        update_state = False
-        full_update = False
-
-        if namespace == Namespace.CONTROL_UNBIND:
-            _LOGGER.warning(f"Received unbind event. Removing device %s from HA", self.name)
-            tracker = self.hass.data.get(DOMAIN, {}).get(MISSING_TRACKER)
-            if tracker is not None:
-                # The broker announced the removal: do not later propose the
-                # same cleanup through a repair issue.
-                await tracker.async_forget(self._device.uuid)
-            # Entity.async_remove() alone keeps a disabled registry entry and
-            # writes an unavailable "restored" state: drop the entries so the
-            # entities really disappear.
-            entity_registry = er.async_get(self.hass)
-            if entity_registry.async_get(self.entity_id) is not None:
-                entity_registry.async_remove(self.entity_id)
-            await self.async_remove(force_remove=True)
-            device_registry = dr.async_get(self.hass)
-            device_entry = device_registry.async_get_device(
-                {(DOMAIN, self._device.internal_id)})
-            if device_entry is not None:
-                device_registry.async_remove_device(device_entry.id)
-        elif namespace == Namespace.SYSTEM_ONLINE:
-            _LOGGER.info(f"Device %s reported online event.", self.name)
-            online = OnlineStatus(int(data.get('online').get('status')))
-            update_state = True
-            full_update = online == OnlineStatus.ONLINE
-        elif namespace == Namespace.HUB_ONLINE:
-            _LOGGER.info(f"Device {self.name} reported (HUB) online event.")
-            online = OnlineStatus(int(data.get('status')))
-            update_state = True
-            full_update = online == OnlineStatus.ONLINE
-        else:
-            update_state = True
-            full_update = False
-
-        # In all other cases, just tell HA to update the internal state representation
-        if update_state:
-            self.async_schedule_update_ha_state(force_refresh=full_update)
-
-    async def async_added_to_hass(self) -> None:
-        self._device.register_push_notification_handler_coroutine(self._async_push_notification_received)
-        self._cb_async_remove_listener = self._coordinator.async_add_listener(self._http_data_changed)
-        self.hass.data[DOMAIN]["ADDED_ENTITIES_IDS"].add(self.unique_id)
-
-    async def async_will_remove_from_hass(self) -> None:
-        self._device.unregister_push_notification_handler_coroutine(self._async_push_notification_received)
-        if self._cb_async_remove_listener is not None:
-            self._cb_async_remove_listener()
-        self.hass.data[DOMAIN]["ADDED_ENTITIES_IDS"].remove(self.unique_id)
 
 
 def _is_stale_profile_uid(unique_id: str) -> bool:
@@ -576,7 +408,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             BrokerHttpClient(
                 meross_coordinator.http_api_endpoint,
                 lambda: meross_coordinator.credentials.token,
-                meross_coordinator.mqtt_ssl_context))
+                meross_coordinator.mqtt_ssl_context,
+                user_agent=meross_coordinator.user_agent))
 
         from .broker_adapter import BrokerProfileAdapter
 
@@ -644,8 +477,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
 
 async def update_listener(hass, entry):
-    """Options that survived D5 no longer affect the running transport."""
-    return
+    """Reload so the custom user agent reaches every HTTP client."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass, entry):

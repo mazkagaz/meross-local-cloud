@@ -90,19 +90,21 @@ class BrokerHttpClient:
     def __init__(self, endpoint: str, token,
                  ssl_context: Optional[ssl.SSLContext] = None,
                  timeout: float = DEFAULT_TIMEOUT,
-                 session_factory: Optional[Callable[[], Any]] = None) -> None:
+                 session_factory: Optional[Callable[[], Any]] = None,
+                 user_agent: str = USER_AGENT) -> None:
         self._endpoint = endpoint.rstrip("/")
         self._token = token
         self._ssl_context = ssl_context
         self._timeout = timeout
         self._session_factory = session_factory or aiohttp.ClientSession
+        self._user_agent = user_agent
 
     def _headers(self) -> dict:
         token = self._token() if callable(self._token) else self._token
         headers = {
             "Content-Type": "application/json",
             "AppVersion": APP_VERSION,
-            "User-Agent": USER_AGENT,
+            "User-Agent": self._user_agent,
         }
         if token:
             headers["Authorization"] = f"Basic {token}"

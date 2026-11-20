@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List
 from urllib.error import HTTPError
 from urllib.parse import urlparse
 
@@ -14,8 +14,6 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, OptionsFlow
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
 from requests.exceptions import ConnectTimeout
 from homeassistant.components import network, zeroconf
 
@@ -25,10 +23,7 @@ from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
     CONF_OPT_CUSTOM_USER_AGENT, \
     MEROSS_LOCAL_MDNS_SERVICE_TYPES, MEROSS_LOCAL_MDNS_MQTT_SERVICE_TYPE, \
     MEROSS_LOCAL_MDNS_API_SERVICE_TYPE, CONF_OVERRIDE_MQTT_ENDPOINT, \
-    CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, \
-    CONF_OPT_LAN_HTTP_FIRST, CONF_OPT_LAN_HTTP_FIRST_ONLY_GET, \
-    CONF_OPT_PROFILE_BACKEND, CONF_OPT_PROFILE_ENTITIES, \
-    CONF_OPT_PROFILE_ENTITIES_ONLY, effective_user_agent
+    effective_user_agent
 from .broker_http import (
     BrokerAuthError,
     BrokerCredentials,
@@ -529,23 +524,5 @@ class MerossOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=vol.Schema({
                 vol.Optional(CONF_OPT_CUSTOM_USER_AGENT,
                              default=saved_ua): str,
-                vol.Required(CONF_OPT_LAN,
-                             default=saved_options.get(CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY)): SelectSelector(
-                    SelectSelectorConfig(
-                        options=[
-                            {"value": CONF_OPT_LAN_MQTT_ONLY,
-                             "label": "Do not rely on local HTTP communication at all, just use the MQTT broker"},
-                            {"value": CONF_OPT_LAN_HTTP_FIRST,
-                             "label": "Attempt local HTTP communication first and fall-back to MQTT broker"},
-                            {"value": CONF_OPT_LAN_HTTP_FIRST_ONLY_GET,
-                             "label": "Attempt local HTTP communication first only for GET commands, fall-back to MQTT broker"}
-                        ], mode=SelectSelectorMode.LIST)
-                ),
-                vol.Optional(CONF_OPT_PROFILE_BACKEND,
-                             default=saved_options.get(CONF_OPT_PROFILE_BACKEND, False)): bool,
-                vol.Optional(CONF_OPT_PROFILE_ENTITIES,
-                             default=saved_options.get(CONF_OPT_PROFILE_ENTITIES, False)): bool,
-                vol.Optional(CONF_OPT_PROFILE_ENTITIES_ONLY,
-                             default=saved_options.get(CONF_OPT_PROFILE_ENTITIES_ONLY, False)): bool,
             })
         )

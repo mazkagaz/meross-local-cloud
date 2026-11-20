@@ -10,7 +10,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 
 from .common import (
-    DOMAIN, MANAGER, MISSING_TRACKER, device_internal_id,
+    DOMAIN, MISSING_TRACKER, device_internal_id,
 )
 from .missing_devices import issue_id
 
@@ -20,19 +20,9 @@ _LOGGER = logging.getLogger(__name__)
 async def async_remove_device(hass: HomeAssistant, device_uuid: str) -> None:
     """Drop the device from the manager, the registries and the tracker."""
     domain_data = hass.data.get(DOMAIN, {})
-    internal_id = device_internal_id(device_uuid)
-    manager = domain_data.get(MANAGER)
-    if manager is not None:
-        found = manager.find_devices(device_uuids=[device_uuid])
-        if found:
-            internal_id = found[0].internal_id
-            try:
-                manager.relinquish_device(internal_id)
-            except ValueError:
-                pass
-
     registry = dr.async_get(hass)
-    entry = registry.async_get_device({(DOMAIN, internal_id)})
+    entry = registry.async_get_device(
+        {(DOMAIN, device_internal_id(device_uuid))})
     if entry is not None:
         registry.async_remove_device(entry.id)
 

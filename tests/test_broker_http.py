@@ -54,6 +54,19 @@ def client(status=200, body=None):
     return http, session
 
 
+async def test_custom_user_agent_is_used():
+    session = FakeSession(200, {"apiStatus": 0, "data": {}})
+    http = BrokerHttpClient(
+        "https://broker:2004", "token",
+        session_factory=lambda: session,
+        user_agent="MerossHA/custom")
+
+    await http.async_post("/v1/Test")
+
+    assert session.calls[0][1]["headers"]["User-Agent"] == \
+        "MerossHA/custom"
+
+
 def test_envelope_signature():
     envelope = build_envelope(
         {"a": 1}, timestamp=1788750000, nonce="nonce")

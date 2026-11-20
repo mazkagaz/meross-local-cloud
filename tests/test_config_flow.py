@@ -334,6 +334,26 @@ async def test_discovered_form_requires_credentials(hass, monkeypatch):
     assert result["errors"]["base"] == "missing_credentials"
 
 
+def test_setup_schema_has_no_certificate_options():
+    keys = {
+        str(key.schema) for key in MerossFlowHandler()._build_form_schema().schema
+    }
+    assert "broker_host" in keys
+    assert "skip_http_cert_validation" not in keys
+    assert "skip_mqtt_cert_validation" not in keys
+
+
+async def test_options_update_reloads_the_entry(hass, monkeypatch):
+    from custom_components.meross_cloud import update_listener
+
+    reload = AsyncMock()
+    monkeypatch.setattr(hass.config_entries, "async_reload", reload)
+
+    await update_listener(hass, SimpleNamespace(entry_id="options-test"))
+
+    reload.assert_awaited_once_with("options-test")
+
+
 async def test_options_flow_loads(hass):
     entry = MockConfigEntry(domain=DOMAIN, data={}, options={}, entry_id="options-test")
     entry.add_to_hass(hass)
@@ -342,3 +362,5 @@ async def test_options_flow_loads(hass):
 
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "init"
+    keys = {str(key.schema) for key in result["data_schema"].schema}
+    assert keys == {"custom_user_agent"}

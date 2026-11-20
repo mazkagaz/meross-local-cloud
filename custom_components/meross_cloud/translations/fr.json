@@ -63,9 +63,7 @@
     "step": {
       "init": {
         "data": {
-          "custom_user_agent": "En-tête User-Agent HTTP personnalisé pour l'interrogation de l'API",
-          "lan_transport_mode": "Options de communication des appareils",
-          "profile_backend": "Activer la sonde du moteur de profils d'appareils (avancé, recharger après changement)"
+          "custom_user_agent": "En-tête User-Agent HTTP personnalisé pour l'interrogation de l'API"
         },
         "title": "Options de Meross Local Cloud"
       }

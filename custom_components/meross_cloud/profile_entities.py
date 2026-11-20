@@ -1,8 +1,7 @@
-"""Home Assistant entities built from compiled profiles (D3, opt-in).
+"""Home Assistant entities built from compiled device profiles.
 
-These entities live beside the historical meross_iot entities until D5. They
-use the central scheduler/runtime and distinct unique_ids, and are only
-created when the ``profile_entities`` option is enabled.
+They use the central scheduler/runtime and preserve the historical
+unique_id and device-registry identifiers.
 """
 from __future__ import annotations
 
