@@ -35,7 +35,10 @@ from .common import (
     HA_SENSOR_POLL_INTERVAL_SECONDS, invoke_method_or_property,
     DEVICE_LIST_COORDINATOR, BROKER_ADAPTER,
 )
-from .profile_entities import async_setup_profile_entities
+from .profile_entities import (
+    async_setup_profile_entities,
+    historical_entities_allowed,
+)
 from .broker_profile_sensor import BrokerProfileSensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -425,6 +428,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         manager: MerossManager = hass.data[DOMAIN][MANAGER]  # type
         coordinator = hass.data[DOMAIN][DEVICE_LIST_COORDINATOR]
         devices = manager.find_devices()
+        devices = [d for d in devices
+                   if historical_entities_allowed(
+                       hass, config_entry,
+                       getattr(d, "internal_id", d.uuid))]
 
         new_entities = []
 

@@ -68,6 +68,7 @@ entities:
     platform: number
     channel: 0
     name: "Open duration"
+    legacy_classifiers: [open_timer]
     unit: s
     device_class: duration
     entity_category: config
@@ -91,6 +92,7 @@ entities:
     platform: number
     channel: 0
     name: "Close duration"
+    legacy_classifiers: [close_timer]
     unit: s
     device_class: duration
     entity_category: config
@@ -114,6 +116,7 @@ entities:
     platform: button
     channel: 0
     name: "Start calibration"
+    legacy_classifiers: [calibrate]
     entity_category: config
     commands:
       press:
@@ -126,6 +129,7 @@ entities:
     platform: button
     channel: 0
     name: "Stop calibration"
+    legacy_classifiers: [stop_calibration]
     entity_category: config
     commands:
       press:
@@ -138,6 +142,7 @@ entities:
     platform: sensor
     channel: 0
     name: "Calibration status"
+    legacy_classifiers: [calibration]
     entity_category: diagnostic
     state:
       namespace: Appliance.RollerShutter.Adjust

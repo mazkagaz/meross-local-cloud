@@ -102,6 +102,7 @@ class EntitySpec:
     commands: Dict[str, CommandSpec] = field(default_factory=dict)
     quirks: Tuple[Dict[str, Any], ...] = ()
     capabilities: Optional[Dict[str, Any]] = None
+    legacy_classifiers: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

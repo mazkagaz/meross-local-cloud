@@ -64,11 +64,14 @@ class FakeAdapter:
             self.ready.append(callback)
 
 
-def entry(enabled=True):
-    return SimpleNamespace(options={"profile_entities": enabled})
+def entry(enabled=True, only=False):
+    options = {"profile_entities": enabled}
+    if only:
+        options["profile_entities_only"] = True
+    return SimpleNamespace(options=options)
 
 
-async def setup_entities(hass, adapter, platform):
+async def setup_entities(hass, adapter, platform, entry_obj=None):
     hass.data[DOMAIN] = {
         BROKER_ADAPTER: adapter,
         "ADDED_ENTITIES_IDS": set(),
@@ -79,7 +82,7 @@ async def setup_entities(hass, adapter, platform):
         hass.async_create_task(component.async_add_entities(
             entities, update_before_add=update_before_add))
 
-    async_setup_profile_entities(hass, entry(), platform, add)
+    async_setup_profile_entities(hass, entry_obj or entry(), platform, add)
     await hass.async_block_till_done()
     return component
 
@@ -276,6 +279,53 @@ async def test_humidifier_entity(hass):
     await entity.async_turn_off()
     assert adapter.sent[-1][3] == {
         "spray": {"channel": 0, "mode": 0}}
+
+
+async def test_legacy_unique_ids_when_only_mode(hass):
+    device = runtime("mss310")
+    adapter = FakeAdapter(device)
+    component = await setup_entities(
+        hass, adapter, HA_SENSOR, entry(only=True))
+    ids = sorted(entity.unique_id for entity in component.entities)
+
+    assert ids == [
+        "sensor:u1:0:current:A",
+        "sensor:u1:0:power:W",
+        "sensor:u1:0:voltage:V",
+    ]
+
+
+async def test_legacy_classifiers_for_shutter_entities(hass):
+    device = runtime("mrs100")
+    adapter = FakeAdapter(device)
+
+    numbers = await setup_entities(
+        hass, adapter, HA_NUMBER, entry(only=True))
+    buttons = await setup_entities(
+        hass, adapter, HA_BUTTON, entry(only=True))
+
+    assert sorted(entity.unique_id for entity in numbers.entities) == [
+        "number:u1:0:close_timer", "number:u1:0:open_timer"]
+    assert sorted(entity.unique_id for entity in buttons.entities) == [
+        "button:u1:0:calibrate", "button:u1:0:stop_calibration"]
+
+
+async def test_historical_entities_are_filtered_in_only_mode(hass):
+    from custom_components.meross_cloud.profile_entities import (
+        historical_entities_allowed,
+    )
+
+    device = runtime("mss310")
+    adapter = FakeAdapter(device)
+    hass.data[DOMAIN] = {
+        BROKER_ADAPTER: adapter,
+        "ADDED_ENTITIES_IDS": set(),
+    }
+
+    assert historical_entities_allowed(hass, entry(), "u1") is True
+    assert historical_entities_allowed(hass, entry(only=True), "u1") is False
+    assert historical_entities_allowed(hass, entry(only=True), "u2") is True
+    assert historical_entities_allowed(hass, None, "u1") is True
 
 
 async def setup_updates(hass, adapter):

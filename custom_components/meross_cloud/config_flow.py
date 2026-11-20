@@ -30,7 +30,8 @@ from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
     MEROSS_LOCAL_MDNS_API_SERVICE_TYPE, CONF_OVERRIDE_MQTT_ENDPOINT, \
     CONF_OPT_LAN, CONF_OPT_LAN_MQTT_ONLY, \
     CONF_OPT_LAN_HTTP_FIRST, CONF_OPT_LAN_HTTP_FIRST_ONLY_GET, \
-    CONF_OPT_PROFILE_BACKEND, CONF_OPT_PROFILE_ENTITIES, effective_user_agent
+    CONF_OPT_PROFILE_BACKEND, CONF_OPT_PROFILE_ENTITIES, \
+    CONF_OPT_PROFILE_ENTITIES_ONLY, effective_user_agent
 from .patches import set_http_cert_validation
 from .tls import (
     async_fetch_ca,
@@ -559,5 +560,7 @@ class MerossOptionsFlowHandler(config_entries.OptionsFlow):
                              default=saved_options.get(CONF_OPT_PROFILE_BACKEND, False)): bool,
                 vol.Optional(CONF_OPT_PROFILE_ENTITIES,
                              default=saved_options.get(CONF_OPT_PROFILE_ENTITIES, False)): bool,
+                vol.Optional(CONF_OPT_PROFILE_ENTITIES_ONLY,
+                             default=saved_options.get(CONF_OPT_PROFILE_ENTITIES_ONLY, False)): bool,
             })
         )

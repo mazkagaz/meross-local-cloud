@@ -683,6 +683,21 @@ def test_invalid_numeric_attributes_are_errors(field):
                for error in compiled.errors)
 
 
+def test_legacy_classifiers_are_compiled():
+    compiled = compile_profile(meta(doc(entities=[entity(
+        legacy_classifiers=["power", "W"])])))
+
+    assert compiled.entities["switch"].legacy_classifiers == ("power", "W")
+
+
+def test_invalid_legacy_classifiers_are_errors():
+    compiled = compile_profile(meta(doc(entities=[entity(
+        legacy_classifiers=[1])])))
+
+    assert compiled.entities == {}
+    assert any("legacy_classifiers" in error for error in compiled.errors)
+
+
 def test_capabilities_must_be_an_object():
     compiled = compile_profile(meta(doc(
         entities=[entity(capabilities=[])])))

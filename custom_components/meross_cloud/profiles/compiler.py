@@ -324,6 +324,12 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
         prefix, platform, raw.get("commands"), namespaces, channel, errors,
         allow_subdevice=allow_subdevice)
     quirks = _compile_entity_quirks(prefix, raw.get("quirks"), errors)
+    legacy_classifiers = raw.get("legacy_classifiers", [])
+    if not isinstance(legacy_classifiers, (list, tuple)) or not all(
+            isinstance(item, str) for item in legacy_classifiers):
+        errors.append(
+            f"{prefix}: legacy_classifiers must be a list of strings")
+        legacy_classifiers = ()
     capabilities = raw.get("capabilities")
     if capabilities is not None and not isinstance(capabilities, dict):
         errors.append(f"{prefix}: capabilities must be an object")
@@ -348,6 +354,7 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
         commands=commands,
         quirks=quirks,
         capabilities=capabilities,
+        legacy_classifiers=tuple(legacy_classifiers),
     )
 
 

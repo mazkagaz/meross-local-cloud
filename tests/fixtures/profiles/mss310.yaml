@@ -54,6 +54,7 @@ entities:
     platform: sensor
     channel: 0
     name: "Power"
+    legacy_classifiers: [power, W]
     unit: W
     device_class: power
     state:
@@ -65,6 +66,7 @@ entities:
     platform: sensor
     channel: 0
     name: "Voltage"
+    legacy_classifiers: [voltage, V]
     unit: V
     device_class: voltage
     state:
@@ -76,6 +78,7 @@ entities:
     platform: sensor
     channel: 0
     name: "Current"
+    legacy_classifiers: [current, A]
     unit: A
     device_class: current
     state:

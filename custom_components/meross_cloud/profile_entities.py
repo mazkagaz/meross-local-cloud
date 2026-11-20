@@ -43,7 +43,9 @@ from homeassistant.helpers.entity import Entity, EntityCategory
 from .common import (
     BROKER_ADAPTER,
     CONF_OPT_PROFILE_ENTITIES,
+    CONF_OPT_PROFILE_ENTITIES_ONLY,
     DOMAIN,
+    calculate_id,
 )
 from .profiles.paths import substitute
 
@@ -92,7 +94,8 @@ class ProfileBaseEntity(Entity):
     _attr_should_poll = False
 
     def __init__(self, adapter, device_uuid: str, runtime, spec,
-                 subdevice: Optional[Tuple[str, Any]] = None) -> None:
+                 subdevice: Optional[Tuple[str, Any]] = None,
+                 legacy: bool = False) -> None:
         self._adapter = adapter
         self._device_uuid = device_uuid
         self._runtime = runtime
@@ -100,7 +103,14 @@ class ProfileBaseEntity(Entity):
         self._subdevice_id, self._template = (
             subdevice if subdevice is not None else (None, None))
         self._remove_listener = None
-        if self._subdevice_id is not None:
+        if legacy:
+            device_id = (self._subdevice_id if self._subdevice_id is not None
+                         else device_uuid)
+            self._attr_unique_id = calculate_id(
+                spec.platform, device_id,
+                spec.channel if spec.channel is not None else 0,
+                list(spec.legacy_classifiers) or None)
+        elif self._subdevice_id is not None:
             self._attr_unique_id = (
                 f"{DOMAIN}:{self._subdevice_id}:{self._template.uid}:"
                 f"{spec.key}")
@@ -532,6 +542,15 @@ PLATFORM_CLASSES = {
 }
 
 
+def historical_entities_allowed(hass, config_entry, device_uuid: str) -> bool:
+    """False when a device is owned by the profile entity layer."""
+    if config_entry is None or not config_entry.options.get(
+            CONF_OPT_PROFILE_ENTITIES_ONLY, False):
+        return True
+    adapter = hass.data.get(DOMAIN, {}).get(BROKER_ADAPTER)
+    return adapter is None or device_uuid not in adapter.runtimes
+
+
 def async_setup_profile_entities(hass, config_entry, platform: str,
                                  async_add_entities) -> None:
     """Register the platform entities once the profile backend is ready."""
@@ -547,6 +566,8 @@ def async_setup_profile_entities(hass, config_entry, platform: str,
         return
 
     added = data.setdefault("ADDED_ENTITIES_IDS", set())
+    legacy = bool(config_entry.options.get(
+        CONF_OPT_PROFILE_ENTITIES_ONLY, False))
 
     def add_now() -> None:
         entities: List[Entity] = []
@@ -555,7 +576,8 @@ def async_setup_profile_entities(hass, config_entry, platform: str,
             if spec.platform != platform:
                 return
             entity = entity_class(
-                adapter, device_uuid, runtime, spec, subdevice)
+                adapter, device_uuid, runtime, spec, subdevice,
+                legacy=legacy)
             if entity.unique_id in added:
                 return
             added.add(entity.unique_id)
