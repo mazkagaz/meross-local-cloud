@@ -1,0 +1,41 @@
+[
+  {
+    "uuid": "u1",
+    "devName": "Volet",
+    "deviceType": "mrs100",
+    "subType": "un",
+    "onlineStatus": 1,
+    "fmwareVersion": "7.3.3",
+    "hdwareVersion": "7.0.0",
+    "channels": [
+      {
+        "channel": 0
+      }
+    ],
+    "ability": {
+      "Appliance.RollerShutter.State": {}
+    },
+    "rollerShutter": {
+      "config": [
+        {
+          "channel": 0,
+          "signalOpen": 45000,
+          "signalClose": 50000
+        }
+      ],
+      "position": [
+        {
+          "channel": 0,
+          "position": 40,
+          "state": 1
+        }
+      ],
+      "adjust": [
+        {
+          "channel": 0,
+          "value": 2
+        }
+      ]
+    }
+  }
+]

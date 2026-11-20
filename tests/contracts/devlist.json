@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["uuid", "devName", "deviceType", "onlineStatus"],
+    "properties": {
+      "uuid": {
+        "type": "string"
+      },
+      "devName": {
+        "type": "string"
+      },
+      "deviceType": {
+        "type": "string"
+      },
+      "subType": {
+        "type": ["string", "null"]
+      },
+      "onlineStatus": {
+        "type": "integer"
+      },
+      "fmwareVersion": {
+        "type": ["string", "null"]
+      },
+      "hdwareVersion": {
+        "type": ["string", "null"]
+      },
+      "channels": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["channel"],
+          "properties": {
+            "channel": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": true
+        }
+      }
+    },
+    "additionalProperties": true
+  }
+}

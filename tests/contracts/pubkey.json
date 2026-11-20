@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["algorithm", "public_key", "fingerprint"],
+  "properties": {
+    "algorithm": {
+      "type": "string"
+    },
+    "public_key": {
+      "type": ["string", "null"]
+    },
+    "fingerprint": {
+      "type": ["string", "null"]
+    }
+  },
+  "additionalProperties": true
+}

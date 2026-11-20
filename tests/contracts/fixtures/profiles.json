@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "errors": [],
+  "profiles": [
+    {
+      "id": "test.sample",
+      "version": "1",
+      "source": "bundled",
+      "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "profile": {
+        "schema_version": 2,
+        "profile": {
+          "id": "test.sample",
+          "version": "1"
+        },
+        "match": {
+          "type": ["test"]
+        },
+        "payloads": {
+          "Appliance.Control.ToggleX": {
+            "methods": ["GETACK", "PUSH"]
+          }
+        },
+        "entities": [
+          {
+            "key": "switch",
+            "platform": "switch",
+            "channel": 0,
+            "state": {
+              "namespace": "Appliance.Control.ToggleX",
+              "channel": "$channel",
+              "fields": {
+                "onoff": "onoff"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

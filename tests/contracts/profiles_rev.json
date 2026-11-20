@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema_version", "revision", "count", "errors"],
+  "properties": {
+    "schema_version": {
+      "type": "integer"
+    },
+    "revision": {
+      "type": "string"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "errors": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": true
+}

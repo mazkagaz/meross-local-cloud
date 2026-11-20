@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: install test test-fast test-functional compile reports
+.PHONY: install test test-fast test-functional test-contracts compile reports
 
 install:
 	$(PYTHON) -m pip install -r tests/requirements_test.txt
@@ -13,6 +13,9 @@ test-fast:
 
 test-functional:
 	$(PYTHON) -m pytest tests/functional -q
+
+test-contracts:
+	$(PYTHON) -m pytest tests/test_contracts.py -q
 
 compile:
 	$(PYTHON) -m compileall -q custom_components

@@ -1,0 +1,9 @@
+{
+  "token": "token-1",
+  "key": "mqtt-key",
+  "userid": "1",
+  "email": "user@example.com",
+  "domain": "https://broker:2004",
+  "mqttDomain": "",
+  "mfaLockExpire": 0
+}

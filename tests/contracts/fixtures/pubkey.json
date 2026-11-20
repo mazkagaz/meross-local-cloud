@@ -1,0 +1,5 @@
+{
+  "algorithm": "ed25519",
+  "public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA\n-----END PUBLIC KEY-----\n",
+  "fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+}

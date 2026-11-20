@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["token", "key", "userid", "email", "domain", "mqttDomain"],
+  "properties": {
+    "token": {
+      "type": "string"
+    },
+    "key": {
+      "type": "string"
+    },
+    "userid": {
+      "type": ["string", "integer"]
+    },
+    "email": {
+      "type": "string"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "mqttDomain": {
+      "type": "string"
+    },
+    "mfaLockExpire": {
+      "type": "integer"
+    }
+  },
+  "additionalProperties": true
+}

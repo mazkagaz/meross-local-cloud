@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  MEROSS_BROKER_REPO: ${{ github.workspace }}/broker-src
+
 concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: true
@@ -21,6 +24,13 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check out the broker contracts (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: mazkagaz/meross-local-broker
+          ref: 6a40cef3a62a44813d9ac9b7c1c88e9f2422d6c3
+          path: broker-src
 
       - uses: actions/setup-python@v6
         with:
