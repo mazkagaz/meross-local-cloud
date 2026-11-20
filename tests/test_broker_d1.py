@@ -131,6 +131,22 @@ async def test_app_client_notifies_the_payload_listener(hass):
     assert seen[0].namespace == "Appliance.Control.ToggleX"
 
 
+def test_transport_reports_connection_state_changes():
+    from custom_components.meross_cloud.broker_transport import (
+        BrokerMqttTransport,
+    )
+
+    seen = []
+    transport = BrokerMqttTransport(
+        "localhost", 2001, "1", "key", None, None,
+        state_listener=seen.append)
+
+    transport._on_connect(None)
+    transport._on_disconnect(None)
+
+    assert seen == [True, False]
+
+
 def test_devices_library_is_loaded_lazily():
     from custom_components.meross_cloud.vendor.merossclient import library
 
@@ -190,6 +206,37 @@ async def test_adapter_builds_descriptors_and_summary():
     assert adapter.descriptors["u1"]["type"] == "mrs100"
     assert "Appliance.RollerShutter.State" in \
         adapter.descriptors["u1"]["abilities"]
+
+
+async def test_adapter_opens_a_single_mqtt_transport():
+    coordinator_stub = SimpleNamespace(
+        credentials=SimpleNamespace(user_id="1", key="key", token="t"),
+        mqtt_address=("localhost", 2001),
+        mqtt_ssl_context=object(),
+        http_api_endpoint="https://broker:2004",
+    )
+    with patch(
+            "custom_components.meross_cloud.broker_adapter."
+            "async_list_devices", AsyncMock(
+                return_value=[SimpleNamespace(uuid="u1")])), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
+                "BrokerMqttTransport",
+                return_value=FakeTransport()) as factory, \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
+                "async_fetch_revision", AsyncMock(
+                    return_value={"revision": "abc", "count": 0})), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
+                "async_fetch_catalog", AsyncMock(
+                    return_value={"revision": "abc", "profiles": []})):
+        adapter = BrokerProfileAdapter(
+            SimpleNamespace(loop=None), coordinator_stub)
+        await adapter.async_start()
+
+    factory.assert_called_once()
+    assert adapter.summary()["state"] == "connected"
 
 
 async def test_adapter_aborts_after_the_first_descriptor_failure():

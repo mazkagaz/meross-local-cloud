@@ -74,6 +74,10 @@
       "title": "Dispositivo Meross ya no está emparejado",
       "description": "**{name}** (`{uuid}`) no ha sido notificado por el broker durante más de 48 horas. Si se desemparejó o eliminó a propósito, corrija este problema para quitar su dispositivo y entidades de Home Assistant."
     },
+    "unsupported_device": {
+      "title": "Sin perfil para {name}",
+      "description": "El broker informa de **{name}** (`{uuid}`, tipo `{type}`), pero ningún perfil del catálogo coincide. Sus entidades no se crean. Añada o actualice el perfil en el catálogo del broker; la integración se recarga automáticamente cuando cambia la revisión."
+    },
     "confirm": {
       "title": "¿Quitar el dispositivo?",
       "description": "¿Eliminar **{name}** y sus entidades de Home Assistant? Volver a emparejarlo recreará las entidades con la misma identidad."

@@ -74,6 +74,10 @@
       "title": "Dispositivo Meross non più associato",
       "description": "**{name}** (`{uuid}`) non è più segnalato dal broker da oltre 48 ore. Se è stato dissociato o eliminato di proposito, correggi questo problema per rimuovere il dispositivo e le sue entità da Home Assistant."
     },
+    "unsupported_device": {
+      "title": "Nessun profilo per {name}",
+      "description": "Il broker segnala **{name}** (`{uuid}`, tipo `{type}`), ma nessun profilo del catalogo corrisponde. Le sue entità non vengono create. Aggiungi o aggiorna il profilo nel catalogo del broker; l'integrazione si ricarica automaticamente quando cambia la revisione."
+    },
     "confirm": {
       "title": "Rimuovere il dispositivo?",
       "description": "Eliminare **{name}** e le sue entità Home Assistant? Una nuova associazione le ricreerà con la stessa identità."

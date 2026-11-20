@@ -74,6 +74,10 @@
       "title": "Appareil Meross plus appairé",
       "description": "**{name}** (`{uuid}`) n'est plus signalé par le broker depuis plus de 48 heures. Si l'appareil a été dissocié ou supprimé volontairement, corrigez ce problème pour retirer son appareil et ses entités de Home Assistant."
     },
+    "unsupported_device": {
+      "title": "Aucun profil pour {name}",
+      "description": "Le broker signale **{name}** (`{uuid}`, type `{type}`), mais aucun profil du catalogue ne correspond. Ses entités ne sont pas créées. Ajoutez ou mettez à jour le profil dans le catalogue du broker ; l'intégration se recharge automatiquement quand la révision change."
+    },
     "confirm": {
       "title": "Retirer l'appareil ?",
       "description": "Supprimer **{name}** et ses entités Home Assistant ? Un nouvel appairage recréera les entités avec la même identité."

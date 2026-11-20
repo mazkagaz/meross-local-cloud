@@ -11,6 +11,7 @@ from custom_components.meross_cloud.broker_adapter import (
     BrokerProfileAdapter,
     _subdevice_descriptors,
 )
+from custom_components.meross_cloud.broker_http import BrokerHttpError
 from custom_components.meross_cloud.vendor.merossclient import DeviceDescriptor
 from custom_components.meross_cloud.vendor.merossclient.protocol.message import (
     MerossResponse,
@@ -333,6 +334,22 @@ async def test_invalid_catalog_signature_is_refused():
     assert summary["state"] == "error"
     assert summary["catalog_signature"] == "invalid"
     assert "signature" in adapter.last_error
+
+
+async def test_catalog_unavailable_keeps_the_adapter_in_error():
+    with patch(
+            "custom_components.meross_cloud.broker_adapter."
+            "async_fetch_revision",
+            AsyncMock(side_effect=BrokerHttpError("HTTP 503", status=503))):
+        adapter = BrokerProfileAdapter(
+            SimpleNamespace(loop=None), coordinator())
+        await adapter.async_start()
+
+    summary = adapter.summary()
+    assert summary["state"] == "error"
+    assert "503" in adapter.last_error
+    assert summary["devices_matched"] == 0
+    assert adapter.runtimes == {}
 
 
 async def test_unsigned_catalog_is_reported():

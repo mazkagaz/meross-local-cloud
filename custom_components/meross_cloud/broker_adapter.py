@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 
 from .broker_devices import async_list_devices
 from .broker_http import BrokerHttpClient
@@ -40,6 +41,10 @@ _DESCRIBE_TIMEOUT = 5
 _TOTAL_BUDGET = 20
 _MAX_COMPILE_ERRORS = 20
 CATALOG_CHECK_INTERVAL = 60.0
+
+
+def unsupported_device_issue(device_uuid: str) -> str:
+    return f"unsupported_device_{device_uuid}"
 
 
 def _subdevice_descriptors(descriptor) -> list[Dict[str, Any]]:
@@ -91,6 +96,7 @@ class BrokerProfileAdapter:
         self.runtimes: Dict[str, DeviceRuntime] = {}
         self.schedulers: Dict[str, DeviceScheduler] = {}
         self.device_online: Dict[str, bool] = {}
+        self._unmatched: Dict[str, Dict[str, Any]] = {}
         self._ready_listeners: list = []
         self._listeners: list = []
         self.entities_only = False
@@ -126,7 +132,14 @@ class BrokerProfileAdapter:
     def device_available(self, device_uuid: str) -> bool:
         if self.state != "connected":
             return False
+        if (self._transport is not None
+                and hasattr(self._transport, "connected")
+                and not self._transport.connected):
+            return False
         return self.device_online.get(device_uuid, True)
+
+    def _on_transport_state(self, connected: bool) -> None:
+        self._notify_changed()
 
     def unknown_devices(self, devices) -> set[str]:
         """UUIDs reported by devList that this adapter has not described."""
@@ -190,6 +203,7 @@ class BrokerProfileAdapter:
             self._coordinator.mqtt_ssl_context,
             self._hass.loop,
             message_listener=self._dispatch_message,
+            state_listener=self._on_transport_state,
         )
         await self._transport.async_connect()
         if self._http is None:
@@ -208,6 +222,7 @@ class BrokerProfileAdapter:
                     device.uuid, err)
                 break
             self.descriptors[device.uuid] = {
+                "name": getattr(device, "dev_name", device.uuid),
                 "type": descriptor.type,
                 "subType": descriptor.subType,
                 "firmware": descriptor.fw_version,
@@ -217,6 +232,7 @@ class BrokerProfileAdapter:
                 "subdevices": _subdevice_descriptors(descriptor),
             }
         self._match_profiles()
+        self._sync_unsupported_issues()
         self._start_schedulers()
         if self.descriptors:
             _LOGGER.info(
@@ -244,6 +260,11 @@ class BrokerProfileAdapter:
                 self.match_ambiguities += 1
             if result.profile is None:
                 self.devices_unmatched += 1
+                self._unmatched[device_uuid] = {
+                    "name": descriptor.get("name") or device_uuid,
+                    "type": descriptor.get("type") or "unknown",
+                    "uuid": device_uuid,
+                }
                 continue
             self.devices_matched += 1
             compiled = self.compiler.compile(result.profile)
@@ -259,6 +280,26 @@ class BrokerProfileAdapter:
                 for subdevice_id, template in bindings.items():
                     runtime.add_subdevice(subdevice_id, template)
             self.runtimes[device_uuid] = runtime
+
+    def _sync_unsupported_issues(self) -> None:
+        if getattr(self._hass, "data", None) is None:
+            return
+        for device_uuid in self.descriptors:
+            if device_uuid not in self._unmatched:
+                ir.async_delete_issue(
+                    self._hass, DOMAIN,
+                    unsupported_device_issue(device_uuid))
+        for device_uuid, info in self._unmatched.items():
+            ir.async_create_issue(
+                self._hass,
+                DOMAIN,
+                unsupported_device_issue(device_uuid),
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="unsupported_device",
+                translation_placeholders=info,
+                data=info,
+            )
 
     def _match_subdevices(self, compiled: CompiledProfile,
                           subdevices: list[Dict[str, Any]]
@@ -426,6 +467,9 @@ class BrokerProfileAdapter:
         self.runtimes.pop(device_uuid, None)
         self.descriptors.pop(device_uuid, None)
         self.device_online.pop(device_uuid, None)
+        self._unmatched.pop(device_uuid, None)
+        ir.async_delete_issue(
+            self._hass, DOMAIN, unsupported_device_issue(device_uuid))
 
         tracker = (self._hass.data.get(DOMAIN) or {}).get(MISSING_TRACKER)
         if tracker is not None:

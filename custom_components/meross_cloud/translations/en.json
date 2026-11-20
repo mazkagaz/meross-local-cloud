@@ -74,6 +74,10 @@
       "title": "Meross device no longer paired",
       "description": "**{name}** (`{uuid}`) has not been reported by the broker for more than 48 hours. If it was unpaired or deleted on purpose, fix this issue to remove its device and entities from Home Assistant."
     },
+    "unsupported_device": {
+      "title": "No device profile for {name}",
+      "description": "The broker reports **{name}** (`{uuid}`, type `{type}`), but no catalog profile matches it. Its entities are not created. Add or update the profile in the broker catalog; the integration reloads automatically when the revision changes."
+    },
     "confirm": {
       "title": "Remove the device?",
       "description": "Delete **{name}** and its Home Assistant entities? Re-pairing the device later recreates them with the same identity."

@@ -59,7 +59,7 @@ class BrokerMqttTransport:
 
     def __init__(self, host: str, port: int, user_id: str, key: str,
                  ssl_context: ssl.SSLContext, loop, timeout: float = 15,
-                 message_listener=None):
+                 message_listener=None, state_listener=None):
         self._host = host
         self._port = port
         self._user_id = str(user_id)
@@ -67,6 +67,7 @@ class BrokerMqttTransport:
         self._ssl_context = ssl_context
         self._loop = loop
         self._message_listener = message_listener
+        self._state_listener = state_listener
         self._timeout = timeout
         self._connection: MQTTAppClient | None = None
 
@@ -85,10 +86,20 @@ class BrokerMqttTransport:
             timeout=self._timeout,
         )
         connection.message_listener = self._message_listener
+        connection.connect_broadcast.add(self._on_connect)
+        connection.disconnect_broadcast.add(self._on_disconnect)
         await connection.async_connect(timeout=self._timeout)
         self._connection = connection
         _LOGGER.debug("Broker MQTT transport connected to %s:%s",
                       self._host, self._port)
+
+    def _on_connect(self, connection) -> None:
+        if self._state_listener is not None:
+            self._state_listener(True)
+
+    def _on_disconnect(self, connection) -> None:
+        if self._state_listener is not None:
+            self._state_listener(False)
 
     def _device_client(self, device_uuid: str) -> MQTTAppClient.Client:
         if self._connection is None:
@@ -140,6 +151,8 @@ class BrokerMqttTransport:
         connection, self._connection = self._connection, None
         if connection is None:
             return
+        connection.connect_broadcast.remove(self._on_connect)
+        connection.disconnect_broadcast.remove(self._on_disconnect)
         try:
             await connection.async_shutdown()
         except Exception:  # noqa: BLE001 - shutdown must not raise

@@ -15,6 +15,8 @@ def adapter(state="connected"):
     instance.state = state
     instance.device_online = {}
     instance._listeners = []
+    instance._unmatched = {}
+    instance._transport = None
     return instance
 
 
