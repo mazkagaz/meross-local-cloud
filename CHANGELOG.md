@@ -1,3 +1,26 @@
+## 2.5.0-beta.1 — validation D5
+
+Version de **test** (pré-release, branche `dev`). Pour l’installer, activer
+« Afficher les versions bêta » dans HACS.
+
+- Backend profils : catalogue signé Ed25519, registre, matching, compilation,
+  scheduler central, batching `Multiple`, dispatch runtime.
+- Entités issues des profils (switch, light, sensor, binary_sensor, cover,
+  number, button, climate, fan, humidifier, update) et option avancée
+  `profile_entities_only` pour la bascule sans perte de `unique_id`.
+- Accès HTTP broker signé sans `meross_iot` pour la config flow, la liste des
+  appareils, le catalogue et le cache volet.
+- Contrats API broker et tests fonctionnels H2 (simulateurs MRS100, MSS310,
+  hub, MTS200, lumière, diffuseur, bus MQTT en mémoire).
+- Le reste du parc (garage, purificateurs, sprinklers, multiprises) garde le
+  repli historique.
+
+**Prérequis de test** : un broker avec le support du catalogue de profils.
+Le broker public 1.1.3 ne contient pas encore ces endpoints : installer la
+build broker de développement avant d’activer `profile_backend`.
+
+Retour arrière : réinstaller la version stable 2.4.6 dans HACS.
+
 ## 2.4.6
 
 - Pont temporaire pour les volets : `cover` et `number` rétablissent

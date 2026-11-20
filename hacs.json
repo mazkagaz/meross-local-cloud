@@ -10,6 +10,9 @@
     "humidifier",
     "light",
     "number",
-    "button"
+    "button",
+    "binary_sensor",
+    "fan",
+    "update"
   ]
 }
