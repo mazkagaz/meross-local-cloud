@@ -57,7 +57,13 @@ from .common import (
     effective_user_agent
 )
 from .broker_config import RollerShutterConfigCache
-from .broker_http import BrokerHttpClient
+from .broker_devices import async_list_devices
+from .broker_http import (
+    BrokerAuthError,
+    BrokerHttpClient,
+    BrokerHttpError,
+    BrokerTokenError,
+)
 from .missing_devices import MissingDeviceTracker
 from .log_redaction import install as install_log_redaction
 from .version import MEROSS_INTEGRATION_VERSION, MEROSS_IOT_VERSION
@@ -139,6 +145,7 @@ class MerossCoordinator(DataUpdateCoordinator):
         self._ca_pem = ca_pem
         self._ca_check_hostname = ca_check_hostname
         self._mqtt_ssl_context_verified: Optional[ssl.SSLContext] = None
+        self._broker_http: Optional[BrokerHttpClient] = None
         self._setup_done = False
         self._ua_header = ua_header
         self._missing_tracker = MissingDeviceTracker(hass, config_entry.entry_id)
@@ -151,20 +158,22 @@ class MerossCoordinator(DataUpdateCoordinator):
                          update_method=self._async_fetch_http_data)
 
     async def _async_fetch_http_data(self):
+        if self._broker_http is None:
+            return {}
         try:
             async with asyncio.timeout(10):
                 # Fetch devices and compose a quick-access dictionary
-                devices = await self._client.async_list_devices()
+                devices = await async_list_devices(self._broker_http)
                 data = {device.uuid: device for device in devices}
                 # Only a successful poll may start or clear a 48 h countdown.
                 await self._missing_tracker.async_update(data.values())
                 return data
 
-        except (BadLoginException, TokenExpiredException, UnauthorizedException) as err:
+        except (BrokerAuthError, BrokerTokenError) as err:
             # Raising ConfigEntryAuthFailed will cancel future updates
             # and start a config flow with SOURCE_REAUTH (async_step_reauth)
             raise ConfigEntryAuthFailed from err
-        except HttpApiError as err:
+        except (BrokerHttpError, TimeoutError) as err:
             raise UpdateFailed(f"Error communicating with API: {err}")
 
     async def initial_setup(self):
@@ -174,7 +183,7 @@ class MerossCoordinator(DataUpdateCoordinator):
         # Test the stored credentials if any. In case the credentials are invalid
         # try to retrieve a new token
         try:
-            self._client, http_devices, creds_renewed = await get_or_test_creds(
+            self._client, _, creds_renewed = await get_or_test_creds(
                 http_api_url=self._http_api_endpoint,
                 creds=self._cached_creds,
                 ua_header=self._ua_header
@@ -213,6 +222,11 @@ class MerossCoordinator(DataUpdateCoordinator):
         except ssl.SSLError as err:
             raise ConfigEntryNotReady(
                 f"Unable to trust the broker CA: {err}") from err
+        self._broker_http = BrokerHttpClient(
+            self._http_api_endpoint,
+            lambda: self._cached_creds.token,
+            self._mqtt_ssl_context_verified)
+        http_devices = await async_list_devices(self._broker_http)
         patch_mqtt_client_ssl_context()
         patch_mqtt_acks_on_user_topic()
 

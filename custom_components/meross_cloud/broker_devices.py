@@ -24,6 +24,10 @@ class BrokerDeviceInfo:
     def dev_name(self) -> str:
         return self.name
 
+    @property
+    def online_status(self) -> int:
+        return 1 if self.online else 2
+
 
 def _channel_indexes(channels: Any) -> Tuple[int, ...]:
     if not isinstance(channels, list):
