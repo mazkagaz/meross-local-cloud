@@ -4,9 +4,6 @@ from types import SimpleNamespace
 from helpers import FakeAdapter, entry, runtime, setup_entities
 
 from custom_components.meross_cloud.common import DOMAIN, HA_SENSOR, HA_SWITCH
-from custom_components.meross_cloud.profile_entities import (
-    historical_entities_allowed,
-)
 
 
 async def test_f2_1_profile_only_uses_legacy_ids(hass):
@@ -17,13 +14,12 @@ async def test_f2_1_profile_only_uses_legacy_ids(hass):
     sensors = await setup_entities(hass, adapter, HA_SENSOR, entry())
 
     assert [entity.unique_id for entity in switches.entities] == [
-        "switch:u1:0"]
+        "switch:#BASE:u1:0"]
     assert sorted(entity.unique_id for entity in sensors.entities) == [
-        "sensor:u1:0:current:A",
-        "sensor:u1:0:power:W",
-        "sensor:u1:0:voltage:V",
+        "sensor:#BASE:u1:0:current:A",
+        "sensor:#BASE:u1:0:power:W",
+        "sensor:#BASE:u1:0:voltage:V",
     ]
-    assert historical_entities_allowed(hass, entry(), "u1") is False
 
 
 async def test_f2_2_options_no_longer_change_identity(hass):
@@ -35,7 +31,7 @@ async def test_f2_2_options_no_longer_change_identity(hass):
         hass, adapter, HA_SWITCH, entry(only=True))
 
     assert [e.unique_id for e in switches.entities] == [
-        e.unique_id for e in legacy.entities] == ["switch:u1:0"]
+        e.unique_id for e in legacy.entities] == ["switch:#BASE:u1:0"]
 
 
 async def test_f2_3_unmatched_devices_have_no_historical_fallback(hass):
@@ -44,9 +40,8 @@ async def test_f2_3_unmatched_devices_have_no_historical_fallback(hass):
 
     sensors = await setup_entities(hass, adapter, HA_SENSOR, entry())
 
-    assert all(entity.unique_id.startswith("sensor:u1:")
+    assert all(entity.unique_id.startswith("sensor:#BASE:u1:")
                for entity in sensors.entities)
-    assert historical_entities_allowed(hass, entry(), "u2") is False
 
 
 async def test_f2_4_hub_subdevice_identity_and_via_device(hass):
@@ -95,4 +90,4 @@ async def test_f2_5_restart_keeps_the_same_ids(hass):
     second = await setup_entities(hass, adapter, HA_SWITCH, entry())
     second_ids = [entity.unique_id for entity in second.entities]
 
-    assert first_ids == second_ids == ["switch:u1:0"]
+    assert first_ids == second_ids == ["switch:#BASE:u1:0"]

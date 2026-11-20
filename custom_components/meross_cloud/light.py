@@ -19,10 +19,7 @@ from . import MerossDevice
 from .common import (
     DOMAIN, MANAGER, HA_LIGHT, DEVICE_LIST_COORDINATOR, PROFILE_ONLY,
 )
-from .profile_entities import (
-    async_setup_profile_entities,
-    historical_entities_allowed,
-)
+from .profile_entities import async_setup_profile_entities
 from .version import MEROSS_INTEGRATION_VERSION
 
 _LOGGER = logging.getLogger(__name__)
@@ -349,10 +346,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         manager: MerossManager = hass.data[DOMAIN][MANAGER]  # type
         coordinator = hass.data[DOMAIN][DEVICE_LIST_COORDINATOR]
         devices = manager.find_devices()
-        devices = [d for d in devices
-                   if historical_entities_allowed(
-                       hass, config_entry,
-                       getattr(d, "internal_id", d.uuid))]
 
         new_entities = []
 

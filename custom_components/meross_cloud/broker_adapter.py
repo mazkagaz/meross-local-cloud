@@ -7,6 +7,8 @@ import logging
 from typing import Any, Dict, Optional
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from .broker_devices import async_list_devices
 from .broker_http import BrokerHttpClient
@@ -17,6 +19,7 @@ from .broker_profiles import (
     verify_catalog,
 )
 from .broker_transport import BrokerMqttTransport
+from .common import DOMAIN, MISSING_TRACKER, device_internal_id
 from .profiles import (
     ENGINE_VERSION,
     CompiledProfile,
@@ -370,6 +373,11 @@ class BrokerProfileAdapter:
             _LOGGER.debug("Payload without a device uuid ignored",
                           exc_info=True)
             return
+        if message.namespace == "Appliance.Control.Unbind":
+            self._hass.loop.call_soon_threadsafe(
+                self._hass.async_create_task,
+                self._async_remove_unbound(device_uuid))
+            return
         self._apply_online(device_uuid, message.namespace, message.payload)
         runtime = self.runtimes.get(device_uuid)
         if runtime is None:
@@ -380,6 +388,46 @@ class BrokerProfileAdapter:
         except Exception as err:  # noqa: BLE001 - dispatch is best effort
             _LOGGER.debug("Payload dispatch failed for %s: %s",
                           device_uuid, err)
+
+    async def _async_remove_unbound(self, device_uuid: str) -> None:
+        """Remove a device and its subdevices after an Unbind push."""
+        _LOGGER.warning("Device %s was unbound; removing it", device_uuid)
+        registry = dr.async_get(self._hass)
+        entry_id = getattr(self._coordinator, "config_entry_id", None)
+        prefix = device_internal_id(device_uuid)
+        devices = [
+            entry for entry in (
+                dr.async_entries_for_config_entry(registry, entry_id)
+                if entry_id else [])
+            if any(
+                domain == DOMAIN and (
+                    identifier == prefix
+                    or identifier.startswith(prefix + "#SUB:"))
+                for domain, identifier in entry.identifiers)
+        ]
+        top = registry.async_get_device({(DOMAIN, prefix)})
+        if top is not None and top not in devices:
+            devices.append(top)
+
+        entity_registry = er.async_get(self._hass)
+        for device in devices:
+            for entity in er.async_entries_for_device(
+                    entity_registry, device.id,
+                    include_disabled_entities=True):
+                entity_registry.async_remove(entity.entity_id)
+            registry.async_remove_device(device.id)
+
+        scheduler = self.schedulers.pop(device_uuid, None)
+        if scheduler is not None:
+            await scheduler.async_stop()
+        self.runtimes.pop(device_uuid, None)
+        self.descriptors.pop(device_uuid, None)
+        self.device_online.pop(device_uuid, None)
+
+        tracker = (self._hass.data.get(DOMAIN) or {}).get(MISSING_TRACKER)
+        if tracker is not None:
+            await tracker.async_forget(device_uuid)
+        self._notify_changed()
 
     def _apply_online(self, device_uuid: str, namespace: str,
                       payload: Any) -> None:

@@ -8,6 +8,7 @@ from custom_components.meross_cloud.common import (
     MEROSS_PLATFORMS,
     device_internal_id,
 )
+from custom_components.meross_cloud.common import calculate_id
 from custom_components.meross_cloud.profile_entities import (
     PLATFORM_CLASSES,
     _device_info,
@@ -61,6 +62,16 @@ def test_legacy_dependency_remains_pinned():
     requirements = manifest.get("requirements", [])
     legacy = [item for item in requirements if item.startswith("meross_iot")]
     assert legacy in ([], ["meross_iot==0.4.9.2"])
+
+
+def test_historical_unique_ids_include_the_registry_base():
+    top = calculate_id(
+        "switch", device_internal_id("uuid"), 0)
+    sub = calculate_id(
+        "sensor", device_internal_id("hub", "sub"), 0,
+        ["temperature", "°C"])
+    assert top == "switch:#BASE:uuid:0"
+    assert sub == "sensor:#BASE:hub#SUB:sub:0:temperature:°C"
 
 
 def test_device_registry_identifiers_match_historical_format():

@@ -15,10 +15,7 @@ from . import MerossDevice
 from .common import (
     DOMAIN, MANAGER, HA_HUMIDIFIER, DEVICE_LIST_COORDINATOR, PROFILE_ONLY,
 )
-from .profile_entities import (
-    async_setup_profile_entities,
-    historical_entities_allowed,
-)
+from .profile_entities import async_setup_profile_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -163,10 +160,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
 
         # Add Humidifiers
         devices = manager.find_devices(device_class=SprayMixin)
-        devices = [d for d in devices
-                   if historical_entities_allowed(
-                       hass, config_entry,
-                       getattr(d, "internal_id", d.uuid))]
         for d in devices:
             channels = [c.index for c in (d.channels or [])] or [0]
             for channel_index in channels:
@@ -176,10 +169,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
 
         # Add OilDiffuser
         devices = manager.find_devices(device_class=DiffuserSprayMixin)
-        devices = [d for d in devices
-                   if historical_entities_allowed(
-                       hass, config_entry,
-                       getattr(d, "internal_id", d.uuid))]
         for d in devices:
             channels = [c.index for c in (d.channels or [])] or [0]
             for channel_index in channels:

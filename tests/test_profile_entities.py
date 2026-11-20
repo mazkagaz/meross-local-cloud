@@ -6,6 +6,9 @@ from unittest.mock import AsyncMock
 import yaml
 from homeassistant.helpers.entity_component import EntityComponent
 
+from custom_components.meross_cloud.broker_config import (
+    RollerShutterConfigCache,
+)
 from custom_components.meross_cloud.common import (
     BROKER_ADAPTER,
     DOMAIN,
@@ -19,6 +22,7 @@ from custom_components.meross_cloud.common import (
     HA_SENSOR,
     HA_SWITCH,
     HA_UPDATE,
+    SHUTTER_CONFIG_CACHE,
 )
 from custom_components.meross_cloud.profile_entities import (
     async_setup_profile_entities,
@@ -86,11 +90,12 @@ def entry(enabled=True, only=False):
     return SimpleNamespace(options=options)
 
 
-async def setup_entities(hass, adapter, platform, entry_obj=None):
+async def setup_entities(hass, adapter, platform, entry_obj=None, extra=None):
     hass.data[DOMAIN] = {
         BROKER_ADAPTER: adapter,
         "ADDED_ENTITIES_IDS": set(),
     }
+    hass.data[DOMAIN].update(extra or {})
     component = EntityComponent(_LOGGER, platform, hass)
 
     def add(entities, update_before_add=False):
@@ -113,7 +118,7 @@ async def test_switch_state_ids_and_command(hass):
     component = await setup_entities(hass, adapter, HA_SWITCH)
     entity = next(iter(component.entities))
 
-    assert entity.unique_id == "switch:u1:0"
+    assert entity.unique_id == "switch:#BASE:u1:0"
     assert entity.is_on is False
 
     device.dispatch("Appliance.Control.ToggleX", "PUSH", {
@@ -180,6 +185,69 @@ async def test_number_range_and_scaled_command(hass):
         "channel": 0, "config": {"signalOpen": 60000}}
 
 
+async def test_shutter_duration_prefers_the_p3_cache(hass):
+    device = runtime("mrs100")
+    device.entities["open_duration"].values["value"] = 45.0
+    adapter = FakeAdapter(device)
+    cache = RollerShutterConfigCache(
+        SimpleNamespace(),
+        fetch=AsyncMock(return_value={
+            "u1": {"config": [{
+                "channel": 0, "signalOpen": 60000,
+                "signalClose": 70000}]},
+        }))
+    component = await setup_entities(
+        hass, adapter, HA_NUMBER,
+        extra={SHUTTER_CONFIG_CACHE: cache})
+    entity = next(
+        item for item in component.entities
+        if item._spec.key == "open_duration")
+
+    assert entity.native_value == 60.0
+    await entity.async_set_native_value(75)
+    assert adapter.sent[-1][3] == {
+        "channel": 0, "config": {"signalOpen": 75000}}
+    assert cache.cached_channel("u1", 0).signal_open_ms == 75000
+    assert cache.cached_channel("u1", 0).signal_close_ms == 70000
+
+
+async def test_shutter_duration_falls_back_when_p3_fails(hass):
+    device = runtime("mrs100")
+    device.entities["open_duration"].values["value"] = 45.0
+    adapter = FakeAdapter(device)
+    cache = RollerShutterConfigCache(
+        SimpleNamespace(),
+        fetch=AsyncMock(side_effect=RuntimeError("endpoint absent")))
+    component = await setup_entities(
+        hass, adapter, HA_NUMBER,
+        extra={SHUTTER_CONFIG_CACHE: cache})
+    entity = next(
+        item for item in component.entities
+        if item._spec.key == "open_duration")
+
+    assert entity.native_value == 45.0
+
+
+async def test_calibration_status_names_and_attributes(hass):
+    device = runtime("mrs100")
+    device.entities["calibration_status"].values["value"] = 2
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_SENSOR)
+    entity = next(
+        item for item in component.entities
+        if item._spec.key == "calibration_status")
+
+    assert entity.native_value == "motor_blocked"
+    assert entity.extra_state_attributes == {
+        "status_code": 2, "channel": 0}
+
+    device.entities["calibration_status"].values["value"] = 9
+    assert entity.native_value == "failed_9"
+    device.entities["calibration_status"].values["value"] = True
+    assert entity.native_value is True
+    assert entity.extra_state_attributes["status_code"] is None
+
+
 async def test_button_press(hass):
     device = runtime("mrs100")
     adapter = FakeAdapter(device)
@@ -240,6 +308,8 @@ async def test_subdevice_entity_device_info(hass):
         if item._spec.key == "temperature")
 
     assert entity.native_value == 21.5
+    assert entity.unique_id == (
+        "sensor:#BASE:hub1#SUB:sub1:0:temperature:°C")
     assert entity.device_info["identifiers"] == {
         (DOMAIN, "#BASE:hub1#SUB:sub1")}
     assert entity.device_info["via_device"] == (DOMAIN, "#BASE:hub1")
@@ -302,9 +372,9 @@ async def test_legacy_unique_ids_when_only_mode(hass):
     ids = sorted(entity.unique_id for entity in component.entities)
 
     assert ids == [
-        "sensor:u1:0:current:A",
-        "sensor:u1:0:power:W",
-        "sensor:u1:0:voltage:V",
+        "sensor:#BASE:u1:0:current:A",
+        "sensor:#BASE:u1:0:power:W",
+        "sensor:#BASE:u1:0:voltage:V",
     ]
 
 
@@ -318,26 +388,10 @@ async def test_legacy_classifiers_for_shutter_entities(hass):
         hass, adapter, HA_BUTTON, entry(only=True))
 
     assert sorted(entity.unique_id for entity in numbers.entities) == [
-        "number:u1:0:close_timer", "number:u1:0:open_timer"]
+        "number:#BASE:u1:0:close_timer", "number:#BASE:u1:0:open_timer"]
     assert sorted(entity.unique_id for entity in buttons.entities) == [
-        "button:u1:0:calibrate", "button:u1:0:stop_calibration"]
-
-
-async def test_historical_entities_are_disabled(hass):
-    from custom_components.meross_cloud.profile_entities import (
-        historical_entities_allowed,
-    )
-
-    device = runtime("mss310")
-    adapter = FakeAdapter(device)
-    hass.data[DOMAIN] = {
-        BROKER_ADAPTER: adapter,
-        "ADDED_ENTITIES_IDS": set(),
-    }
-
-    assert historical_entities_allowed(hass, entry(), "u1") is False
-    assert historical_entities_allowed(hass, entry(only=True), "u2") is False
-    assert historical_entities_allowed(hass, None, "u1") is False
+        "button:#BASE:u1:0:calibrate",
+        "button:#BASE:u1:0:stop_calibration"]
 
 
 async def setup_updates(hass, adapter):

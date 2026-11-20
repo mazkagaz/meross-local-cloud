@@ -391,6 +391,34 @@ class MerossDevice(Entity):
         self.hass.data[DOMAIN]["ADDED_ENTITIES_IDS"].remove(self.unique_id)
 
 
+def _is_stale_profile_uid(unique_id: str) -> bool:
+    if "#BASE:" in unique_id:
+        return False
+    if unique_id == "broker_profile_backend":
+        return False
+    if unique_id.startswith(f"{DOMAIN}:"):
+        return False
+    return unique_id.split(":", 1)[0] in MEROSS_PLATFORMS
+
+
+def async_prune_stale_profile_entities(hass: HomeAssistant,
+                                       entry: ConfigEntry) -> None:
+    """Drop profile entities registered with the pre-D5-c unique_ids."""
+    registry = er.async_get(hass)
+    removed = 0
+    for entity in er.async_entries_for_config_entry(
+            registry, entry.entry_id):
+        if entity.platform != DOMAIN:
+            continue
+        if _is_stale_profile_uid(entity.unique_id):
+            registry.async_remove(entity.entity_id)
+            removed += 1
+    if removed:
+        _LOGGER.info(
+            "Removed %d profile entit(y/ies) with pre-D5-c unique_ids",
+            removed)
+
+
 async def _async_prepare_tls(
         hass: HomeAssistant, config_entry: ConfigEntry,
         endpoint: str, mqtt_host: Optional[str]):
@@ -569,6 +597,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             )
 
         # Mount the profile platforms, then start discovery in the background.
+        async_prune_stale_profile_entities(hass, config_entry)
         await hass.config_entries.async_forward_entry_setups(config_entry, MEROSS_PLATFORMS)
 
         reload_pending = False

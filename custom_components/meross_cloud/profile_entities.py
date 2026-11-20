@@ -40,11 +40,11 @@ from homeassistant.components.update import (
 from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity import Entity, EntityCategory
 
+from .broker_config import ChannelState
 from .common import (
     BROKER_ADAPTER,
     DOMAIN,
-    MANAGER,
-    PROFILE_ONLY,
+    SHUTTER_CONFIG_CACHE,
     calculate_id,
     device_internal_id,
 )
@@ -56,6 +56,24 @@ _ENTITY_CATEGORIES = {
     "config": EntityCategory.CONFIG,
     "diagnostic": EntityCategory.DIAGNOSTIC,
 }
+
+_ADJUST_STATUS_NAMES = {
+    0: "success",
+    1: "timeout",
+    2: "motor_blocked",
+    3: "failed_3",
+    4: "failed_4",
+    5: "failed_5",
+    6: "failed_6",
+}
+
+
+def _has_quirk(spec, name: str) -> bool:
+    return any(quirk.get("name") == name for quirk in spec.quirks)
+
+
+def _is_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
 
 
 def _enum(value: Optional[str], enum_type):
@@ -96,8 +114,7 @@ class ProfileBaseEntity(Entity):
     _attr_should_poll = False
 
     def __init__(self, adapter, device_uuid: str, runtime, spec,
-                 subdevice: Optional[Tuple[str, Any]] = None,
-                 legacy: bool = False) -> None:
+                 subdevice: Optional[Tuple[str, Any]] = None) -> None:
         self._adapter = adapter
         self._device_uuid = device_uuid
         self._runtime = runtime
@@ -106,19 +123,11 @@ class ProfileBaseEntity(Entity):
             subdevice if subdevice is not None else (None, None))
         self._remove_listener = None
         self._remove_adapter_listener = None
-        if legacy:
-            device_id = (self._subdevice_id if self._subdevice_id is not None
-                         else device_uuid)
-            self._attr_unique_id = calculate_id(
-                spec.platform, device_id,
-                spec.channel if spec.channel is not None else 0,
-                list(spec.legacy_classifiers) or None)
-        elif self._subdevice_id is not None:
-            self._attr_unique_id = (
-                f"{DOMAIN}:{self._subdevice_id}:{self._template.uid}:"
-                f"{spec.key}")
-        else:
-            self._attr_unique_id = f"{DOMAIN}:{device_uuid}:{spec.uid}"
+        self._attr_unique_id = calculate_id(
+            spec.platform,
+            device_internal_id(device_uuid, self._subdevice_id),
+            spec.channel if spec.channel is not None else 0,
+            list(spec.legacy_classifiers) or None)
         self._attr_name = spec.name or spec.key
         self._attr_entity_category = _ENTITY_CATEGORIES.get(
             spec.entity_category)
@@ -250,11 +259,26 @@ class ProfileSensor(ProfileBaseEntity, SensorEntity):
         self._attr_native_unit_of_measurement = self._spec.unit
         self._attr_device_class = _enum(
             self._spec.device_class, SensorDeviceClass)
+        self._adjust_status = _has_quirk(
+            self._spec, "adjust_status_names")
 
     @property
     def native_value(self):
         value = self._values().get("value")
+        if self._adjust_status and _is_int(value):
+            return _ADJUST_STATUS_NAMES.get(
+                value, f"failed_{value}")
         return value if isinstance(value, (int, float, str)) else None
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        if not self._adjust_status:
+            return {}
+        value = self._values().get("value")
+        return {
+            "status_code": value if _is_int(value) else None,
+            "channel": self._spec.channel,
+        }
 
 
 class ProfileBinarySensor(ProfileBaseEntity, BinarySensorEntity):
@@ -325,14 +349,62 @@ class ProfileNumber(ProfileBaseEntity, NumberEntity):
         self._attr_native_unit_of_measurement = self._spec.unit
         self._attr_device_class = _enum(
             self._spec.device_class, NumberDeviceClass)
+        self._config_persist = _has_quirk(self._spec, "config_persist")
+        self._p3_state: Optional[ChannelState] = None
+
+    @property
+    def _config_cache(self):
+        if not self._config_persist or self.hass is None:
+            return None
+        return self.hass.data.get(DOMAIN, {}).get(SHUTTER_CONFIG_CACHE)
+
+    async def async_added_to_hass(self) -> None:
+        await self._async_refresh_cache()
+        await super().async_added_to_hass()
+
+    async def _async_refresh_cache(self) -> None:
+        cache = self._config_cache
+        if cache is None:
+            return
+        try:
+            state = await cache.async_get_channel(
+                self._device_uuid,
+                self._spec.channel if self._spec.channel is not None else 0)
+        except Exception:  # noqa: BLE001 - cache failures fall back
+            state = None
+        if state is not None:
+            self._p3_state = state
+
+    def _cached_timer_ms(self) -> Optional[int]:
+        if self._p3_state is None:
+            return None
+        if "open_timer" in self._spec.legacy_classifiers:
+            return self._p3_state.signal_open_ms
+        return self._p3_state.signal_close_ms
 
     @property
     def native_value(self) -> Optional[float]:
+        cached = self._cached_timer_ms()
+        if cached is not None:
+            return round(cached / 1000, 0)
         value = self._values().get("value")
         return float(value) if isinstance(value, (int, float)) else None
 
     async def async_set_native_value(self, value: float) -> None:
         await self._send("set_value", value)
+        cache = self._config_cache
+        if cache is None:
+            return
+        millis = int(round(value * 1000))
+        channel = self._spec.channel if self._spec.channel is not None else 0
+        if "open_timer" in self._spec.legacy_classifiers:
+            cache.update_from_set(
+                self._device_uuid, channel, signal_open_ms=millis)
+        else:
+            cache.update_from_set(
+                self._device_uuid, channel, signal_close_ms=millis)
+        self._p3_state = cache.cached_channel(self._device_uuid, channel)
+        self.async_write_ha_state()
 
 
 class ProfileButton(ProfileBaseEntity, ButtonEntity):
@@ -547,13 +619,6 @@ PLATFORM_CLASSES = {
 }
 
 
-def historical_entities_allowed(hass, config_entry, device_uuid: str) -> bool:
-    """Historical entities only run in the legacy test harness (D5-b)."""
-    if not PROFILE_ONLY:
-        return True
-    return MANAGER in (hass.data.get(DOMAIN) or {})
-
-
 def async_setup_profile_entities(hass, config_entry, platform: str,
                                  async_add_entities) -> None:
     """Register the platform entities once the profile backend is ready."""
@@ -574,8 +639,7 @@ def async_setup_profile_entities(hass, config_entry, platform: str,
             if spec.platform != platform:
                 return
             entity = entity_class(
-                adapter, device_uuid, runtime, spec, subdevice,
-                legacy=True)
+                adapter, device_uuid, runtime, spec, subdevice)
             if entity.unique_id in added:
                 return
             added.add(entity.unique_id)
