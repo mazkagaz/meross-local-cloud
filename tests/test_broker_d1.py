@@ -169,6 +169,10 @@ async def test_adapter_builds_descriptors_and_summary():
     )
     with patch(
             "custom_components.meross_cloud.broker_adapter."
+            "async_list_devices", AsyncMock(
+                return_value=[SimpleNamespace(uuid="u1")])), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
             "BrokerMqttTransport", return_value=FakeTransport()), \
             patch(
                 "custom_components.meross_cloud.broker_adapter."
@@ -207,6 +211,11 @@ async def test_adapter_aborts_after_the_first_descriptor_failure():
     )
     with patch(
             "custom_components.meross_cloud.broker_adapter."
+            "async_list_devices", AsyncMock(
+                return_value=[SimpleNamespace(uuid="u1"),
+                              SimpleNamespace(uuid="u2")])), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
             "BrokerMqttTransport", return_value=FailingTransport()), \
             patch(
                 "custom_components.meross_cloud.broker_adapter."

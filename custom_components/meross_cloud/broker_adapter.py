@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 from homeassistant.core import HomeAssistant
 
+from .broker_devices import async_list_devices
 from .broker_http import BrokerHttpClient
 from .broker_profiles import (
     async_fetch_catalog,
@@ -64,6 +65,7 @@ class BrokerProfileAdapter:
         self._hass = hass
         self._coordinator = coordinator
         self._transport: Optional[BrokerMqttTransport] = None
+        self._http: Optional[BrokerHttpClient] = None
         self._task: Optional[asyncio.Task] = None
         self._watch_task: Optional[asyncio.Task] = None
         self._entry_id = getattr(coordinator, "config_entry_id", None)
@@ -142,7 +144,9 @@ class BrokerProfileAdapter:
             message_listener=self._dispatch_message,
         )
         await self._transport.async_connect()
-        devices = await self._coordinator.client.async_list_devices()
+        if self._http is None:
+            raise RuntimeError("Broker HTTP client is not ready")
+        devices = await async_list_devices(self._http)
         for device in devices:
             try:
                 async with asyncio.timeout(_DESCRIBE_TIMEOUT):
@@ -336,6 +340,7 @@ class BrokerProfileAdapter:
             endpoint,
             lambda: self._coordinator.credentials.token,
             self._coordinator.mqtt_ssl_context)
+        self._http = http
         revision = await async_fetch_revision(http)
         catalog = await async_fetch_catalog(http)
         self.signature_status = "absent"

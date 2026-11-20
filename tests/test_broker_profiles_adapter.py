@@ -132,6 +132,10 @@ class FakeHubTransport(FakeTransport):
 async def run_adapter(catalog, transport=FakeTransport):
     with patch(
             "custom_components.meross_cloud.broker_adapter."
+            "async_list_devices", AsyncMock(
+                return_value=[SimpleNamespace(uuid="u1")])), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
             "BrokerMqttTransport", return_value=transport()), \
             patch(
                 "custom_components.meross_cloud.broker_adapter."
@@ -279,6 +283,10 @@ async def run_signed_adapter(catalog, public):
     coordinator_stub = coordinator()
     with patch(
             "custom_components.meross_cloud.broker_adapter."
+            "async_list_devices", AsyncMock(
+                return_value=[SimpleNamespace(uuid="u1")])), \
+            patch(
+                "custom_components.meross_cloud.broker_adapter."
             "BrokerMqttTransport", return_value=FakeTransport()), \
             patch(
                 "custom_components.meross_cloud.broker_adapter."
