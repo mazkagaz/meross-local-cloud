@@ -1,0 +1,52 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: tests/requirements_test.txt
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r tests/requirements_test.txt
+
+      - name: Fast suites (unit and integration)
+        run: python -m pytest tests --ignore=tests/functional -q
+
+      - name: Functional scenarios (H2)
+        run: python -m pytest tests/functional -q \
+          --junitxml=reports/functional.xml
+
+      - name: Full suite with JUnit report
+        run: python -m pytest tests -q --junitxml=reports/pytest.xml
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-reports
+          path: reports/
+          if-no-files-found: ignore
