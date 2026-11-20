@@ -1,4 +1,6 @@
+import base64
 import hashlib
+import json
 
 import pytest
 
@@ -62,6 +64,41 @@ def test_envelope_signature():
     assert envelope["sign"] == expected
     assert envelope["timestamp"] == 1788750000
     assert envelope["nonce"] == "nonce"
+
+
+async def test_login_returns_local_credentials():
+    session = FakeSession(200, {
+        "apiStatus": 0,
+        "data": {
+            "token": "tok", "key": "mqtt-key", "userid": 1,
+            "email": "user@example.com", "domain": "https://broker:2004",
+            "mqttDomain": "",
+        },
+    })
+
+    creds = await BrokerHttpClient.async_login(
+        "https://broker:2004", "user@example.com", "secret",
+        session_factory=lambda: session)
+
+    assert creds.token == "tok"
+    assert creds.key == "mqtt-key"
+    assert creds.user_id == "1"
+    assert creds.user_email == "user@example.com"
+    assert creds.domain == "https://broker:2004"
+    envelope = session.calls[0][1]["json"]
+    payload = json.loads(base64.b64decode(envelope["params"]))
+    assert payload["encryption"] == 1
+    assert payload["password"] == hashlib.md5(b"secret").hexdigest()
+    assert "Authorization" not in session.calls[0][1]["headers"]
+
+
+async def test_login_failure_raises_auth_error():
+    session = FakeSession(200, {"apiStatus": 1004, "info": "denied"})
+
+    with pytest.raises(BrokerAuthError):
+        await BrokerHttpClient.async_login(
+            "https://broker:2004", "user@example.com", "wrong",
+            session_factory=lambda: session)
 
 
 async def test_post_returns_data_and_signs():

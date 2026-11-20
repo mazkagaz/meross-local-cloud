@@ -16,9 +16,6 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
-from meross_iot.http_api import MerossHttpClient
-from meross_iot.model.credentials import MerossCloudCreds
-from meross_iot.model.http.exception import UnauthorizedException, MissingMFA, BadLoginException
 from requests.exceptions import ConnectTimeout
 from homeassistant.components import network, zeroconf
 
@@ -32,7 +29,13 @@ from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
     CONF_OPT_LAN_HTTP_FIRST, CONF_OPT_LAN_HTTP_FIRST_ONLY_GET, \
     CONF_OPT_PROFILE_BACKEND, CONF_OPT_PROFILE_ENTITIES, \
     CONF_OPT_PROFILE_ENTITIES_ONLY, effective_user_agent
-from .patches import set_http_cert_validation
+from .broker_http import (
+    BrokerAuthError,
+    BrokerCredentials,
+    BrokerHttpClient,
+    BrokerHttpError,
+    BrokerTokenError,
+)
 from .tls import (
     async_fetch_ca,
     build_client_ssl_context,
@@ -413,25 +416,21 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         ca_fingerprint = fingerprint(ca_cert)
         ssl_context = await self.hass.async_add_executor_job(
             build_client_ssl_context, ca_pem, False)
-        set_http_cert_validation(ssl_context)
 
         try:
             creds = await self._test_authorization(
                 api_base_url=endpoint, username=username,
-                password=password, mfa_code=mfa_code)
+                password=password, mfa_code=mfa_code,
+                ssl_context=ssl_context)
             _LOGGER.info("HTTP API successful tested against %s.", endpoint)
-        except MissingMFA:
-            return self._show_form(
-                errors={"base": "missing_mfa"},
-                username=username, password=password,
-                requires_mfa=True)
-        except (BadLoginException, UnauthorizedException) as ex:
+        except BrokerAuthError as ex:
             _LOGGER.error("Unable to connect to Meross HTTP api: %s", str(ex))
             return self._show_form(
                 errors={"base": "invalid_credentials"},
                 username=username, password=password,
                 requires_mfa=requires_mfa)
-        except (UnauthorizedException, ConnectTimeout, HTTPError) as ex:
+        except (BrokerTokenError, BrokerHttpError, ConnectTimeout,
+                HTTPError, TimeoutError) as ex:
             _LOGGER.error("Unable to connect to Meross HTTP api: %s", str(ex))
             return self._show_form(
                 errors={"base": "connection_error"},
@@ -465,15 +464,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             CONF_OVERRIDE_MQTT_ENDPOINT: mqtt,
             CONF_CA_PEM: ca_pem,
             CONF_CA_FINGERPRINT: ca_fingerprint,
-            CONF_STORED_CREDS: {
-                "domain": creds.domain,
-                "mqtt_domain": creds.mqtt_domain,
-                "token": creds.token,
-                "key": creds.key,
-                "user_id": creds.user_id,
-                "user_email": creds.user_email,
-                "issued_on": creds.issued_on.isoformat()
-            },
+            CONF_STORED_CREDS: creds.as_dict(),
         }
 
         if self._is_reauth:
@@ -494,18 +485,12 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     async def _test_authorization(
-            api_base_url: str, username: str, password: str, mfa_code: str = None
-    ) -> MerossCloudCreds:
-        # Use async_login instead of async_from_user_password: the latter also
-        # posts to the broker's /v1/log/user endpoint using the domain returned
-        # by the broker. That domain is derived from the nginx backend scheme
-        # and is http://…:2004 for HTTPS, which nginx rejects with HTTP 400.
-        creds = await MerossHttpClient.async_login(
-            api_base_url=api_base_url, email=username, password=password,
-            mfa_code=mfa_code,
-        )
-        creds.domain = api_base_url
-        return creds
+            api_base_url: str, username: str, password: str,
+            mfa_code: str = None, ssl_context=None,
+    ) -> BrokerCredentials:
+        return await BrokerHttpClient.async_login(
+            api_base_url, username, password, mfa_code=mfa_code,
+            ssl_context=ssl_context)
 
     async def async_step_import(self, import_config):
         """Import a config entry from configuration.yaml."""

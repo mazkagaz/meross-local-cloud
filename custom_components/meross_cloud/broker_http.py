@@ -7,6 +7,8 @@ import json
 import secrets
 import ssl
 import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
 import aiohttp
@@ -15,6 +17,40 @@ MEROSS_SECRET = "23x17ahWarFH6w29"
 DEFAULT_TIMEOUT = 10.0
 APP_VERSION = "2.4.6"
 USER_AGENT = "MerossHA/meross-local-cloud"
+
+
+@dataclass(frozen=True)
+class BrokerCredentials:
+    token: str
+    key: str
+    user_id: str
+    user_email: str
+    domain: str
+    mqtt_domain: str
+    issued_on: datetime
+
+    @classmethod
+    def from_login(cls, data: dict, endpoint: str) -> "BrokerCredentials":
+        return cls(
+            token=data["token"],
+            key=data["key"],
+            user_id=str(data["userid"]),
+            user_email=data["email"],
+            domain=endpoint,
+            mqtt_domain=data.get("mqttDomain") or "",
+            issued_on=datetime.now(timezone.utc),
+        )
+
+    def as_dict(self) -> dict:
+        return {
+            "domain": self.domain,
+            "mqtt_domain": self.mqtt_domain,
+            "token": self.token,
+            "key": self.key,
+            "user_id": self.user_id,
+            "user_email": self.user_email,
+            "issued_on": self.issued_on.isoformat(),
+        }
 
 
 class BrokerHttpError(Exception):
@@ -63,12 +99,35 @@ class BrokerHttpClient:
 
     def _headers(self) -> dict:
         token = self._token() if callable(self._token) else self._token
-        return {
-            "Authorization": f"Basic {token}",
+        headers = {
             "Content-Type": "application/json",
             "AppVersion": APP_VERSION,
             "User-Agent": USER_AGENT,
         }
+        if token:
+            headers["Authorization"] = f"Basic {token}"
+        return headers
+
+    @classmethod
+    async def async_login(cls, endpoint: str, email: str, password: str,
+                          mfa_code: Optional[str] = None,
+                          ssl_context: Optional[ssl.SSLContext] = None,
+                          session_factory: Optional[Callable[[], Any]] = None
+                          ) -> BrokerCredentials:
+        client = cls(endpoint, None, ssl_context,
+                     session_factory=session_factory)
+        payload = {
+            "email": email,
+            "password": hashlib.md5(password.encode("utf-8")).hexdigest(),
+            "encryption": 1,
+            "agree": 1,
+        }
+        if mfa_code:
+            payload["mfaCode"] = mfa_code
+        data = await client.async_post("/v1/Auth/signIn", payload)
+        if not isinstance(data, dict):
+            raise BrokerHttpError("malformed login response")
+        return BrokerCredentials.from_login(data, endpoint)
 
     async def async_post(self, path: str, payload: Optional[dict] = None
                          ) -> Any:

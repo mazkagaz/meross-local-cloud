@@ -39,7 +39,7 @@ def fake_ca(monkeypatch, ca_pem):
 
 
 def _creds(endpoint, username, token="new-token"):
-    return SimpleNamespace(
+    creds = SimpleNamespace(
         domain=endpoint,
         mqtt_domain="",
         token=token,
@@ -48,6 +48,13 @@ def _creds(endpoint, username, token="new-token"):
         user_email=username,
         issued_on=datetime.now(),
     )
+    creds.as_dict = lambda: {
+        "domain": creds.domain, "mqtt_domain": creds.mqtt_domain,
+        "token": creds.token, "key": creds.key,
+        "user_id": creds.user_id, "user_email": creds.user_email,
+        "issued_on": creds.issued_on.isoformat(),
+    }
+    return creds
 
 
 def _defaults(result):
@@ -96,7 +103,7 @@ async def test_manual_settings_create_entry_when_discovery_fails(
     async def fake_discover(self):
         return None
 
-    async def fake_test_authorization(api_base_url, username, password, mfa_code=None):
+    async def fake_test_authorization(api_base_url, username, password, mfa_code=None, ssl_context=None):
         return _creds(api_base_url, username)
 
     monkeypatch.setattr(MerossFlowHandler, "_discover_services", fake_discover)
@@ -178,7 +185,7 @@ async def test_host_accepts_pasted_url(hass, monkeypatch, fake_ca):
     async def fake_discover(self):
         return None
 
-    async def fake_test_authorization(api_base_url, username, password, mfa_code=None):
+    async def fake_test_authorization(api_base_url, username, password, mfa_code=None, ssl_context=None):
         return _creds(api_base_url, username)
 
     monkeypatch.setattr(MerossFlowHandler, "_discover_services", fake_discover)
@@ -227,7 +234,7 @@ async def test_reauth_reuses_existing_entry(hass, monkeypatch):
     )
     entry.add_to_hass(hass)
 
-    async def fake_test_authorization(api_base_url, username, password, mfa_code=None):
+    async def fake_test_authorization(api_base_url, username, password, mfa_code=None, ssl_context=None):
         assert password == "secret"
         return _creds(api_base_url, username, token="new-token")
 
@@ -277,7 +284,7 @@ async def test_discovery_prefills_form_and_creates_entry(
     async def fake_discover(self):
         return ("10.0.0.5", "https://10.0.0.5:2004", "10.0.0.5:2001", True)
 
-    async def fake_test_authorization(api_base_url, username, password, mfa_code=None):
+    async def fake_test_authorization(api_base_url, username, password, mfa_code=None, ssl_context=None):
         return _creds(api_base_url, username)
 
     monkeypatch.setattr(MerossFlowHandler, "_discover_services", fake_discover)
