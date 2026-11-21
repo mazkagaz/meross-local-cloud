@@ -144,6 +144,10 @@ class DeviceRuntime:
                         f"{entity.key}: unexpected {type(value).__name__} "
                         f"for {prop}")
                     continue
+                if field.on_values is not None:
+                    state.values[prop] = value in field.on_values
+                    applied += 1
+                    continue
                 if (field.scale is not None or field.offset is not None
                         or spec.scale is not None):
                     if isinstance(value, bool) or not isinstance(
@@ -170,6 +174,10 @@ def _select_by_channel(document: Dict[str, Any], path: str, key: str,
     if channel is None:
         return None
     items = get_path(document, path)
+    if isinstance(items, dict):
+        if key in items:
+            return items if items.get(key) == channel else None
+        return items if channel == 0 else None
     if not isinstance(items, (list, tuple)):
         return None
     for item in items:

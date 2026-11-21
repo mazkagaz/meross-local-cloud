@@ -278,6 +278,7 @@ class HubSimulator:
                       "heating": 1, "min": 10, "max": 70, "onoff": 1}
         self.door_status = 1
         self.water_leak = 0
+        self.smoke_status = 170
 
     async def async_connect(self):
         return None
@@ -299,6 +300,7 @@ class HubSimulator:
                 {"id": "valve1", "mts100": {}},
                 {"id": "door1", "doorWindow": {}},
                 {"id": "leak1", "waterLeak": {}},
+                {"id": "smoke1", "smokeAlarm": {}},
             ]}}},
             "ability": {
                 "Appliance.System.Online": {},
@@ -309,6 +311,7 @@ class HubSimulator:
                 "Appliance.Hub.Mts100.Temperature": {},
                 "Appliance.Hub.Sensor.DoorWindow": {},
                 "Appliance.Hub.Sensor.WaterLeak": {},
+                "Appliance.Hub.Sensor.Smoke": {},
             },
         }
         return DeviceDescriptor(payload)
@@ -342,6 +345,10 @@ class HubSimulator:
         if namespace == "Appliance.Hub.Sensor.WaterLeak":
             return {"waterLeak": [
                 {"id": "leak1", "latestWaterLeak": self.water_leak}]}
+        if namespace == "Appliance.Hub.Sensor.Smoke":
+            return {"smokeAlarm": [
+                {"id": "smoke1", "status": self.smoke_status,
+                 "interConn": 0}]}
         if namespace == "Appliance.Hub.Mts100.Mode":
             return {"mode": [{"id": "valve1", "state": self.valve["mode"]}]}
         if namespace == "Appliance.Hub.Mts100.Temperature":
@@ -392,6 +399,7 @@ class HubSimulator:
         self.emit("Appliance.Hub.Mts100.All")
         self.emit("Appliance.Hub.Sensor.DoorWindow")
         self.emit("Appliance.Hub.Sensor.WaterLeak")
+        self.emit("Appliance.Hub.Sensor.Smoke")
 
 
 class MTS200Simulator:
@@ -657,6 +665,69 @@ class MS600Simulator:
 
     async def async_request(self, uuid, namespace, method, payload):
         self.requests.append((uuid, namespace, method, payload))
+        return SimpleNamespace(
+            uuid=uuid, namespace=namespace,
+            method="SETACK" if method == "SET" else "GETACK",
+            payload=self._body())
+
+    async def async_request_multiple(self, uuid, requests):
+        requests = list(requests)
+        self.multiples.append(requests)
+        return SimpleNamespace(
+            uuid=uuid, namespace="Appliance.Control.Multiple",
+            method="SETACK",
+            payload={"multiple": [{
+                "header": {"namespace": namespace, "method": "GETACK"},
+                "payload": self._body(),
+            } for namespace, _, _ in requests]})
+
+    def emit(self, method="PUSH"):
+        if self.bus is not None:
+            self.bus.publish(self.uuid, self.NAMESPACE,
+                             self._body(), method)
+
+
+class GarageSimulator:
+    uuid = "g1"
+    connected = True
+    NAMESPACE = "Appliance.GarageDoor.State"
+
+    def __init__(self, uuid="g1"):
+        self.uuid = uuid
+        self.open = 0
+        self.bus = None
+        self.requests = []
+        self.multiples = []
+
+    async def async_connect(self):
+        return None
+
+    async def async_stop(self):
+        return None
+
+    async def async_describe(self, device_uuid):
+        return DeviceDescriptor({
+            "all": {"system": {
+                "hardware": {"type": "msg", "subType": "un",
+                             "version": "4.0.0", "uuid": self.uuid,
+                             "macAddress": "AA:BB:CC:DD:EE:08"},
+                "firmware": {"version": "4.2.8"},
+                "online": {"status": 1},
+            }, "digest": {"garageDoor": [
+                {"channel": 0, "open": self.open}]}},
+            "ability": {self.NAMESPACE: {}},
+        })
+
+    def _body(self):
+        return {"state": [{"channel": 0, "open": self.open,
+                           "lmTime": 0}]}
+
+    async def async_request(self, uuid, namespace, method, payload):
+        self.requests.append((uuid, namespace, method, payload))
+        if method == "SET" and namespace == self.NAMESPACE:
+            state = payload.get("state") or {}
+            if "open" in state:
+                self.open = state["open"]
         return SimpleNamespace(
             uuid=uuid, namespace=namespace,
             method="SETACK" if method == "SET" else "GETACK",

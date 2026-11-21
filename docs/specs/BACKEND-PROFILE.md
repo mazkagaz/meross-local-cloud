@@ -20,8 +20,10 @@ du broker et les descriptors MQTT.
 - Le descriptor MQTT fournit le type, le firmware, les abilities, la MAC, les
   subdevices et les canaux découverts.
 - Les entités `channel: $channels` sont clonées pour chaque canal exposé ; leur
-  `state.select` choisit l’élément de liste dont la clé vaut le canal. Moteur
-  2.3, refusé dans les templates de sous-appareils.
+  `state.select` choisit l’élément de liste (ou l’objet unique historique) dont
+  la clé vaut le canal. Moteur 2.3, refusé dans les templates de sous-appareils.
+- `on_values` transforme une valeur brute en booléen (codes d’état GS559) ;
+  le quirk `garage_door` interprète `open` pour les couvertures. Moteur 2.4.
 - Le matching applique : MAC + sous-type, sous-type, type/abilities exacts,
   préfixe le plus long, puis `*`.
 - Une ambiguïté est comptée ; un appareil sans profil est signalé par une

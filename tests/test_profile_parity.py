@@ -56,6 +56,11 @@ SIMPLE_CASES = {
         (LIGHT, {"channel": 0, "light": {"onoff": 1, "luminance": 40}},
          {"light": {"onoff": 1, "brightness": 40}}),
     ],
+    "garage": [
+        ("Appliance.GarageDoor.State",
+         {"state": [{"channel": 0, "open": 0}]},
+         {"door": {"open": 0}}),
+    ],
     "mrs": [
         (POSITION, {"position": [{"channel": 0, "position": 60}]},
          {"cover": {"position": 60}}),
@@ -128,6 +133,7 @@ def test_hub_profile_golden_frames():
     runtime.add_subdevice("valve1", templates["mts100"])
     runtime.add_subdevice("door1", templates["ms200"])
     runtime.add_subdevice("leak1", templates["ms400"])
+    runtime.add_subdevice("smoke1", templates["gs559"])
 
     assert runtime.dispatch("Appliance.Hub.Sensor.TempHum", "PUSH", {
         "tempHum": [{"id": "sub1", "latestTemperature": 215,
@@ -150,6 +156,10 @@ def test_hub_profile_golden_frames():
     assert runtime.dispatch("Appliance.Hub.Sensor.WaterLeak", "PUSH", {
         "waterLeak": [{"id": "leak1", "latestWaterLeak": 1}],
     }) == 1
+    assert runtime.dispatch("Appliance.Hub.Sensor.Smoke", "PUSH", {
+        "smokeAlarm": [{"id": "smoke1", "status": 170,
+                        "interConn": 0}],
+    }) == 4
 
     ms100 = runtime.subdevices["sub1"].entities
     assert ms100["temperature"].values["value"] == pytest.approx(21.5)
@@ -160,6 +170,18 @@ def test_hub_profile_golden_frames():
     climate = runtime.subdevices["valve1"].entities["climate"].values
     assert climate["current_temperature"] == pytest.approx(22.0)
     assert climate["target_temperature"] == pytest.approx(20.0)
+    smoke = runtime.subdevices["smoke1"].entities
+    assert smoke["smoke"].values["value"] is False
+    assert smoke["fault"].values["value"] is False
+    assert smoke["muted"].values["value"] is False
+
+    assert runtime.dispatch("Appliance.Hub.Sensor.Smoke", "PUSH", {
+        "smokeAlarm": [{"id": "smoke1", "status": 27,
+                        "interConn": 1}],
+    }) == 4
+    assert smoke["smoke"].values["value"] is True
+    assert smoke["muted"].values["value"] is True
+    assert smoke["interconnect"].values["value"] == 1
 
 
 def test_multisocket_profile_expands_and_selects_channels():
@@ -180,3 +202,11 @@ def test_multisocket_profile_expands_and_selects_channels():
     assert command["channel"] == "$channel"
     assert substitute(command, {"channel": 1}) == {
         "channel": 1, "togglex": [{"channel": 1, "onoff": 1}]}
+
+
+def test_garage_profile_accepts_a_single_object_state():
+    runtime = DeviceRuntime("g1", compiled("garage"))
+
+    assert runtime.dispatch("Appliance.GarageDoor.State", "PUSH", {
+        "state": {"channel": 0, "open": 1}}) == 1
+    assert runtime.entities["door"].values == {"open": 1}

@@ -550,7 +550,6 @@ def test_channel_selection_misses_are_ignored():
 
 
 @pytest.mark.parametrize("payload", [
-    {"togglex": {"channel": 0, "onoff": 1}},
     {"togglex": None},
     {"togglex": [1, 2]},
     {},
@@ -560,3 +559,67 @@ def test_channel_selection_rejects_malformed_lists(payload):
 
     assert device.dispatch(TOGGLE_NS, "PUSH", payload) == 0
     assert all(not entity.values for entity in device.entities.values())
+
+
+def test_on_values_maps_the_raw_value_to_a_boolean():
+    data = {
+        "schema_version": 2,
+        "profile": {"id": "test.smoke", "version": "1"},
+        "match": {"type": ["gs559"]},
+        "payloads": {
+            "Appliance.Hub.Sensor.Smoke": {
+                "methods": ["GETACK", "PUSH"],
+                "fields": {},
+            },
+        },
+        "entities": [{
+            "key": "alarm",
+            "platform": "binary_sensor",
+            "state": {
+                "namespace": "Appliance.Hub.Sensor.Smoke",
+                "fields": {"value": {"path": "status",
+                                     "on_values": [23, 25]}},
+            },
+        }],
+    }
+    device = DeviceRuntime("gs1", compile_data(data))
+
+    for status, expected in ((25, True), (170, False), (23, True)):
+        assert device.dispatch("Appliance.Hub.Sensor.Smoke", "PUSH", {
+            "status": status}) == 1
+        assert device.entities["alarm"].values["value"] is expected
+
+
+def test_state_select_accepts_a_single_object_payload():
+    data = {
+        "schema_version": 2,
+        "profile": {"id": "test.garage", "version": "1"},
+        "match": {"type": ["msg"]},
+        "payloads": {
+            "Appliance.GarageDoor.State": {
+                "methods": ["GETACK", "PUSH"],
+                "fields": {},
+            },
+        },
+        "entities": [{
+            "key": "door",
+            "platform": "cover",
+            "channel": 0,
+            "quirks": [{"name": "garage_door"}],
+            "state": {
+                "namespace": "Appliance.GarageDoor.State",
+                "channel": "$channel",
+                "select": {"path": "state", "key": "channel"},
+                "fields": {"open": "open"},
+            },
+        }],
+    }
+    device = DeviceRuntime("g1", compile_data(data))
+
+    assert device.dispatch("Appliance.GarageDoor.State", "PUSH", {
+        "state": {"channel": 0, "open": 1}}) == 1
+    assert device.entities["door"].values == {"open": 1}
+
+    assert device.dispatch("Appliance.GarageDoor.State", "PUSH", {
+        "state": [{"channel": 0, "open": 0}]}) == 1
+    assert device.entities["door"].values == {"open": 0}

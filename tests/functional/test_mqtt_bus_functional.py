@@ -58,9 +58,9 @@ async def test_hub_subdevices_over_the_bus(hass):
     adapter = await start_adapter_with_bus(hass, bus, ["msh300"], ["hub1"])
     runtime = adapter.runtimes["hub1"]
     try:
-        assert adapter.subdevices_matched == 5
+        assert adapter.subdevices_matched == 6
         assert set(runtime.subdevices) == {
-            "sub1", "sensor1", "valve1", "door1", "leak1"}
+            "sub1", "sensor1", "valve1", "door1", "leak1", "smoke1"}
         assert await wait_for(lambda: runtime.entities["online"].values)
 
         hub.push_all()
@@ -77,6 +77,16 @@ async def test_hub_subdevices_over_the_bus(hass):
             "window"].values["value"] == 1
         assert runtime.subdevices["leak1"].entities[
             "water_leak"].values["value"] == 0
+        assert runtime.subdevices["smoke1"].entities[
+            "smoke"].values["value"] is False
+
+        hub.smoke_status = 27
+        hub.emit("Appliance.Hub.Sensor.Smoke")
+        await asyncio.sleep(0)
+        assert runtime.subdevices["smoke1"].entities[
+            "smoke"].values["value"] is True
+        assert runtime.subdevices["smoke1"].entities[
+            "muted"].values["value"] is True
 
         await adapter.async_send("hub1", MTS_MODE, "SET", {
             "mode": [{"id": "valve1", "state": 0}]})

@@ -811,7 +811,8 @@ def test_hub_pilot_templates_compile_with_id_commands():
 
     assert compiled.errors == []
     templates = {template.name: template for template in compiled.subdevices}
-    assert set(templates) == {"ms100", "ms130", "mts100", "ms200", "ms400"}
+    assert set(templates) == {
+        "ms100", "ms130", "mts100", "ms200", "ms400", "gs559"}
     assert set(templates["ms100"].entities) == {
         "temperature", "humidity", "voltage"}
     assert set(templates["ms130"].entities) == {"temperature", "humidity"}
@@ -978,3 +979,31 @@ def test_channel_template_requires_a_channel_relative_state():
     assert compiled.entities == {}
     assert any("must read state from $channel" in error
                for error in compiled.errors)
+
+
+def test_on_values_mapping_compiles():
+    compiled = compile_profile(meta(doc(
+        entities=[entity(state={
+            "namespace": TOGGLE_NS,
+            "fields": {"onoff": {"path": "onoff",
+                                 "on_values": [1, 2]}},
+        })])))
+
+    assert compiled.errors == []
+    assert compiled.entities["switch"].state.fields["onoff"].on_values == (
+        1, 2)
+
+
+@pytest.mark.parametrize("on_values", [
+    [], "1", [True], [{}], [None],
+])
+def test_invalid_on_values_are_refused(on_values):
+    compiled = compile_profile(meta(doc(
+        entities=[entity(state={
+            "namespace": TOGGLE_NS,
+            "fields": {"onoff": {"path": "onoff",
+                                 "on_values": on_values}},
+        })])))
+
+    assert compiled.entities == {}
+    assert any("invalid on_values" in error for error in compiled.errors)

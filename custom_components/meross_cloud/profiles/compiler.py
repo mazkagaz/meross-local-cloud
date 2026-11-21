@@ -39,6 +39,7 @@ KNOWN_QUIRKS = frozenset({
     "adjust_start",
     "adjust_stop",
     "adjust_status_names",
+    "garage_door",
 })
 _REQUIRED_VALUE_COMMANDS = {
     "number": frozenset({"set_value"}),
@@ -493,11 +494,12 @@ def _compile_state(prefix: str, raw: Any,
     else:
         for prop, raw_field in fields_raw.items():
             path = raw_field
-            scale = offset = None
+            scale = offset = on_values = None
             if isinstance(raw_field, dict):
                 path = raw_field.get("path")
                 scale = raw_field.get("scale")
                 offset = raw_field.get("offset")
+                on_values = raw_field.get("on_values")
                 if scale is not None and not _is_number(scale):
                     errors.append(
                         f"{prefix}: invalid scale for {prop!r}")
@@ -506,6 +508,15 @@ def _compile_state(prefix: str, raw: Any,
                     errors.append(
                         f"{prefix}: invalid offset for {prop!r}")
                     offset = None
+                if on_values is not None:
+                    if (not isinstance(on_values, (list, tuple))
+                            or not on_values
+                            or not all(isinstance(item, (int, float, str))
+                                       and not isinstance(item, bool)
+                                       for item in on_values)):
+                        errors.append(
+                            f"{prefix}: invalid on_values for {prop!r}")
+                        on_values = None
             if not isinstance(prop, str) or not isinstance(path, str) \
                     or not path:
                 errors.append(
@@ -519,7 +530,9 @@ def _compile_state(prefix: str, raw: Any,
             fields[prop] = FieldSpec(
                 path=path,
                 scale=float(scale) if scale is not None else None,
-                offset=float(offset) if offset is not None else None)
+                offset=float(offset) if offset is not None else None,
+                on_values=(tuple(on_values)
+                           if on_values is not None else None))
 
     state_channel = raw.get("channel")
     channel: Optional[int] = None

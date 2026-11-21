@@ -2,7 +2,7 @@ schema_version: 2
 profile:
   id: meross.msh300
   version: "2026.11.0"
-  requires_engine: ">=2.2"
+  requires_engine: ">=2.4"
   description: "Hub MSH300 : sous-appareils MS100 (temp/humidité) et MTS100 (thermostat)."
 match:
   kind: hub
@@ -244,3 +244,62 @@ subdevices:
         state:
           namespace: Appliance.Hub.Sensor.WaterLeak
           fields: { value: latestWaterLeak }
+
+  - name: gs559
+    match:
+      type: [gs559]
+    payloads:
+      Appliance.Hub.Sensor.Smoke:
+        methods: [GETACK, PUSH]
+        fields:
+          smokeAlarm:
+            type: array
+            items:
+              type: object
+              fields:
+                id: { type: string }
+                status: { type: integer }
+                lmTime: { type: integer }
+                interConn: { type: integer }
+    entities:
+      - key: smoke
+        platform: binary_sensor
+        name: "Smoke"
+        device_class: smoke
+        state:
+          namespace: Appliance.Hub.Sensor.Smoke
+          fields:
+            value:
+              path: status
+              on_values: [23, 24, 25, 26, 27]
+
+      - key: fault
+        platform: binary_sensor
+        name: "Fault"
+        device_class: problem
+        entity_category: diagnostic
+        state:
+          namespace: Appliance.Hub.Sensor.Smoke
+          fields:
+            value:
+              path: status
+              on_values: [17, 18, 19, 20, 21, 22]
+
+      - key: muted
+        platform: binary_sensor
+        name: "Muted"
+        entity_category: diagnostic
+        state:
+          namespace: Appliance.Hub.Sensor.Smoke
+          fields:
+            value:
+              path: status
+              on_values: [20, 21, 22, 26, 27]
+
+      - key: interconnect
+        platform: sensor
+        name: "Interconnect"
+        entity_category: diagnostic
+        state:
+          namespace: Appliance.Hub.Sensor.Smoke
+          fields: { value: interConn }

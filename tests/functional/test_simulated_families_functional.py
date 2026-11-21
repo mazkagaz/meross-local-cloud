@@ -1,6 +1,7 @@
 """F3.7-F3.9 — light, thermostat and diffuser over the in-memory bus."""
 from device_simulator import (
     DiffuserSimulator,
+    GarageSimulator,
     LightSimulator,
     MS600Simulator,
     MTS200Simulator,
@@ -132,5 +133,26 @@ async def test_ms600_presence_and_light_over_the_bus(hass):
         assert await wait_for(
             lambda: runtime.entities["distance"].values["value"] == 1.2)
         assert runtime.entities["illuminance"].values["value"] == 80
+    finally:
+        await adapter.async_stop()
+
+
+async def test_garage_door_over_the_bus(hass):
+    bus = InMemoryMqttBus()
+    simulator = bus.add(GarageSimulator())
+    adapter = await start_adapter_with_bus(hass, bus, ["garage"], ["g1"])
+    door = adapter.runtimes["g1"].entities["door"].values
+    try:
+        assert await wait_for(lambda: "open" in door)
+        assert door["open"] == 0
+
+        await adapter.async_send("g1", "Appliance.GarageDoor.State", "SET", {
+            "state": {"channel": 0, "open": 1}})
+        assert simulator.open == 1
+        assert door["open"] == 1
+
+        simulator.open = 0
+        simulator.emit()
+        assert await wait_for(lambda: door["open"] == 0)
     finally:
         await adapter.async_stop()

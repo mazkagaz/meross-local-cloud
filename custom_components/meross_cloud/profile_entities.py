@@ -336,12 +336,17 @@ class ProfileCover(ProfileBaseEntity, CoverEntity):
 
     @property
     def current_cover_position(self) -> Optional[int]:
+        if _has_quirk(self._spec, "garage_door"):
+            return None
         value = self._values().get("position")
         return int(value) if value is not None else None
 
     @property
     def is_closed(self) -> Optional[bool]:
         values = self._values()
+        if _has_quirk(self._spec, "garage_door"):
+            opened = values.get("open")
+            return None if opened is None else not bool(opened)
         position = values.get("position")
         if position is not None:
             return int(position) == 0

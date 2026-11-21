@@ -55,11 +55,12 @@ class NamespaceSpec:
 
 @dataclass(frozen=True)
 class FieldSpec:
-    """A state field path with optional per-field scaling."""
+    """A state field path with optional scaling or value mapping."""
 
     path: str
     scale: Optional[float] = None
     offset: Optional[float] = None
+    on_values: Optional[Tuple[Any, ...]] = None
 
 
 @dataclass(frozen=True)

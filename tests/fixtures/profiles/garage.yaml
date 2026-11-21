@@ -1,0 +1,42 @@
+schema_version: 2
+profile:
+  id: meross.garage
+  version: "2026.11.0"
+  requires_engine: ">=2.4"
+  description: "Portes de garage msg/rsg : ouvrir, fermer, état."
+match:
+  type: [msg, rsg]
+  abilities:
+    all: [Appliance.GarageDoor.State]
+payloads:
+  Appliance.GarageDoor.State:
+    methods: [GET, GETACK, PUSH]
+    fields:
+      state:
+        type: object
+        x-note: "Objet historique ou liste à un élément selon le firmware."
+        fields:
+          channel: { type: integer }
+          open: { type: integer, values: { 0: closed, 1: open } }
+          lmTime: { type: integer }
+          execute: { type: integer }
+entities:
+  - key: door
+    platform: cover
+    channel: 0
+    name: "Garage door"
+    device_class: garage
+    quirks:
+      - name: garage_door
+    state:
+      namespace: Appliance.GarageDoor.State
+      channel: $channel
+      select: { path: state, key: channel }
+      fields: { open: open }
+    commands:
+      open:
+        namespace: Appliance.GarageDoor.State
+        payload: { state: { channel: $channel, open: 1 } }
+      close:
+        namespace: Appliance.GarageDoor.State
+        payload: { state: { channel: $channel, open: 0 } }

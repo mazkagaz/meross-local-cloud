@@ -544,3 +544,24 @@ async def test_unavailable_backend_marks_entities_unavailable(hass):
 
     entity = next(iter(component.entities))
     assert entity.available is True
+
+
+async def test_garage_cover_uses_open_state_and_open_close_commands(hass):
+    device = runtime("garage")
+    device.entities["door"].values["open"] = 0
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_COVER)
+    entity = next(iter(component.entities))
+
+    assert entity.is_closed is True
+    assert entity.current_cover_position is None
+
+    device.entities["door"].values["open"] = 1
+    assert entity.is_closed is False
+
+    await entity.async_open_cover()
+    assert adapter.sent[-1][3] == {
+        "state": {"channel": 0, "open": 1}}
+    await entity.async_close_cover()
+    assert adapter.sent[-1][3] == {
+        "state": {"channel": 0, "open": 0}}
