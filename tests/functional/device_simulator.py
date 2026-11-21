@@ -748,3 +748,75 @@ class GarageSimulator:
         if self.bus is not None:
             self.bus.publish(self.uuid, self.NAMESPACE,
                              self._body(), method)
+
+
+class Map100Simulator:
+    uuid = "pur1"
+    connected = True
+    FAN = "Appliance.Control.Fan"
+    FILTER = "Appliance.Control.FilterMaintenance"
+
+    def __init__(self, uuid="pur1"):
+        self.uuid = uuid
+        self.speed = 1
+        self.max_speed = 1
+        self.life = 73
+        self.bus = None
+        self.requests = []
+        self.multiples = []
+
+    async def async_connect(self):
+        return None
+
+    async def async_stop(self):
+        return None
+
+    async def async_describe(self, device_uuid):
+        return DeviceDescriptor({
+            "all": {"system": {
+                "hardware": {"type": "map", "subType": "un",
+                             "version": "3.0.0", "uuid": self.uuid,
+                             "macAddress": "AA:BB:CC:DD:EE:09"},
+                "firmware": {"version": "3.1.5"},
+                "online": {"status": 1},
+            }, "digest": {"fan": [{"channel": 0, "speed": self.speed,
+                                   "maxSpeed": self.max_speed}]}},
+            "ability": {self.FAN: {}, self.FILTER: {},
+                        "Appliance.Control.ToggleX": {}},
+        })
+
+    def _body(self, namespace):
+        if namespace == self.FAN:
+            return {"fan": [{"channel": 0, "speed": self.speed,
+                             "maxSpeed": self.max_speed}]}
+        if namespace == self.FILTER:
+            return {"filter": [{"channel": 0, "life": self.life}]}
+        return {}
+
+    async def async_request(self, uuid, namespace, method, payload):
+        self.requests.append((uuid, namespace, method, payload))
+        if method == "SET" and namespace == self.FAN:
+            for entry in payload.get("fan") or []:
+                if entry.get("channel", 0) == 0 and "speed" in entry:
+                    self.speed = entry["speed"]
+        return SimpleNamespace(
+            uuid=uuid, namespace=namespace,
+            method="SETACK" if method == "SET" else "GETACK",
+            payload=self._body(namespace))
+
+    async def async_request_multiple(self, uuid, requests):
+        requests = list(requests)
+        self.multiples.append(requests)
+        return SimpleNamespace(
+            uuid=uuid, namespace="Appliance.Control.Multiple",
+            method="SETACK",
+            payload={"multiple": [{
+                "header": {"namespace": namespace, "method": "GETACK"},
+                "payload": self._body(namespace),
+            } for namespace, _, _ in requests]})
+
+    def emit(self, method="PUSH"):
+        if self.bus is not None:
+            for namespace in (self.FAN, self.FILTER):
+                self.bus.publish(self.uuid, namespace,
+                                 self._body(namespace), method)

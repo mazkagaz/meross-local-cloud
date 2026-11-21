@@ -23,6 +23,7 @@ THERMOSTAT = "Appliance.Control.Thermostat.Mode"
 SPRAY = "Appliance.Control.Diffuser.Spray"
 DIFFUSER_LIGHT = "Appliance.Control.Diffuser.Light"
 SENSOR_LATEST_X = "Appliance.Control.Sensor.LatestX"
+FILTER_NS = "Appliance.Control.FilterMaintenance"
 
 
 def compiled(name):
@@ -88,6 +89,12 @@ SIMPLE_CASES = {
          {"climate": {"current_temperature": 17.7,
                       "target_temperature": 20.0,
                       "min_temp": 5.0, "max_temp": 35.0}}),
+    ],
+    "map100": [
+        (FAN, {"fan": [{"channel": 0, "speed": 1, "maxSpeed": 1}]},
+         {"fan": {"speed": 1, "max_speed": 1}}),
+        (FILTER_NS, {"filter": [{"channel": 0, "life": 73}]},
+         {"filter": {"value": 73}}),
     ],
     "ms600": [
         (SENSOR_LATEST_X, {"latest": [{

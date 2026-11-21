@@ -565,3 +565,18 @@ async def test_garage_cover_uses_open_state_and_open_close_commands(hass):
     await entity.async_close_cover()
     assert adapter.sent[-1][3] == {
         "state": {"channel": 0, "open": 0}}
+
+
+async def test_purifier_fan_uses_single_speed_and_off(hass):
+    device = runtime("map100")
+    device.entities["fan"].values.update({"speed": 1, "max_speed": 1})
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_FAN)
+    entity = next(iter(component.entities))
+
+    assert entity.is_on is True
+    assert entity.percentage == 100
+
+    await entity.async_turn_off()
+    assert adapter.sent[-1][3] == {
+        "fan": [{"channel": 0, "speed": 0}]}

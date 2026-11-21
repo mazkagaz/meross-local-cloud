@@ -1,0 +1,66 @@
+schema_version: 2
+profile:
+  id: meross.map100
+  version: "2026.11.0"
+  requires_engine: ">=2.2"
+  description: "Purificateur d'air map100 : ventilation et durée de vie du filtre."
+match:
+  type: [map]
+  abilities:
+    all: [Appliance.Control.Fan]
+payloads:
+  Appliance.Control.Fan:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      fan:
+        type: array
+        items:
+          type: object
+          fields:
+            channel: { type: integer }
+            speed: { type: integer }
+            maxSpeed: { type: integer }
+  Appliance.Control.FilterMaintenance:
+    methods: [GET, GETACK, PUSH]
+    fields:
+      filter:
+        type: array
+        items:
+          type: object
+          fields:
+            channel: { type: integer }
+            life: { type: integer, unit: "%" }
+entities:
+  - key: fan
+    platform: fan
+    channel: 0
+    name: "Fan"
+    capabilities:
+      features: [set_speed]
+    state:
+      namespace: Appliance.Control.Fan
+      channel: $channel
+      select: { path: fan, key: channel }
+      fields: { speed: speed, max_speed: maxSpeed }
+    commands:
+      turn_on:
+        namespace: Appliance.Control.Fan
+        payload: { fan: [{ channel: $channel, speed: 1 }] }
+      turn_off:
+        namespace: Appliance.Control.Fan
+        payload: { fan: [{ channel: $channel, speed: 0 }] }
+      set_speed:
+        namespace: Appliance.Control.Fan
+        payload: { fan: [{ channel: $channel, speed: $value }] }
+
+  - key: filter
+    platform: sensor
+    channel: 0
+    name: "Filter life"
+    entity_category: diagnostic
+    unit: "%"
+    state:
+      namespace: Appliance.Control.FilterMaintenance
+      channel: $channel
+      select: { path: filter, key: channel }
+      fields: { value: life }

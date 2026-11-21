@@ -2,6 +2,7 @@
 from device_simulator import (
     DiffuserSimulator,
     GarageSimulator,
+    Map100Simulator,
     LightSimulator,
     MS600Simulator,
     MTS200Simulator,
@@ -154,5 +155,31 @@ async def test_garage_door_over_the_bus(hass):
         simulator.open = 0
         simulator.emit()
         assert await wait_for(lambda: door["open"] == 0)
+    finally:
+        await adapter.async_stop()
+
+
+async def test_map100_purifier_over_the_bus(hass):
+    bus = InMemoryMqttBus()
+    simulator = bus.add(Map100Simulator())
+    adapter = await start_adapter_with_bus(hass, bus, ["map100"], ["pur1"])
+    runtime = adapter.runtimes["pur1"]
+    fan = runtime.entities["fan"].values
+    try:
+        assert await wait_for(lambda: bus.multiples)
+        assert await wait_for(lambda: fan)
+        assert fan == {"speed": 1, "max_speed": 1}
+        assert runtime.entities["filter"].values["value"] == 73
+
+        await adapter.async_send(
+            "pur1", "Appliance.Control.Fan", "SET",
+            {"fan": [{"channel": 0, "speed": 0}]})
+        assert simulator.speed == 0
+        assert fan["speed"] == 0
+
+        simulator.life = 40
+        simulator.emit()
+        assert await wait_for(
+            lambda: runtime.entities["filter"].values["value"] == 40)
     finally:
         await adapter.async_stop()
