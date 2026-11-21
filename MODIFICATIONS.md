@@ -9,8 +9,8 @@
 ## Branding
 
 - Display name: **Meross Local Cloud**.
-- Banner and logo: originals in `branding/`, generated brand assets in
-  `custom_components/meross_cloud/brand/`.
+- Banner and logo: unified originals in `branding/` (the logo is a transparent
+  PNG); generated brand assets in `custom_components/meross_cloud/brand/`.
 
 ## Vendored code
 
