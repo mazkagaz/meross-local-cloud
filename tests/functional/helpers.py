@@ -48,6 +48,7 @@ class FakeAdapter:
         self.runtimes = {runtime_obj.uuid: runtime_obj}
         self.schedulers = {}
         self.sent = []
+        self.priority_sent = []
         self.ready = []
         self.reloads = 0
         self.device_online = {}
@@ -79,6 +80,12 @@ class FakeAdapter:
 
     async def async_send(self, device_uuid, namespace, method, payload):
         self.sent.append((device_uuid, namespace, method, payload))
+        return True
+
+    async def async_send_priority(self, device_uuid, namespace, method,
+                                  payload):
+        self.priority_sent.append(
+            (device_uuid, namespace, method, payload))
         return True
 
     async def async_reload_entry(self):

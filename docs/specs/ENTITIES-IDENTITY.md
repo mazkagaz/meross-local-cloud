@@ -8,7 +8,7 @@
 | light | `onoff`, `brightness`, `rgb` | on/off, luminosité, RGB |
 | sensor | `value` | — |
 | binary_sensor | `value` | — |
-| cover | `position` | open/close/stop/set_position |
+| cover | `position` | open/close/stop/set_position ; `stop` est prioritaire, sans attente d’ACK ni rate-limit |
 | number | `value` | set_value |
 | button | — | press |
 | climate | températures, `onoff`, `mode` | consigne, on/off |

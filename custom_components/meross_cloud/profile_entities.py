@@ -172,10 +172,10 @@ class ProfileBaseEntity(Entity):
             state = self._runtime.entities.get(self._spec.key)
         return dict(state.values) if state is not None else {}
 
-    async def _send(self, command: str, value: Any = None) -> None:
+    def _command_payload(self, command: str, value: Any = None):
         spec = self._spec.commands.get(command)
         if spec is None:
-            return
+            return None
         values = {"channel": self._spec.channel, "id": self._subdevice_id}
         if value is not None:
             if spec.value_scale is not None:
@@ -183,8 +183,22 @@ class ProfileBaseEntity(Entity):
                 if isinstance(value, float) and value.is_integer():
                     value = int(value)
             values["value"] = value
-        payload = substitute(spec.payload, values)
+        return spec, substitute(spec.payload, values)
+
+    async def _send(self, command: str, value: Any = None) -> None:
+        prepared = self._command_payload(command, value)
+        if prepared is None:
+            return
+        spec, payload = prepared
         await self._adapter.async_send(
+            self._device_uuid, spec.namespace, "SET", payload)
+
+    async def _send_priority(self, command: str, value: Any = None) -> None:
+        prepared = self._command_payload(command, value)
+        if prepared is None:
+            return
+        spec, payload = prepared
+        await self._adapter.async_send_priority(
             self._device_uuid, spec.namespace, "SET", payload)
 
 
@@ -331,7 +345,7 @@ class ProfileCover(ProfileBaseEntity, CoverEntity):
         await self._send("close")
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
-        await self._send("stop")
+        await self._send_priority("stop")
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         await self._send("set_position", kwargs.get("position"))

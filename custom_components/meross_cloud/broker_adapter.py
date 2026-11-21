@@ -409,6 +409,23 @@ class BrokerProfileAdapter:
             scheduler.request_refresh(namespace)
         return True
 
+    async def async_send_priority(self, device_uuid: str, namespace: str,
+                                  method: str, payload) -> bool:
+        """Send a safety command immediately, without ACK wait or rate limit."""
+        transport = self._transport
+        if transport is None:
+            return False
+        if hasattr(transport, "async_publish_priority"):
+            await transport.async_publish_priority(
+                device_uuid, namespace, method, payload)
+        else:
+            await self.async_send(device_uuid, namespace, method, payload)
+            return True
+        scheduler = self.schedulers.get(device_uuid)
+        if scheduler is not None:
+            scheduler.request_refresh(namespace)
+        return True
+
     def _dispatch_message(self, message) -> None:
         """Route one decoded MQTT message to the matching device runtime."""
         try:

@@ -17,6 +17,9 @@ ligne. Sa suppression impose de rendre ces responsabilités explicites.
   l’état du transport.
 - Un nouvel appareil détecté par polling déclenche un reload de l’entrée.
 - Un Unbind supprime appareil, subdevices, entités et runtime.
+- Les commandes de sécurité (`cover.stop`) sont publiées immédiatement, sans
+  attente d’ACK ni fenêtre de rate-limit MQTT ; l’ACK éventuel est traité comme
+  un push non sollicité.
 
 ## Conséquences
 

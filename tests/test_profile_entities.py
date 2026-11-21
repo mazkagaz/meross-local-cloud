@@ -50,6 +50,7 @@ class FakeAdapter:
         self.runtimes = {runtime.uuid: runtime}
         self.schedulers = {}
         self.sent = []
+        self.priority_sent = []
         self.ready = []
         self.reloads = 0
         self.device_online = {}
@@ -70,6 +71,12 @@ class FakeAdapter:
 
     async def async_send(self, device_uuid, namespace, method, payload):
         self.sent.append((device_uuid, namespace, method, payload))
+        return True
+
+    async def async_send_priority(self, device_uuid, namespace, method,
+                                  payload):
+        self.priority_sent.append(
+            (device_uuid, namespace, method, payload))
         return True
 
     async def async_reload_entry(self):
@@ -166,6 +173,9 @@ async def test_cover_state_and_position_command(hass):
     await entity.async_set_cover_position(position=55)
     assert adapter.sent[-1][3] == {
         "position": {"channel": 0, "position": 55}}
+    await entity.async_stop_cover()
+    assert adapter.priority_sent[-1][3] == {
+        "position": {"channel": 0, "position": -1}}
 
 
 async def test_number_range_and_scaled_command(hass):

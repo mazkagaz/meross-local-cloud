@@ -147,6 +147,40 @@ def test_transport_reports_connection_state_changes():
     assert seen == [True, False]
 
 
+async def test_priority_publish_bypasses_the_rate_limit():
+    from custom_components.meross_cloud.broker_transport import (
+        BrokerMqttTransport,
+    )
+
+    class Connection:
+        rl_rate = 1.0
+
+        def __init__(self):
+            self.calls = []
+
+        async def async_publish_raw(self, request, **kwargs):
+            self.calls.append(
+                (request.namespace, request.method, request.payload,
+                 kwargs["uuid"], self.rl_rate))
+
+    connection = Connection()
+    client = SimpleNamespace(
+        key="key", from_="/app/1/sub", shutdown=lambda: None)
+    transport = BrokerMqttTransport(
+        "localhost", 2001, "1", "key", None, None)
+    transport._connection = connection
+    transport._device_client = lambda uuid: client
+
+    await transport.async_publish_priority(
+        "u1", "Appliance.RollerShutter.Position", "SET",
+        {"position": {"channel": 0, "position": -1}})
+
+    assert connection.calls == [(
+        "Appliance.RollerShutter.Position", "SET",
+        {"position": {"channel": 0, "position": -1}}, "u1", 0)]
+    assert connection.rl_rate == 1.0
+
+
 def test_devices_library_is_loaded_lazily():
     from custom_components.meross_cloud.vendor.merossclient import library
 

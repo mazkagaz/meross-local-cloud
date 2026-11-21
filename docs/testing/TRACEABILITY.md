@@ -8,7 +8,7 @@ Exigences → spécification → décision → code → tests.
 | INT-CAT-001 | Catalogue signé, révision, reload | BACKEND-PROFILE | ADR-0001 | `broker_adapter.py`, `broker_profiles.py` | `test_broker_profiles_adapter.py` | F6 |
 | INT-MATCH-001 | Matching type/MAC/abilities/ambiguïtés | BACKEND-PROFILE | ADR-0001 | `profiles/match.py`, `profiles/registry.py` | `test_profile_match.py`, `test_profile_registry.py` | F3 |
 | INT-RUNTIME-001 | Chemins, échelles, dispatch, erreurs | BACKEND-PROFILE | ADR-0001 | `profiles/paths.py`, `profiles/compiler.py`, `profiles/runtime.py` | `test_profile_paths.py`, `test_profile_compiler.py`, `test_profile_runtime.py`, `test_profile_engine_purity.py` | F3, F7 |
-| INT-SCHED-001 | Batching, lazy refresh, ACK unique, backoff | BACKEND-PROFILE | ADR-0003 | `profiles/scheduler.py`, `broker_transport.py` | `test_profile_scheduler.py` | F4, F5 |
+| INT-SCHED-001 | Batching, lazy refresh, ACK unique, backoff | BACKEND-PROFILE | ADR-0003 | `profiles/scheduler.py`, `broker_transport.py` | `test_profile_scheduler.py`, `test_broker_d1.py` | F4, F5 |
 | INT-ENT-001 | Mapping des plateformes et commandes | ENTITIES-IDENTITY | ADR-0001 | `profile_entities.py` | `test_profile_entities.py`, `test_profile_parity.py` | F3 |
 | INT-ID-001 | IDs historiques et migration bêta | ENTITIES-IDENTITY | ADR-0002 | `common.py`, `profile_entities.py`, `__init__.py` | `test_d5_invariants.py`, `test_d5_migration.py` | F2, validation 3.0 |
 | INT-AVAIL-001 | devList, Online, transport | ENTITIES-IDENTITY | ADR-0003 | `broker_adapter.py`, `broker_transport.py` | `test_broker_adapter_availability.py` | F2, F7 |

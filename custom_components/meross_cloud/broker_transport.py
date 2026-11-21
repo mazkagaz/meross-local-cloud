@@ -1,12 +1,13 @@
 """MQTT transport to the local broker using the vendored merossclient."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import ssl
 
 from .vendor.merossclient import DeviceDescriptor, HostAddress
 from .vendor.merossclient.client.mqtt import MQTTAppClient
-from .vendor.merossclient.protocol.message import MerossResponse
+from .vendor.merossclient.protocol.message import MerossRequest, MerossResponse
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,6 +71,7 @@ class BrokerMqttTransport:
         self._state_listener = state_listener
         self._timeout = timeout
         self._connection: MQTTAppClient | None = None
+        self._priority_lock = asyncio.Lock()
 
     @property
     def connected(self) -> bool:
@@ -120,6 +122,31 @@ class BrokerMqttTransport:
         try:
             return await client.async_request(
                 namespace, method, payload, timeout=self._timeout)
+        finally:
+            client.shutdown()
+
+    async def async_publish_priority(self, device_uuid: str, namespace: str,
+                                     method: str, payload) -> None:
+        """Publish immediately, without ACK wait or MQTT rate limiting.
+
+        Used for safety commands such as roller-shutter stop: the ACK, when it
+        arrives, is delivered to the message listener as an unsolicited push.
+        """
+        connection = self._connection
+        if connection is None:
+            raise RuntimeError("MQTT transport is not connected")
+        client = self._device_client(device_uuid)
+        try:
+            request = MerossRequest(
+                namespace, method, payload, client.key, client.from_)
+            async with self._priority_lock:
+                rate = connection.rl_rate
+                connection.rl_rate = 0
+                try:
+                    await connection.async_publish_raw(
+                        request, uuid=device_uuid)
+                finally:
+                    connection.rl_rate = rate
         finally:
             client.shutdown()
 
