@@ -2,6 +2,7 @@
 from device_simulator import (
     DiffuserSimulator,
     LightSimulator,
+    MS600Simulator,
     MTS200Simulator,
     MTS300Simulator,
 )
@@ -109,5 +110,27 @@ async def test_mts300_uses_hundredth_degree_scale(hass):
             "mode": [{"channel": 0, "targetTemp": 2500}]})
         assert simulator.state["targetTemp"] == 2500
         assert climate["target_temperature"] == 25.0
+    finally:
+        await adapter.async_stop()
+
+
+async def test_ms600_presence_and_light_over_the_bus(hass):
+    bus = InMemoryMqttBus()
+    simulator = bus.add(MS600Simulator())
+    adapter = await start_adapter_with_bus(hass, bus, ["ms600"], ["p1"])
+    runtime = adapter.runtimes["p1"]
+    try:
+        simulator.emit()
+        assert await wait_for(lambda: runtime.entities["distance"].values)
+        assert runtime.entities["distance"].values["value"] == 0.76
+        assert runtime.entities["illuminance"].values["value"] == 24
+        assert runtime.entities["presence"].values["value"] == 2
+
+        simulator.light = 80
+        simulator.presence = {"value": 1, "distance": 1200, "times": 0}
+        simulator.emit()
+        assert await wait_for(
+            lambda: runtime.entities["distance"].values["value"] == 1.2)
+        assert runtime.entities["illuminance"].values["value"] == 80
     finally:
         await adapter.async_stop()

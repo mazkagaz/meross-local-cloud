@@ -1,0 +1,71 @@
+schema_version: 2
+profile:
+  id: meross.ms600
+  version: "2026.11.0"
+  requires_engine: ">=2.2"
+  description: "Capteur de présence MS600 : présence et luminosité."
+match:
+  type: [ms600]
+  abilities:
+    all: [Appliance.Control.Sensor.LatestX]
+payloads:
+  Appliance.Control.Sensor.LatestX:
+    methods: [GETACK, PUSH]
+    polling:
+      strategy: once
+    fields:
+      latest:
+        type: array
+        items:
+          type: object
+          fields:
+            channel: { type: integer }
+            data:
+              type: object
+              fields:
+                presence:
+                  type: array
+                  items:
+                    type: object
+                    fields:
+                      value: { type: integer }
+                      distance: { type: integer }
+                      times: { type: integer }
+                light:
+                  type: array
+                  items:
+                    type: object
+                    fields:
+                      value: { type: integer }
+entities:
+  - key: presence
+    platform: sensor
+    channel: 0
+    name: "Presence"
+    entity_category: diagnostic
+    state:
+      namespace: Appliance.Control.Sensor.LatestX
+      fields: { value: "latest[0].data.presence[0].value" }
+
+  - key: distance
+    platform: sensor
+    channel: 0
+    name: "Presence distance"
+    device_class: distance
+    unit: m
+    state:
+      namespace: Appliance.Control.Sensor.LatestX
+      fields:
+        value:
+          path: "latest[0].data.presence[0].distance"
+          scale: 0.001
+
+  - key: illuminance
+    platform: sensor
+    channel: 0
+    name: "Illuminance"
+    device_class: illuminance
+    unit: lx
+    state:
+      namespace: Appliance.Control.Sensor.LatestX
+      fields: { value: "latest[0].data.light[0].value" }

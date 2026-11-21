@@ -22,6 +22,7 @@ FAN = "Appliance.Control.Fan"
 THERMOSTAT = "Appliance.Control.Thermostat.Mode"
 SPRAY = "Appliance.Control.Diffuser.Spray"
 DIFFUSER_LIGHT = "Appliance.Control.Diffuser.Light"
+SENSOR_LATEST_X = "Appliance.Control.Sensor.LatestX"
 
 
 def compiled(name):
@@ -83,6 +84,16 @@ SIMPLE_CASES = {
                       "target_temperature": 20.0,
                       "min_temp": 5.0, "max_temp": 35.0}}),
     ],
+    "ms600": [
+        (SENSOR_LATEST_X, {"latest": [{
+            "channel": 0,
+            "data": {"presence": [{"value": 2, "distance": 760,
+                                   "times": 0}],
+                     "light": [{"value": 24}]},
+        }]}, {"presence": {"value": 2},
+              "distance": {"value": 0.76},
+              "illuminance": {"value": 24}}),
+    ],
     "mfc": [
         (FAN, {"fan": [{"channel": 0, "speed": 2, "maxSpeed": 3}]},
          {"fan": {"speed": 2, "max_speed": 3}}),
@@ -115,6 +126,8 @@ def test_hub_profile_golden_frames():
     runtime.add_subdevice("sub1", templates["ms100"])
     runtime.add_subdevice("sensor1", templates["ms130"])
     runtime.add_subdevice("valve1", templates["mts100"])
+    runtime.add_subdevice("door1", templates["ms200"])
+    runtime.add_subdevice("leak1", templates["ms400"])
 
     assert runtime.dispatch("Appliance.Hub.Sensor.TempHum", "PUSH", {
         "tempHum": [{"id": "sub1", "latestTemperature": 215,
@@ -131,6 +144,12 @@ def test_hub_profile_golden_frames():
                                  "heating": 1, "min": 10, "max": 70},
                  "togglex": {"onoff": 1}}],
     }) == 7
+    assert runtime.dispatch("Appliance.Hub.Sensor.DoorWindow", "PUSH", {
+        "doorWindow": [{"id": "door1", "status": 1}],
+    }) == 1
+    assert runtime.dispatch("Appliance.Hub.Sensor.WaterLeak", "PUSH", {
+        "waterLeak": [{"id": "leak1", "latestWaterLeak": 1}],
+    }) == 1
 
     ms100 = runtime.subdevices["sub1"].entities
     assert ms100["temperature"].values["value"] == pytest.approx(21.5)

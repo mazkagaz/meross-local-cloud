@@ -276,6 +276,8 @@ class HubSimulator:
         self.sensor_all = {"temperature": 215, "humidity": 553}
         self.valve = {"mode": 1, "room": 44, "currentSet": 40,
                       "heating": 1, "min": 10, "max": 70, "onoff": 1}
+        self.door_status = 1
+        self.water_leak = 0
 
     async def async_connect(self):
         return None
@@ -295,6 +297,8 @@ class HubSimulator:
                 {"id": "sub1", "ms100": {}},
                 {"id": "sensor1", "ms130": {}},
                 {"id": "valve1", "mts100": {}},
+                {"id": "door1", "doorWindow": {}},
+                {"id": "leak1", "waterLeak": {}},
             ]}}},
             "ability": {
                 "Appliance.System.Online": {},
@@ -303,6 +307,8 @@ class HubSimulator:
                 "Appliance.Hub.Mts100.All": {},
                 "Appliance.Hub.Mts100.Mode": {},
                 "Appliance.Hub.Mts100.Temperature": {},
+                "Appliance.Hub.Sensor.DoorWindow": {},
+                "Appliance.Hub.Sensor.WaterLeak": {},
             },
         }
         return DeviceDescriptor(payload)
@@ -330,6 +336,12 @@ class HubSimulator:
                 },
                 "togglex": {"onoff": self.valve["onoff"]},
             }]}
+        if namespace == "Appliance.Hub.Sensor.DoorWindow":
+            return {"doorWindow": [
+                {"id": "door1", "status": self.door_status}]}
+        if namespace == "Appliance.Hub.Sensor.WaterLeak":
+            return {"waterLeak": [
+                {"id": "leak1", "latestWaterLeak": self.water_leak}]}
         if namespace == "Appliance.Hub.Mts100.Mode":
             return {"mode": [{"id": "valve1", "state": self.valve["mode"]}]}
         if namespace == "Appliance.Hub.Mts100.Temperature":
@@ -378,6 +390,8 @@ class HubSimulator:
         self.emit("Appliance.Hub.Sensor.TempHum")
         self.emit("Appliance.Hub.Sensor.All")
         self.emit("Appliance.Hub.Mts100.All")
+        self.emit("Appliance.Hub.Sensor.DoorWindow")
+        self.emit("Appliance.Hub.Sensor.WaterLeak")
 
 
 class MTS200Simulator:
@@ -602,3 +616,64 @@ class MTS300Simulator(MTS200Simulator):
             }, "digest": {}},
             "ability": {self.NAMESPACE: {}},
         })
+
+
+class MS600Simulator:
+    uuid = "p1"
+    connected = True
+    NAMESPACE = "Appliance.Control.Sensor.LatestX"
+
+    def __init__(self, uuid="p1"):
+        self.uuid = uuid
+        self.bus = None
+        self.requests = []
+        self.multiples = []
+        self.presence = {"value": 2, "distance": 760, "times": 0}
+        self.light = 24
+
+    async def async_connect(self):
+        return None
+
+    async def async_stop(self):
+        return None
+
+    async def async_describe(self, device_uuid):
+        return DeviceDescriptor({
+            "all": {"system": {
+                "hardware": {"type": "ms600", "subType": "un",
+                             "version": "1.0.0", "uuid": self.uuid,
+                             "macAddress": "AA:BB:CC:DD:EE:07"},
+                "firmware": {"version": "3.0.0"},
+                "online": {"status": 1},
+            }, "digest": {"light": {"value": self.light}}},
+            "ability": {self.NAMESPACE: {}},
+        })
+
+    def _body(self):
+        return {"latest": [{"channel": 0, "data": {
+            "presence": [dict(self.presence)],
+            "light": [{"value": self.light}],
+        }}]}
+
+    async def async_request(self, uuid, namespace, method, payload):
+        self.requests.append((uuid, namespace, method, payload))
+        return SimpleNamespace(
+            uuid=uuid, namespace=namespace,
+            method="SETACK" if method == "SET" else "GETACK",
+            payload=self._body())
+
+    async def async_request_multiple(self, uuid, requests):
+        requests = list(requests)
+        self.multiples.append(requests)
+        return SimpleNamespace(
+            uuid=uuid, namespace="Appliance.Control.Multiple",
+            method="SETACK",
+            payload={"multiple": [{
+                "header": {"namespace": namespace, "method": "GETACK"},
+                "payload": self._body(),
+            } for namespace, _, _ in requests]})
+
+    def emit(self, method="PUSH"):
+        if self.bus is not None:
+            self.bus.publish(self.uuid, self.NAMESPACE,
+                             self._body(), method)

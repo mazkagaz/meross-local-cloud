@@ -784,6 +784,7 @@ def test_lazy_compilation_cache_uses_id_version_and_digest():
     ("msh300", {"online"}),
     ("mts200", {"climate"}),
     ("mts300", {"climate"}),
+    ("ms600", {"presence", "distance", "illuminance"}),
     ("mfc", {"fan"}),
     ("mss425", {"outlet"}),
     ("mss", {"switch"}),
@@ -810,7 +811,7 @@ def test_hub_pilot_templates_compile_with_id_commands():
 
     assert compiled.errors == []
     templates = {template.name: template for template in compiled.subdevices}
-    assert set(templates) == {"ms100", "ms130", "mts100"}
+    assert set(templates) == {"ms100", "ms130", "mts100", "ms200", "ms400"}
     assert set(templates["ms100"].entities) == {
         "temperature", "humidity", "voltage"}
     assert set(templates["ms130"].entities) == {"temperature", "humidity"}
@@ -839,7 +840,8 @@ def test_canonical_profile_entities_carry_stable_ids():
 
 
 @pytest.mark.parametrize("name", [
-    "mrs100", "mss310", "msl120", "msh300", "mts200", "mts300", "mfc",
+    "mrs100", "mss310", "msl120", "msh300", "mts200", "mts300",
+    "ms600", "mfc",
     "mss425", "mss", "msl", "mrs", "mss5", "mod",
 ])
 def test_fixtures_match_the_canonical_broker_profiles(name):

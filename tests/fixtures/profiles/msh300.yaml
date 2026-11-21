@@ -198,3 +198,49 @@ subdevices:
             namespace: Appliance.Hub.Mts100.Temperature
             payload: { temperature: [{ id: $id, currentSet: $value }] }
             value_scale: 2
+
+  - name: ms200
+    match:
+      type: [ms200]
+    payloads:
+      Appliance.Hub.Sensor.DoorWindow:
+        methods: [GETACK, PUSH]
+        fields:
+          doorWindow:
+            type: array
+            items:
+              type: object
+              fields:
+                id: { type: string }
+                status: { type: integer }
+    entities:
+      - key: window
+        platform: binary_sensor
+        name: "Window"
+        device_class: window
+        state:
+          namespace: Appliance.Hub.Sensor.DoorWindow
+          fields: { value: status }
+
+  - name: ms400
+    match:
+      type: [ms400]
+    payloads:
+      Appliance.Hub.Sensor.WaterLeak:
+        methods: [GETACK, PUSH]
+        fields:
+          waterLeak:
+            type: array
+            items:
+              type: object
+              fields:
+                id: { type: string }
+                latestWaterLeak: { type: integer }
+    entities:
+      - key: water_leak
+        platform: binary_sensor
+        name: "Water leak"
+        device_class: safety
+        state:
+          namespace: Appliance.Hub.Sensor.WaterLeak
+          fields: { value: latestWaterLeak }
