@@ -1,3 +1,19 @@
+## 3.1.2 — persistance générique de l’état
+
+Version stable. Requiert le broker **1.3.0 ou plus récent** ; **1.3.1**
+recommandé pour le correctif d’interrogation du volet.
+
+- Les valeurs brutes du runtime de toutes les entités profils sont sauvegardées
+  dans le Store Home Assistant et restaurées au démarrage, avant la création
+  des entités.
+- Restauration gardée par profil, clé d’entité et plateforme ; les valeurs non
+  scalaires, inconnues ou issues d’un profil différent sont ignorées.
+- La disponibilité reste pilotée par le transport/broker : une valeur restaurée
+  ne rend jamais un appareil disponible.
+- Sauvegarde différée à chaque mise à jour, immédiate au retrait d’un appareil
+  et forcée à l’arrêt propre.
+- Le cache P3 reste utilisé pour les données autoritatives du volet.
+
 ## 3.1.1 — maintien d’état du volet
 
 Version stable. Requiert le broker **1.3.0 ou plus récent** ; **1.3.1** est
