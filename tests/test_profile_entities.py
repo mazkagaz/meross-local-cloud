@@ -160,6 +160,26 @@ async def test_light_mapping_and_commands(hass):
         "channel": 0, "light": {"onoff": 1}}
 
 
+async def test_device_info_uses_broker_name_and_metadata(hass):
+    device = runtime("mrs100")
+    adapter = FakeAdapter(device)
+    adapter.descriptors = {
+        "u1": {
+            "name": "Volet Chambre",
+            "type": "mrs100",
+            "firmware": "8.3.7",
+            "hardware": "8.0.0",
+        },
+    }
+    component = await setup_entities(hass, adapter, HA_COVER)
+    entity = next(iter(component.entities))
+
+    assert entity.device_info["name"] == "Volet Chambre"
+    assert entity.device_info["model"] == "mrs100"
+    assert entity.device_info["sw_version"] == "8.3.7"
+    assert entity.device_info["hw_version"] == "8.0.0"
+
+
 async def test_cover_state_and_position_command(hass):
     device = runtime("mrs100")
     device.entities["cover"].values.update({"position": 40})
@@ -445,6 +465,10 @@ async def test_update_entities_cover_hub_and_subdevices(hass):
         item for item in device.profile.subdevices if item.name == "ms100")
     device.add_subdevice("sub1", template)
     adapter = FakeAdapter(device)
+    adapter.descriptors = {
+        "hub1": {"name": "Hub Salon", "type": "msh300",
+                 "firmware": "3.0.0"},
+    }
 
     component = await setup_updates(hass, adapter)
 
@@ -455,6 +479,8 @@ async def test_update_entities_cover_hub_and_subdevices(hass):
     sub = next(
         item for item in component.entities
         if item.unique_id.endswith("sub1:update:" + template.uid))
+    assert hub.device_info["name"] == "Hub Salon"
+    assert hub.device_info["model"] == "msh300"
     assert hub.installed_version == device.profile.version
     assert hub.latest_version == device.profile.version
     assert hub.release_summary == device.profile.description

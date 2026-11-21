@@ -2,7 +2,7 @@
 
 Cette checklist valide le backend profils obligatoire (D5) sur une installation
 réelle. Elle se fait sur la branche `dev`, avec la pré-release
-`3.0.0-beta.3`.
+`3.0.0-beta.4`.
 
 ## Prérequis
 
@@ -18,12 +18,12 @@ d'abord l'état publié du catalogue.
 ## Installation
 
 1. HACS → Intégrations → Meross Local Cloud → installer
-   **3.0.0-beta.3**.
+   **3.0.0-beta.4**.
 2. Redémarrer Home Assistant.
 3. Paramètres → Appareils et services → Meross Local Cloud : vérifier que
    l'entrée existante est chargée sans reconfiguration.
 4. Télécharger les diagnostics et vérifier :
-   - `version.integration == 3.0.0-beta.3` ;
+   - `version.integration == 3.0.0-beta.4` ;
    - `profile_backend.state == connected` ;
    - `catalog_signature == valid` ;
    - `devices_matched` égal au nombre d'appareils attendus ;

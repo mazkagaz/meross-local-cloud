@@ -15,7 +15,7 @@ le workflow de release refuse un tag dont la version diffère.
 | Canal | Version | Tag | Release GitHub |
 | ----- | ------- | --- | -------------- |
 | stable | `3.0.0` | `v3.0.0` | normale |
-| test | `3.0.0-beta.3` | `v3.0.0-beta.3` | **pre-release** |
+| test | `3.0.0-beta.4` | `v3.0.0-beta.4` | **pre-release** |
 
 ## Publier une version de test
 
@@ -23,8 +23,8 @@ le workflow de release refuse un tag dont la version diffère.
 2. Commit, puis taguer et pousser :
 
 ```bash
-git tag v3.0.0-beta.3
-git push origin v3.0.0-beta.3
+git tag v3.0.0-beta.4
+git push origin v3.0.0-beta.4
 ```
 
 3. Le workflow `Release` vérifie manifest ↔ tag et crée une **pre-release**.

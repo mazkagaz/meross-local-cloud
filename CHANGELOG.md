@@ -1,3 +1,16 @@
+## 3.0.0-beta.4 — démarrage et climat
+
+Version de **test**. Requiert le broker **1.2.1**.
+
+- La surveillance du catalogue et la rafale de reconnexion sont des tâches
+  d’arrière-plan : le bootstrap Home Assistant ne les attend plus (#21).
+- `ProfileClimate` utilise l’API native de température et ne fournit plus les
+  propriétés dépréciées `current_temperature`/`target_temperature` (#20).
+- Les températures courantes et cibles restent synchronisées à chaque écriture
+  d’état, y compris sur les anciennes versions de Home Assistant.
+- Le nom, le modèle et les versions d’un appareil recréé viennent désormais du
+  broker (`devList`) au lieu du titre de l’entrée (`https://…:2004`).
+
 ## 3.0.0-beta.3 — resynchronisation après reconnexion
 
 Version de **test**. Requiert le broker **1.2.1**.

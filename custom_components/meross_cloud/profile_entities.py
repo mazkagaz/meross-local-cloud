@@ -91,7 +91,7 @@ def _as_bool(value: Any) -> bool:
 
 
 def _device_info(device_uuid: str, subdevice_id: Optional[str] = None,
-                 template=None) -> Dict[str, Any]:
+                 template=None, descriptor=None) -> Dict[str, Any]:
     if subdevice_id is not None:
         return {
             "identifiers": {
@@ -101,10 +101,19 @@ def _device_info(device_uuid: str, subdevice_id: Optional[str] = None,
             "manufacturer": "Meross",
             "via_device": (DOMAIN, device_internal_id(device_uuid)),
         }
-    return {
+    descriptor = descriptor or {}
+    info = {
         "identifiers": {(DOMAIN, device_internal_id(device_uuid))},
+        "name": descriptor.get("name") or device_uuid,
         "manufacturer": "Meross",
     }
+    if descriptor.get("type"):
+        info["model"] = descriptor["type"]
+    if descriptor.get("firmware"):
+        info["sw_version"] = descriptor["firmware"]
+    if descriptor.get("hardware"):
+        info["hw_version"] = descriptor["hardware"]
+    return info
 
 
 class ProfileBaseEntity(Entity):
@@ -137,8 +146,11 @@ class ProfileBaseEntity(Entity):
 
     @property
     def device_info(self) -> Dict[str, Any]:
+        descriptor = getattr(self._adapter, "descriptors", {}).get(
+            self._device_uuid)
         return _device_info(
-            self._device_uuid, self._subdevice_id, self._template)
+            self._device_uuid, self._subdevice_id, self._template,
+            descriptor)
 
     async def async_added_to_hass(self) -> None:
         self._remove_listener = self._runtime.add_listener(
@@ -581,8 +593,11 @@ class ProfileUpdateEntity(UpdateEntity):
 
     @property
     def device_info(self) -> Dict[str, Any]:
+        descriptor = getattr(self._adapter, "descriptors", {}).get(
+            self._device_uuid)
         return _device_info(
-            self._device_uuid, self._subdevice_id, self._template)
+            self._device_uuid, self._subdevice_id, self._template,
+            descriptor)
 
     @property
     def installed_version(self) -> Optional[str]:

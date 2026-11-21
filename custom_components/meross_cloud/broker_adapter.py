@@ -296,6 +296,7 @@ class BrokerProfileAdapter:
                 "type": descriptor.type,
                 "subType": descriptor.subType,
                 "firmware": descriptor.fw_version,
+                "hardware": getattr(device, "hardware", None),
                 "abilities": sorted(descriptor.ability),
                 "mac": descriptor.macAddress,
                 "is_hub": descriptor.is_hub,

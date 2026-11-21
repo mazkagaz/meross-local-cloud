@@ -22,8 +22,8 @@ MS100/MS130/MTS100, MTS200, lumières MSL, prises MSS et diffuseur.
 - suppression fiable des appareils oubliés (Unbind), réparation des appareils
   absents depuis 48 h et réparation « appareil sans profil ».
 
-**Version de test 3.0.0-beta.3**, compatible avec le broker **1.2.1** et le
-pairer **2.0.8**.
+**Version de test 3.0.0-beta.4**, compatible avec le broker **1.2.1** et le
+pairer **2.0.9**.
 
 ## Les trois briques du montage
 
@@ -44,9 +44,9 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 
 | Brique | Version minimale | Remarques |
 |---|---|---|
-| Meross Local Cloud | 3.0.0-beta.3 | cette intégration, catalogue de profils |
+| Meross Local Cloud | 3.0.0-beta.4 | cette intégration, catalogue de profils |
 | Meross Local Broker | 1.2.1 | profils MRS100 corrigés, CA valide, HTTPS, Unbind |
-| Meross Local Pairer | 2.0.8 | HTTPS 2004 uniquement |
+| Meross Local Pairer | 2.0.9 | HTTPS 2004 uniquement |
 | Home Assistant | 2025.6 | testé avec 2026.2 |
 
 ## Canal de test (bêta)
