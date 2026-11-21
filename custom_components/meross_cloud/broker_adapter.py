@@ -168,7 +168,15 @@ class BrokerProfileAdapter:
             return
         if self._reconnect_task is not None and not self._reconnect_task.done():
             return
-        task = self._hass.async_create_task(self._async_reconnect_burst())
+        create = getattr(
+            self._hass, "async_create_background_task", None)
+        if create is not None:
+            task = create(
+                self._async_reconnect_burst(),
+                name="meross_cloud_reconnect_refresh")
+        else:
+            task = self._hass.async_create_task(
+                self._async_reconnect_burst())
         self._reconnect_task = task
         if task.done():
             self._reconnect_task = None
@@ -415,8 +423,15 @@ class BrokerProfileAdapter:
                 self._hass, "async_create_task"):
             return
         if self._watch_task is None or self._watch_task.done():
-            self._watch_task = self._hass.async_create_task(
-                self._async_watch_catalog())
+            create = getattr(
+                self._hass, "async_create_background_task", None)
+            if create is not None:
+                self._watch_task = create(
+                    self._async_watch_catalog(),
+                    name="meross_cloud_catalog_watch")
+            else:
+                self._watch_task = self._hass.async_create_task(
+                    self._async_watch_catalog())
 
     async def _async_watch_catalog(self) -> None:
         """Reload the config entry when the broker catalog revision changes."""

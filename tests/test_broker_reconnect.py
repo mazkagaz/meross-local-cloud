@@ -51,6 +51,40 @@ async def test_reconnect_refreshes_devices_cache_and_schedulers(hass, monkeypatc
     assert instance.schedulers["u1"].request_refresh.call_count == 3
 
 
+def test_catalog_watch_uses_a_background_task(hass, monkeypatch):
+    seen = []
+
+    async def watch():
+        return None
+
+    class Task:
+        def done(self):
+            return False
+
+    def create_background(coro, name=None):
+        seen.append(name)
+        coro.close()
+        return Task()
+
+    def create_foreground(coro):
+        raise AssertionError("catalog watch must not be a foreground task")
+
+    monkeypatch.setattr(
+        hass, "async_create_background_task", create_background,
+        raising=False)
+    monkeypatch.setattr(
+        hass, "async_create_task", create_foreground, raising=False)
+    instance = BrokerProfileAdapter.__new__(BrokerProfileAdapter)
+    instance._hass = hass
+    instance._entry_id = "entry1"
+    instance._watch_task = None
+    instance._async_watch_catalog = watch
+
+    instance._start_catalog_watch()
+
+    assert seen == ["meross_cloud_catalog_watch"]
+
+
 async def test_one_failed_refresh_does_not_stop_the_burst(hass, monkeypatch):
     monkeypatch.setattr(module, "RECONNECT_REFRESH_DELAYS", (0.0, 0.0, 0.0))
     refresh = AsyncMock(side_effect=[RuntimeError("offline"), None, None])

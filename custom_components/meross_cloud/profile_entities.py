@@ -426,7 +426,10 @@ class ProfileButton(ProfileBaseEntity, ButtonEntity):
 
 
 class ProfileClimate(ProfileBaseEntity, ClimateEntity):
-    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
+    if not hasattr(ClimateEntity, "native_current_temperature"):
+        # Compatibility with Home Assistant before the native-temperature API.
+        _attr_temperature_unit = UnitOfTemperature.CELSIUS
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -448,16 +451,25 @@ class ProfileClimate(ProfileBaseEntity, ClimateEntity):
         if "turn_off" in self._spec.commands:
             features |= ClimateEntityFeature.TURN_OFF
         self._attr_supported_features = features
+        self._sync_temperature_attributes()
 
-    @property
-    def current_temperature(self) -> Optional[float]:
-        value = self._values().get("current_temperature")
-        return float(value) if isinstance(value, (int, float)) else None
+    def _sync_temperature_attributes(self) -> None:
+        current = self._values().get("current_temperature")
+        target = self._values().get("target_temperature")
+        current = float(current) if isinstance(current, (int, float)) else None
+        target = float(target) if isinstance(target, (int, float)) else None
+        self._attr_current_temperature = current
+        self._attr_target_temperature = target
+        self._attr_native_current_temperature = current
+        self._attr_native_target_temperature = target
+        for cached in (
+                "current_temperature", "target_temperature",
+                "native_current_temperature", "native_target_temperature"):
+            self.__dict__.pop(cached, None)
 
-    @property
-    def target_temperature(self) -> Optional[float]:
-        value = self._values().get("target_temperature")
-        return float(value) if isinstance(value, (int, float)) else None
+    def _write_state(self) -> None:
+        self._sync_temperature_attributes()
+        super()._write_state()
 
     @property
     def hvac_mode(self) -> HVACMode:

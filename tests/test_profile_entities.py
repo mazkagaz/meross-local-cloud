@@ -354,6 +354,17 @@ async def test_climate_entity(hass):
     assert adapter.sent[-1][3] == {
         "mode": [{"channel": 0, "onoff": 0}]}
 
+    assert entity._attr_native_current_temperature == 17.7
+    assert entity._attr_native_target_temperature == 20.0
+    device.dispatch("Appliance.Control.Thermostat.Mode", "PUSH", {
+        "mode": [{"channel": 0, "onoff": 1, "mode": 1,
+                  "currentTemp": 190, "targetTemp": 225}]})
+    await hass.async_block_till_done()
+    assert entity.current_temperature == 19.0
+    assert entity.target_temperature == 22.5
+    assert entity._attr_native_current_temperature == 19.0
+    assert entity._attr_native_target_temperature == 22.5
+
 
 async def test_fan_entity(hass):
     device = runtime("mfc")
