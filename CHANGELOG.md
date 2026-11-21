@@ -1,3 +1,13 @@
+## 3.1.3 — identité visuelle unifiée
+
+Version stable. Aucun changement de comportement ; broker **1.3.0+** (1.3.1
+recommandé) et pairer **2.0.9+** inchangés.
+
+- Nouveau logo et nouvelle bannière communs aux trois briques.
+- Logo transparent décliné pour les assets HA : logo, icône, variantes sombres
+  et @2x.
+- Pages README/info alignées sur le nouveau visuel.
+
 ## 3.1.2 — persistance générique de l’état
 
 Version stable. Requiert le broker **1.3.0 ou plus récent** ; **1.3.1**
