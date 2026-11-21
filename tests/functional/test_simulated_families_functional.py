@@ -1,8 +1,11 @@
 """F3.7-F3.9 — light, thermostat and diffuser over the in-memory bus."""
 from device_simulator import (
     DiffuserSimulator,
+    EMSimulator,
     GarageSimulator,
+    HP110Simulator,
     Map100Simulator,
+    Msxh0Simulator,
     LightSimulator,
     MS600Simulator,
     MTS200Simulator,
@@ -181,5 +184,66 @@ async def test_map100_purifier_over_the_bus(hass):
         simulator.emit()
         assert await wait_for(
             lambda: runtime.entities["filter"].values["value"] == 40)
+    finally:
+        await adapter.async_stop()
+
+
+async def test_em06_energy_monitor_over_the_bus(hass):
+    bus = InMemoryMqttBus()
+    simulator = bus.add(EMSimulator())
+    adapter = await start_adapter_with_bus(hass, bus, ["em"], ["em1"])
+    runtime = adapter.runtimes["em1"]
+    try:
+        assert len(runtime.entities) == 30
+        assert {"power_1", "power_2", "voltage_1", "voltage_2",
+                "current_1", "current_2", "consumption_1", "consumption_2",
+                "power_factor_1", "power_factor_2"} <= set(runtime.entities)
+        assert await wait_for(lambda: runtime.entities["power_2"].values)
+        assert runtime.entities["power_2"].values["value"] == 1.2
+        assert runtime.entities["voltage_2"].values["value"] == 230.0
+        assert runtime.entities["consumption_2"].values["value"] == 45.0
+
+        simulator.channels[2]["power"] = 900
+        simulator.emit()
+        assert await wait_for(
+            lambda: runtime.entities["power_2"].values["value"] == 0.9)
+    finally:
+        await adapter.async_stop()
+
+
+async def test_msxh0_spray_and_light_over_the_bus(hass):
+    bus = InMemoryMqttBus()
+    simulator = bus.add(Msxh0Simulator())
+    adapter = await start_adapter_with_bus(hass, bus, ["msxh0"], ["sx1"])
+    runtime = adapter.runtimes["sx1"]
+    try:
+        assert await wait_for(lambda: runtime.entities["spray"].values)
+        assert runtime.entities["spray"].values["value"] is False
+        assert runtime.entities["light"].values["onoff"] == 0
+
+        await adapter.async_send(
+            "sx1", "Appliance.Control.Spray", "SET",
+            {"spray": {"channel": 0, "mode": 1}})
+        assert simulator.mode == 1
+        assert runtime.entities["spray"].values["value"] is True
+    finally:
+        await adapter.async_stop()
+
+
+async def test_hp110_power_and_light_over_the_bus(hass):
+    bus = InMemoryMqttBus()
+    simulator = bus.add(HP110Simulator())
+    adapter = await start_adapter_with_bus(hass, bus, ["hp110"], ["hp1"])
+    runtime = adapter.runtimes["hp1"]
+    try:
+        assert await wait_for(lambda: runtime.entities["power"].values)
+        assert runtime.entities["power"].values["onoff"] == 0
+        assert runtime.entities["light"].values["brightness"] == 20
+
+        await adapter.async_send(
+            "hp1", "Appliance.Control.ToggleX", "SET",
+            {"channel": 0, "togglex": [{"channel": 0, "onoff": 1}]})
+        assert simulator.onoff == 1
+        assert runtime.entities["power"].values["onoff"] == 1
     finally:
         await adapter.async_stop()

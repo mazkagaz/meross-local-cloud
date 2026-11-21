@@ -28,7 +28,7 @@ Exigences → spécification → décision → code → tests.
 |---|---|
 | F2 identité/disponibilité | `functional/test_d5_cutover_functional.py` |
 | F3 MRS100 | `functional/test_mrs100_functional.py` |
-| F3 MSS310, MSP425, hub MS100/130/MTS100/MS200/MS400/GS559, garage, MTS200/300, MS600, purificateur, lumière, diffuseur | `functional/test_mqtt_bus_functional.py`, `functional/test_simulated_families_functional.py` |
+| F3 MSS310, MSP425, hub MS100/130/MTS100/MS200/MS400/GS559, garage, MST100, EM06, MTS200/300/MTS9, MS600, MAP100, MSXH0, HP110, lumière, diffuseur | `functional/test_mqtt_bus_functional.py`, `functional/test_simulated_families_functional.py` |
 | F4/F5 scheduler et ACK | `functional/test_scheduler_ack_functional.py` |
 | F7 hardening et réparations | `functional/test_d5_hardening_functional.py` |
 

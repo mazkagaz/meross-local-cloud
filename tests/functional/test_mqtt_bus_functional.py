@@ -58,9 +58,10 @@ async def test_hub_subdevices_over_the_bus(hass):
     adapter = await start_adapter_with_bus(hass, bus, ["msh300"], ["hub1"])
     runtime = adapter.runtimes["hub1"]
     try:
-        assert adapter.subdevices_matched == 6
+        assert adapter.subdevices_matched == 7
         assert set(runtime.subdevices) == {
-            "sub1", "sensor1", "valve1", "door1", "leak1", "smoke1"}
+            "sub1", "sensor1", "valve1", "door1", "leak1", "smoke1",
+            "mst1"}
         assert await wait_for(lambda: runtime.entities["online"].values)
 
         hub.push_all()
@@ -87,6 +88,21 @@ async def test_hub_subdevices_over_the_bus(hass):
             "smoke"].values["value"] is True
         assert runtime.subdevices["smoke1"].entities[
             "muted"].values["value"] is True
+        mst = runtime.subdevices["mst1"].entities
+        assert mst["watering"].values["onoff"] is False
+        assert mst["duration"].values["value"] == 1800
+        assert mst["water_flow"].values["value"] is False
+
+        await adapter.async_send("hub1", "Appliance.Control.Water", "SET", {
+            "control": [{"subId": "mst1", "channel": 0, "onoff": 1}]})
+        assert hub.water_onoff == 1
+        assert mst["watering"].values["onoff"] is True
+
+        await adapter.async_send(
+            "hub1", "Appliance.Config.DeviceCfg", "SET",
+            {"config": [{"subId": "mst1", "channel": 0,
+                         "mstCfg": {"dura": 600}}]})
+        assert hub.water_dura == 600
 
         await adapter.async_send("hub1", MTS_MODE, "SET", {
             "mode": [{"id": "valve1", "state": 0}]})

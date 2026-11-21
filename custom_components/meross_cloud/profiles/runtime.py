@@ -198,12 +198,14 @@ def _subdevice_document(payload: Dict[str, Any],
                         subdevice_id: Optional[str]) -> Optional[Dict[str, Any]]:
     if not subdevice_id:
         return None
-    if payload.get("id") == subdevice_id:
-        return payload
-    for value in payload.values():
-        if not isinstance(value, list):
-            continue
-        for item in value:
-            if isinstance(item, dict) and item.get("id") == subdevice_id:
-                return item
+    for key in ("id", "subId"):
+        if payload.get(key) == subdevice_id:
+            return payload
+    for key in ("id", "subId"):
+        for value in payload.values():
+            if not isinstance(value, list):
+                continue
+            for item in value:
+                if isinstance(item, dict) and item.get(key) == subdevice_id:
+                    return item
     return None

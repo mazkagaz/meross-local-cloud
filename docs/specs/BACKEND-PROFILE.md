@@ -19,6 +19,7 @@ du broker et les descriptors MQTT.
 - `devList` fournit l’UUID, le type, le sous-type et l’état en ligne.
 - Le descriptor MQTT fournit le type, le firmware, les abilities, la MAC, les
   subdevices et les canaux découverts.
+- Les payloads de sous-appareils sont routés par `id` ou par `subId` (MST).
 - Les entités `channel: $channels` sont clonées pour chaque canal exposé ; leur
   `state.select` choisit l’élément de liste (ou l’objet unique historique) dont
   la clé vaut le canal. Moteur 2.3, refusé dans les templates de sous-appareils.

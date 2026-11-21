@@ -24,6 +24,8 @@ SPRAY = "Appliance.Control.Diffuser.Spray"
 DIFFUSER_LIGHT = "Appliance.Control.Diffuser.Light"
 SENSOR_LATEST_X = "Appliance.Control.Sensor.LatestX"
 FILTER_NS = "Appliance.Control.FilterMaintenance"
+ELECTRICITY_X = "Appliance.Control.ElectricityX"
+SPRAY_CTL = "Appliance.Control.Spray"
 
 
 def compiled(name):
@@ -90,6 +92,19 @@ SIMPLE_CASES = {
                       "target_temperature": 20.0,
                       "min_temp": 5.0, "max_temp": 35.0}}),
     ],
+    "msxh0": [
+        (SPRAY_CTL, {"spray": {"channel": 0, "mode": 1}},
+         {"spray": {"value": True}}),
+        (LIGHT, {"channel": 0, "light": {"onoff": 1, "luminance": 50}},
+         {"light": {"onoff": 1, "brightness": 50}}),
+    ],
+    "hp110": [
+        (TOGGLE, {"channel": 0,
+                  "togglex": [{"channel": 0, "onoff": 1}]},
+         {"power": {"onoff": 1}}),
+        (LIGHT, {"channel": 0, "light": {"onoff": 1, "luminance": 20}},
+         {"light": {"onoff": 1, "brightness": 20}}),
+    ],
     "map100": [
         (FAN, {"fan": [{"channel": 0, "speed": 1, "maxSpeed": 1}]},
          {"fan": {"speed": 1, "max_speed": 1}}),
@@ -141,6 +156,7 @@ def test_hub_profile_golden_frames():
     runtime.add_subdevice("door1", templates["ms200"])
     runtime.add_subdevice("leak1", templates["ms400"])
     runtime.add_subdevice("smoke1", templates["gs559"])
+    runtime.add_subdevice("mst1", templates["mst"])
 
     assert runtime.dispatch("Appliance.Hub.Sensor.TempHum", "PUSH", {
         "tempHum": [{"id": "sub1", "latestTemperature": 215,
@@ -167,6 +183,15 @@ def test_hub_profile_golden_frames():
         "smokeAlarm": [{"id": "smoke1", "status": 170,
                         "interConn": 0}],
     }) == 4
+    assert runtime.dispatch("Appliance.Control.Water", "PUSH", {
+        "control": [{"subId": "mst1", "onoff": 1, "dura": 1800}],
+    }) == 1
+    assert runtime.dispatch("Appliance.Config.DeviceCfg", "PUSH", {
+        "config": [{"subId": "mst1", "mstCfg": {"dura": 1800}}],
+    }) == 1
+    assert runtime.dispatch("Appliance.Control.WaterEvent", "PUSH", {
+        "waterEvent": [{"subId": "mst1", "wflow": 2}],
+    }) == 1
 
     ms100 = runtime.subdevices["sub1"].entities
     assert ms100["temperature"].values["value"] == pytest.approx(21.5)
@@ -189,6 +214,11 @@ def test_hub_profile_golden_frames():
     assert smoke["smoke"].values["value"] is True
     assert smoke["muted"].values["value"] is True
     assert smoke["interconnect"].values["value"] == 1
+
+    mst = runtime.subdevices["mst1"].entities
+    assert mst["watering"].values["onoff"] is True
+    assert mst["duration"].values["value"] == 1800
+    assert mst["water_flow"].values["value"] is True
 
 
 def test_multisocket_profile_expands_and_selects_channels():
@@ -217,3 +247,21 @@ def test_garage_profile_accepts_a_single_object_state():
     assert runtime.dispatch("Appliance.GarageDoor.State", "PUSH", {
         "state": {"channel": 0, "open": 1}}) == 1
     assert runtime.entities["door"].values == {"open": 1}
+
+
+def test_em_profile_expands_sensors_per_channel():
+    profile = expand_channel_entities(compiled("em"), [1, 2])
+    runtime = DeviceRuntime("em1", profile)
+
+    assert runtime.dispatch(ELECTRICITY_X, "PUSH", {"electricityx": [
+        {"channel": 2, "power": 1200, "voltage": 230000,
+         "current": 5200, "mConsume": 45000, "factor": 0.98},
+        {"channel": 1, "power": 300, "voltage": 229000,
+         "current": 1300, "mConsume": 12000, "factor": 0.95},
+    ]}) == 10
+
+    assert runtime.entities["power_1"].values["value"] == 0.3
+    assert runtime.entities["voltage_2"].values["value"] == 230.0
+    assert runtime.entities["current_2"].values["value"] == 5.2
+    assert runtime.entities["consumption_2"].values["value"] == 45.0
+    assert runtime.entities["power_factor_1"].values["value"] == 0.95

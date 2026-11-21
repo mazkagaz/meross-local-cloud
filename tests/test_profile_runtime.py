@@ -623,3 +623,40 @@ def test_state_select_accepts_a_single_object_payload():
     assert device.dispatch("Appliance.GarageDoor.State", "PUSH", {
         "state": [{"channel": 0, "open": 0}]}) == 1
     assert device.entities["door"].values == {"open": 0}
+
+
+def test_subdevice_payload_is_routed_by_sub_id():
+    data = {
+        "schema_version": 2,
+        "profile": {"id": "test.hub-mst", "version": "1"},
+        "match": {"kind": "hub", "type": ["msh"]},
+        "payloads": {},
+        "entities": [],
+        "subdevices": [{
+            "match": {"type": ["mst100"]},
+            "payloads": {
+                "Appliance.Control.Water": {
+                    "methods": ["GETACK", "PUSH"],
+                    "fields": {},
+                },
+            },
+            "entities": [{
+                "key": "watering",
+                "platform": "switch",
+                "device": "subdevice",
+                "state": {
+                    "namespace": "Appliance.Control.Water",
+                    "fields": {"onoff": {"path": "onoff",
+                                         "on_values": [1]}},
+                },
+            }],
+        }],
+    }
+    compiled = compile_data(data)
+    device = DeviceRuntime("hub1", compiled)
+    device.add_subdevice("MST1", compiled.subdevices[0])
+
+    assert device.dispatch("Appliance.Control.Water", "PUSH", {
+        "control": [{"subId": "MST1", "onoff": 1, "dura": 1800}]}) == 1
+    assert device.subdevices["MST1"].entities[
+        "watering"].values["onoff"] is True

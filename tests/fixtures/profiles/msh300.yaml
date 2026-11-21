@@ -303,3 +303,89 @@ subdevices:
         state:
           namespace: Appliance.Hub.Sensor.Smoke
           fields: { value: interConn }
+
+  - name: mst
+    match:
+      type: [mst100, mst200]
+    payloads:
+      Appliance.Control.Water:
+        methods: [GET, SET, GETACK, SETACK, PUSH]
+        fields:
+          control:
+            type: array
+            items:
+              type: object
+              fields:
+                subId: { type: string }
+                channel: { type: integer }
+                onoff: { type: integer, values: { 1: on, 2: off } }
+                dura: { type: integer }
+                lmTime: { type: integer }
+      Appliance.Control.WaterEvent:
+        methods: [GETACK, PUSH]
+        fields:
+          waterEvent:
+            type: array
+            items:
+              type: object
+              fields:
+                subId: { type: string }
+                wflow: { type: integer }
+      Appliance.Config.DeviceCfg:
+        methods: [GET, SET, GETACK, SETACK]
+        fields:
+          config:
+            type: array
+            items:
+              type: object
+              fields:
+                subId: { type: string }
+                channel: { type: integer }
+                mstCfg:
+                  type: object
+                  fields:
+                    dura: { type: integer }
+                    wfm: { type: integer }
+    entities:
+      - key: watering
+        platform: switch
+        name: "Watering"
+        state:
+          namespace: Appliance.Control.Water
+          fields:
+            onoff: { path: onoff, on_values: [1] }
+        commands:
+          turn_on:
+            namespace: Appliance.Control.Water
+            payload:
+              { control: [{ subId: $id, channel: 0, onoff: 1 }] }
+          turn_off:
+            namespace: Appliance.Control.Water
+            payload:
+              { control: [{ subId: $id, channel: 0, onoff: 2 }] }
+
+      - key: duration
+        platform: number
+        name: "Watering duration"
+        unit: s
+        min_value: 1
+        max_value: 86400
+        step: 1
+        state:
+          namespace: Appliance.Config.DeviceCfg
+          fields: { value: mstCfg.dura }
+        commands:
+          set_value:
+            namespace: Appliance.Config.DeviceCfg
+            payload:
+              { config: [{ subId: $id, channel: 0, mstCfg: { dura: $value } }] }
+
+      - key: water_flow
+        platform: binary_sensor
+        name: "Water flow"
+        device_class: problem
+        entity_category: diagnostic
+        state:
+          namespace: Appliance.Control.WaterEvent
+          fields:
+            value: { path: wflow, on_values: [2] }

@@ -1,0 +1,72 @@
+schema_version: 2
+profile:
+  id: meross.msxh0
+  version: "2026.11.0"
+  requires_engine: ">=2.2"
+  description: "Diffuseur msxh0 : spray et éclairage."
+match:
+  type: [msxh0]
+  abilities:
+    all: [Appliance.Control.Spray, Appliance.Control.Light]
+payloads:
+  Appliance.Control.Spray:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      spray:
+        type: object
+        fields:
+          channel: { type: integer }
+          mode: { type: integer }
+          lmTime: { type: integer }
+  Appliance.Control.Light:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      light:
+        type: object
+        fields:
+          channel: { type: integer }
+          onoff: { type: integer, values: { 0: off, 1: on } }
+          luminance: { type: integer, unit: "%" }
+          rgb: { type: integer }
+          capacity: { type: integer }
+entities:
+  - key: spray
+    platform: switch
+    channel: 0
+    name: "Spray"
+    state:
+      namespace: Appliance.Control.Spray
+      fields:
+        value: { path: spray.mode, on_values: [1, 2] }
+    commands:
+      turn_on:
+        namespace: Appliance.Control.Spray
+        payload: { spray: { channel: $channel, mode: 1 } }
+      turn_off:
+        namespace: Appliance.Control.Spray
+        payload: { spray: { channel: $channel, mode: 0 } }
+
+  - key: light
+    platform: light
+    channel: 0
+    name: "Light"
+    state:
+      namespace: Appliance.Control.Light
+      channel: $channel
+      fields:
+        onoff: light.onoff
+        brightness: light.luminance
+        rgb: light.rgb
+    commands:
+      turn_on:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { onoff: 1 } }
+      turn_off:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { onoff: 0 } }
+      set_brightness:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { luminance: $value } }
+      set_rgb:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { rgb: $value } }

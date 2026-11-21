@@ -279,6 +279,9 @@ class HubSimulator:
         self.door_status = 1
         self.water_leak = 0
         self.smoke_status = 170
+        self.water_onoff = 2
+        self.water_dura = 1800
+        self.wflow = 1
 
     async def async_connect(self):
         return None
@@ -301,6 +304,7 @@ class HubSimulator:
                 {"id": "door1", "doorWindow": {}},
                 {"id": "leak1", "waterLeak": {}},
                 {"id": "smoke1", "smokeAlarm": {}},
+                {"id": "mst1", "mst": {}},
             ]}}},
             "ability": {
                 "Appliance.System.Online": {},
@@ -312,6 +316,9 @@ class HubSimulator:
                 "Appliance.Hub.Sensor.DoorWindow": {},
                 "Appliance.Hub.Sensor.WaterLeak": {},
                 "Appliance.Hub.Sensor.Smoke": {},
+                "Appliance.Control.Water": {},
+                "Appliance.Control.WaterEvent": {},
+                "Appliance.Config.DeviceCfg": {},
             },
         }
         return DeviceDescriptor(payload)
@@ -349,6 +356,18 @@ class HubSimulator:
             return {"smokeAlarm": [
                 {"id": "smoke1", "status": self.smoke_status,
                  "interConn": 0}]}
+        if namespace == "Appliance.Control.Water":
+            return {"control": [{"subId": "mst1",
+                                 "onoff": self.water_onoff,
+                                 "dura": self.water_dura,
+                                 "lmTime": 0}]}
+        if namespace == "Appliance.Config.DeviceCfg":
+            return {"config": [{"subId": "mst1", "channel": 0,
+                                "mstCfg": {"dura": self.water_dura,
+                                           "wfm": 1}}]}
+        if namespace == "Appliance.Control.WaterEvent":
+            return {"waterEvent": [{"subId": "mst1",
+                                    "wflow": self.wflow}]}
         if namespace == "Appliance.Hub.Mts100.Mode":
             return {"mode": [{"id": "valve1", "state": self.valve["mode"]}]}
         if namespace == "Appliance.Hub.Mts100.Temperature":
@@ -357,7 +376,17 @@ class HubSimulator:
         return {}
 
     def _apply_set(self, namespace, payload):
-        if namespace == "Appliance.Hub.Mts100.Mode":
+        if namespace == "Appliance.Control.Water":
+            for entry in payload.get("control") or []:
+                if entry.get("subId") == "mst1" and "onoff" in entry:
+                    self.water_onoff = entry["onoff"]
+        elif namespace == "Appliance.Config.DeviceCfg":
+            for entry in payload.get("config") or []:
+                if entry.get("subId") == "mst1":
+                    cfg = entry.get("mstCfg") or {}
+                    if "dura" in cfg:
+                        self.water_dura = cfg["dura"]
+        elif namespace == "Appliance.Hub.Mts100.Mode":
             for entry in payload.get("mode") or []:
                 if entry.get("id") == "valve1":
                     self.valve["mode"] = entry.get("state", self.valve["mode"])
@@ -400,6 +429,9 @@ class HubSimulator:
         self.emit("Appliance.Hub.Sensor.DoorWindow")
         self.emit("Appliance.Hub.Sensor.WaterLeak")
         self.emit("Appliance.Hub.Sensor.Smoke")
+        self.emit("Appliance.Control.Water")
+        self.emit("Appliance.Config.DeviceCfg")
+        self.emit("Appliance.Control.WaterEvent")
 
 
 class MTS200Simulator:
@@ -818,5 +850,215 @@ class Map100Simulator:
     def emit(self, method="PUSH"):
         if self.bus is not None:
             for namespace in (self.FAN, self.FILTER):
+                self.bus.publish(self.uuid, namespace,
+                                 self._body(namespace), method)
+
+
+class EMSimulator:
+    uuid = "em1"
+    connected = True
+    NS = "Appliance.Control.ElectricityX"
+
+    def __init__(self, uuid="em1"):
+        self.uuid = uuid
+        self.bus = None
+        self.requests = []
+        self.multiples = []
+        self.channels = {
+            1: {"power": 300, "voltage": 229000, "current": 1300,
+                "mConsume": 12000, "factor": 0.95},
+            2: {"power": 1200, "voltage": 230000, "current": 5200,
+                "mConsume": 45000, "factor": 0.98},
+        }
+
+    async def async_connect(self):
+        return None
+
+    async def async_stop(self):
+        return None
+
+    async def async_describe(self, device_uuid):
+        return DeviceDescriptor({
+            "all": {"system": {
+                "hardware": {"type": "em06", "subType": "eu",
+                             "version": "2.0.0", "uuid": self.uuid,
+                             "macAddress": "AA:BB:CC:DD:EE:0A"},
+                "firmware": {"version": "2.3.8"},
+                "online": {"status": 1},
+            }, "digest": {"electricityx": [
+                {"channel": channel} for channel in self.channels]}},
+            "ability": {self.NS: {}},
+        })
+
+    def _body(self):
+        return {"electricityx": [
+            {"channel": channel, **values}
+            for channel, values in self.channels.items()]}
+
+    async def async_request(self, uuid, namespace, method, payload):
+        self.requests.append((uuid, namespace, method, payload))
+        return SimpleNamespace(
+            uuid=uuid, namespace=namespace,
+            method="SETACK" if method == "SET" else "GETACK",
+            payload=self._body())
+
+    async def async_request_multiple(self, uuid, requests):
+        requests = list(requests)
+        self.multiples.append(requests)
+        return SimpleNamespace(
+            uuid=uuid, namespace="Appliance.Control.Multiple",
+            method="SETACK",
+            payload={"multiple": [{
+                "header": {"namespace": namespace, "method": "GETACK"},
+                "payload": self._body(),
+            } for namespace, _, _ in requests]})
+
+    def emit(self, method="PUSH"):
+        if self.bus is not None:
+            self.bus.publish(self.uuid, self.NS, self._body(), method)
+
+
+class Msxh0Simulator:
+    uuid = "sx1"
+    connected = True
+    SPRAY = "Appliance.Control.Spray"
+    LIGHT = "Appliance.Control.Light"
+
+    def __init__(self, uuid="sx1"):
+        self.uuid = uuid
+        self.bus = None
+        self.requests = []
+        self.multiples = []
+        self.mode = 0
+        self.light = {"onoff": 0, "luminance": 100, "rgb": 0x102030}
+
+    async def async_connect(self):
+        return None
+
+    async def async_stop(self):
+        return None
+
+    async def async_describe(self, device_uuid):
+        return DeviceDescriptor({
+            "all": {"system": {
+                "hardware": {"type": "msxh0", "subType": "us",
+                             "version": "3.0.0", "uuid": self.uuid,
+                             "macAddress": "AA:BB:CC:DD:EE:0B"},
+                "firmware": {"version": "3.1.5"},
+                "online": {"status": 1},
+            }, "digest": {"spray": {"channel": 0, "mode": self.mode},
+                          "light": {"channel": 0, **self.light}}},
+            "ability": {self.SPRAY: {}, self.LIGHT: {}},
+        })
+
+    def _body(self, namespace):
+        if namespace == self.SPRAY:
+            return {"spray": {"channel": 0, "mode": self.mode}}
+        if namespace == self.LIGHT:
+            return {"channel": 0, "light": dict(self.light)}
+        return {}
+
+    async def async_request(self, uuid, namespace, method, payload):
+        self.requests.append((uuid, namespace, method, payload))
+        if method == "SET" and namespace == self.SPRAY:
+            self.mode = (payload.get("spray") or {}).get("mode", self.mode)
+        elif method == "SET" and namespace == self.LIGHT:
+            for key in ("onoff", "luminance", "rgb"):
+                if key in payload.get("light", {}):
+                    self.light[key] = payload["light"][key]
+        return SimpleNamespace(
+            uuid=uuid, namespace=namespace,
+            method="SETACK" if method == "SET" else "GETACK",
+            payload=self._body(namespace))
+
+    async def async_request_multiple(self, uuid, requests):
+        requests = list(requests)
+        self.multiples.append(requests)
+        return SimpleNamespace(
+            uuid=uuid, namespace="Appliance.Control.Multiple",
+            method="SETACK",
+            payload={"multiple": [{
+                "header": {"namespace": namespace, "method": "GETACK"},
+                "payload": self._body(namespace),
+            } for namespace, _, _ in requests]})
+
+    def emit(self, method="PUSH"):
+        if self.bus is not None:
+            for namespace in (self.SPRAY, self.LIGHT):
+                self.bus.publish(self.uuid, namespace,
+                                 self._body(namespace), method)
+
+
+class HP110Simulator:
+    uuid = "hp1"
+    connected = True
+    TOGGLE = "Appliance.Control.ToggleX"
+    LIGHT = "Appliance.Control.Light"
+
+    def __init__(self, uuid="hp1"):
+        self.uuid = uuid
+        self.bus = None
+        self.requests = []
+        self.multiples = []
+        self.onoff = 0
+        self.light = {"onoff": 0, "luminance": 20, "rgb": 0x050207}
+
+    async def async_connect(self):
+        return None
+
+    async def async_stop(self):
+        return None
+
+    async def async_describe(self, device_uuid):
+        return DeviceDescriptor({
+            "all": {"system": {
+                "hardware": {"type": "hp110ahk", "subType": "un",
+                             "version": "4.0.0", "uuid": self.uuid,
+                             "macAddress": "AA:BB:CC:DD:EE:0C"},
+                "firmware": {"version": "4.1.12"},
+                "online": {"status": 1},
+            }, "digest": {"togglex": [{"channel": 0,
+                                       "onoff": self.onoff}],
+                          "light": {"channel": 0, **self.light}}},
+            "ability": {self.TOGGLE: {}, self.LIGHT: {}},
+        })
+
+    def _body(self, namespace):
+        if namespace == self.TOGGLE:
+            return {"channel": 0,
+                    "togglex": [{"channel": 0, "onoff": self.onoff}]}
+        if namespace == self.LIGHT:
+            return {"channel": 0, "light": dict(self.light)}
+        return {}
+
+    async def async_request(self, uuid, namespace, method, payload):
+        self.requests.append((uuid, namespace, method, payload))
+        if method == "SET" and namespace == self.TOGGLE:
+            entries = payload.get("togglex") or []
+            if entries:
+                self.onoff = entries[0].get("onoff", self.onoff)
+        elif method == "SET" and namespace == self.LIGHT:
+            for key in ("onoff", "luminance", "rgb"):
+                if key in payload.get("light", {}):
+                    self.light[key] = payload["light"][key]
+        return SimpleNamespace(
+            uuid=uuid, namespace=namespace,
+            method="SETACK" if method == "SET" else "GETACK",
+            payload=self._body(namespace))
+
+    async def async_request_multiple(self, uuid, requests):
+        requests = list(requests)
+        self.multiples.append(requests)
+        return SimpleNamespace(
+            uuid=uuid, namespace="Appliance.Control.Multiple",
+            method="SETACK",
+            payload={"multiple": [{
+                "header": {"namespace": namespace, "method": "GETACK"},
+                "payload": self._body(namespace),
+            } for namespace, _, _ in requests]})
+
+    def emit(self, method="PUSH"):
+        if self.bus is not None:
+            for namespace in (self.TOGGLE, self.LIGHT):
                 self.bus.publish(self.uuid, namespace,
                                  self._body(namespace), method)

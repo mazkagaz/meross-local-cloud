@@ -1,0 +1,88 @@
+schema_version: 2
+profile:
+  id: meross.em
+  version: "2026.11.0"
+  requires_engine: ">=2.3"
+  description: "Compteur d'énergie em/em06 : mesures par canal."
+match:
+  type: [em, em06]
+  abilities:
+    all: [Appliance.Control.ElectricityX]
+payloads:
+  Appliance.Control.ElectricityX:
+    methods: [GET, GETACK, PUSH]
+    fields:
+      electricityx:
+        type: array
+        items:
+          type: object
+          fields:
+            channel: { type: integer }
+            power: { type: integer, unit: W }
+            current: { type: integer, unit: A }
+            voltage: { type: integer, unit: V }
+            mConsume: { type: integer, unit: "kWh" }
+            factor: { type: number }
+entities:
+  - key: power
+    platform: sensor
+    channel: $channels
+    name: "Power $channel_number"
+    device_class: power
+    unit: W
+    state:
+      namespace: Appliance.Control.ElectricityX
+      channel: $channel
+      select: { path: electricityx, key: channel }
+      fields:
+        value: { path: power, scale: 0.001 }
+
+  - key: voltage
+    platform: sensor
+    channel: $channels
+    name: "Voltage $channel_number"
+    device_class: voltage
+    unit: V
+    state:
+      namespace: Appliance.Control.ElectricityX
+      channel: $channel
+      select: { path: electricityx, key: channel }
+      fields:
+        value: { path: voltage, scale: 0.001 }
+
+  - key: current
+    platform: sensor
+    channel: $channels
+    name: "Current $channel_number"
+    device_class: current
+    unit: A
+    state:
+      namespace: Appliance.Control.ElectricityX
+      channel: $channel
+      select: { path: electricityx, key: channel }
+      fields:
+        value: { path: current, scale: 0.001 }
+
+  - key: consumption
+    platform: sensor
+    channel: $channels
+    name: "Energy $channel_number"
+    device_class: energy
+    unit: kWh
+    state:
+      namespace: Appliance.Control.ElectricityX
+      channel: $channel
+      select: { path: electricityx, key: channel }
+      fields:
+        value: { path: mConsume, scale: 0.001 }
+
+  - key: power_factor
+    platform: sensor
+    channel: $channels
+    name: "Power factor $channel_number"
+    entity_category: diagnostic
+    state:
+      namespace: Appliance.Control.ElectricityX
+      channel: $channel
+      select: { path: electricityx, key: channel }
+      fields: { value: factor }
