@@ -1,6 +1,6 @@
 # Meross Local Cloud — broker local (fork)
 
-![Meross Local Cloud](custom_components/meross_cloud/brand/logo.png)
+![Meross Local Cloud](branding/meross-local-cloud-banner.jpeg)
 
 Intégration Home Assistant non officielle pour piloter des appareils Meross
 appairés à un **broker local**, sans cloud Meross au quotidien. Seul le mode

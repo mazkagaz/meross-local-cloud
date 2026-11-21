@@ -1,6 +1,6 @@
 # Meross Local Cloud — intégration Home Assistant pour broker local
 
-![Meross Local Cloud](custom_components/meross_cloud/brand/logo.png)
+![Meross Local Cloud](branding/meross-local-cloud-banner.jpeg)
 
 Intégration **non officielle** pour Home Assistant, distribuée via HACS. Elle
 pilote les appareils Meross appairés à un broker local, sans passer par le cloud
