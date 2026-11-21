@@ -6,14 +6,14 @@
     "error": {
       "invalid_credentials": "Nome utente locale o password non validi.",
       "connection_error": "Impossibile connettersi al broker locale.",
-      "api_invalid_ssl_code": "Non è stato possibile validare il certificato HTTPS. Aggiorna il broker (1.0.0 o successivo) affinché serva una CA valida.",
+      "api_invalid_ssl_code": "Non è stato possibile validare il certificato HTTPS. Aggiorna il broker (1.2.1 o successivo) affinché serva una CA valida.",
       "unknown_error": "Si è verificato un errore inatteso",
       "api_connection_refused": "Impossibile connettersi al server API. Controlla l'indirizzo del server.",
       "client_connection_error": "Si è verificato un errore durante la connessione alle API HTTP",
       "missing_credentials": "Per favore inserire le credenziali di accesso mancanti",
       "mdns_lookup_failed": "Broker non rilevato.",
       "missing_mfa": "Il tuo account richiede un codice MFA per procedere. Inseriscilo.",
-      "ca_unavailable": "Impossibile ottenere un certificato CA valido dal broker. Aggiorna il broker (1.0.0 o successivo).",
+      "ca_unavailable": "Impossibile ottenere un certificato CA valido dal broker. Aggiorna il broker (1.2.1 o successivo).",
       "missing_broker_host": "Inserisci l'indirizzo del Meross Local Broker.",
       "invalid_port": "Le porte devono essere numeri tra 1 e 65535.",
       "port_reserved": "La porta 2003 è riservata."

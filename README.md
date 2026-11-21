@@ -13,7 +13,7 @@ les chemins de payload, les entités et les commandes, et le broker publie le
 catalogue signé. Ajouter une famille d'appareils ne demande donc plus de
 release de l'intégration, seulement un profil côté broker.
 
-Familles actuellement décrites : MRS100, MSS310, MSH300 avec subdevices
+Familles actuellement décrites : MRS100, MSS310, MSH300 avec sous-appareils
 MS100/MS130/MTS100, MTS200, lumières MSL, prises MSS et diffuseur.
 
 - entités `number` pour les durées d'ouverture/fermeture du MRS100 ;
@@ -52,7 +52,7 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 ## Canal de test (bêta)
 
 Les versions stables sont publiées depuis `main`. Les versions de test sont
-des **pre-releases** `X.Y.Z-beta.N` issues de la branche `dev` : pour les
+des **préversions** `X.Y.Z-beta.N` issues de la branche `dev` : pour les
 voir et les installer dans HACS, activer **« Afficher les versions bêta »**.
 Sans cette option, seules les versions stables sont proposées. Procédure
 complète : [docs/operations/RELEASING.md](docs/operations/RELEASING.md).
@@ -65,7 +65,7 @@ La documentation technique est indexée dans [docs/README.md](docs/README.md).
    N'utilisez pas votre compte Meross officiel : ce compte est indépendant.
 3. Le MRS100 a été appairé avec **Meross Local Pairer**.
 4. **HACS** est installé dans Home Assistant.
-5. Home Assistant 2025.6 ou plus récent (testé avec 2026.11).
+5. Home Assistant 2025.6 ou plus récent (testé avec 2026.2).
 
 ## Installation avec HACS
 
@@ -111,10 +111,10 @@ Au-dessus des champs, un exemple générique est affiché :
 4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
 
 Le broker doit être en **1.2.1 ou plus récent** pour publier le catalogue de
-profils et les profils MRS100 corrigés. Sa CA locale est valide : elle est téléchargée depuis `/ca.crt`,
-vérifiée et épinglée par l'intégration, puis utilisée pour HTTP et MQTT
-(vérification du nom d'hôte incluse lorsque le certificat couvre l'adresse
-configurée).
+profils et les profils MRS100 corrigés. Sa CA locale est valide : elle est
+téléchargée depuis `/ca.crt`, vérifiée et épinglée par l'intégration, puis
+utilisée pour HTTP et MQTT (vérification du nom d'hôte incluse lorsque le
+certificat couvre l'adresse configurée).
 
 Le HTTP non chiffré (port 2003) et les options « ignorer la validation du
 certificat » ont été **supprimés** : toute connexion passe par TLS avec une CA
@@ -128,7 +128,7 @@ officiel** ; l'intégration ne contacte que le broker local.
 ## Oubli d'un appareil
 
 - Quand le broker publie `Appliance.Control.Unbind`, l'appareil, ses
-  subdevices et ses entités sont supprimés de Home Assistant immédiatement.
+  sous-appareils et ses entités sont supprimés de Home Assistant immédiatement.
 - Un appareil absent de tous les polls HTTP réussis pendant **48 heures**
   déclenche une réparation « Appareil plus appairé ». La confirmer supprime
   l'appareil et ses entités ; un retour de l'appareil annule la réparation.
@@ -175,16 +175,15 @@ collés dans une issue sans masquage manuel.
 | `number.*close*` | durée de fermeture (10 à 120 secondes) |
 | `button.*start_calibration*` | démarrer la calibration |
 | `button.*stop_calibration*` | interrompre la calibration |
-| `sensor.*calibration_status*` | `in_progress`, `success`, `timeout`, `motor_blocked`, `failed_N` |
+| `sensor.*calibration_status*` | `success`, `timeout`, `motor_blocked`, `failed_N` |
 
 ## Utilisation
 
 - **Durées** : modifier les entités `number`. L'add-on persiste les valeurs et
   les réapplique après une reconnexion du volet.
-- **Calibration** : lancer **Start calibration**. Le capteur passe à
-  `in_progress`, puis au résultat. Le statut est interrogé après 90 secondes,
-  puis toutes les 15 secondes pendant deux minutes, et toutes les 5 minutes en
-  veille.
+- **Calibration** : lancer **Start calibration**. Le scheduler rafraîchit
+  `Adjust` après la commande ; le capteur affiche ensuite le statut renvoyé par
+  l’appareil (`success`, `timeout`, `motor_blocked`, `failed_N`).
 - **Stop calibration** : interrompt le mouvement en cours.
 
 ## Mise à jour
@@ -203,7 +202,7 @@ Home Assistant. Une nouvelle release GitHub est publiée pour chaque version.
 | Erreur MQTT | adresse `…:2001` ; broker 1.2.1 requis |
 | Entités absentes | vérifier la réparation « appareil sans profil » et le catalogue broker |
 | Appareil sans profil | ajouter ou corriger le profil dans le catalogue ; reload automatique à la nouvelle révision |
-| Entités fantômes après un oubli | Unbind en 60 s, réparation 48 h, ou suppression manuelle de l'appareil |
+| Entités fantômes après un oubli | Unbind (≤ 60 s), réparation 48 h, ou suppression manuelle de l'appareil |
 | Statut de calibration bloqué | vérifier les logs de l'add-on et le capteur `Calibration status` |
 
 ## Origine, licence et historique

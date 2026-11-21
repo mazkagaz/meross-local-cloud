@@ -10,6 +10,8 @@ Version de **test**. Requiert le broker **1.2.1**.
   rafale à la fois ; annulation au reload/stop.
 - Un échec HTTP n’interrompt pas les tentatives suivantes.
 - Documentation architecture/specs/traçabilité mise à jour.
+- Corrections des textes utilisateur : versions broker 1.2.1, comportement réel
+  de la calibration, Unbind, versions Home Assistant et cohérence des libellés.
 
 ## 3.0.0-beta.2 — stop volet immédiat
 

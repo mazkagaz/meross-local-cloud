@@ -23,7 +23,7 @@ local est proposé : aucun identifiant du cloud officiel n'est utilisé.
      obligatoirement un email).
 
 N'utilisez pas les identifiants du cloud Meross officiel : l'intégration ne
-contacte que le broker local. Le broker **1.2.0** et TLS sont obligatoires.
+contacte que le broker local. Le broker **1.2.1** et TLS sont obligatoires.
 
 ## Apports du fork
 
