@@ -8,7 +8,7 @@
 | Contrat | schémas et fixtures broker ↔ intégration | `tests/test_contracts.py`, `tests/contracts/` |
 | Intégration HA | config flow, coordinator, diagnostics, réparations | `tests/test_*.py` |
 | Fonctionnel H2 | bus MQTT en mémoire + simulateurs | `tests/functional/` |
-| Matériel | MRS100 et appareils réels | `docs/testing/D5-VALIDATION.md` |
+| Matériel | toutes les familles du catalogue (MRS100 de référence, autres via testeurs) | `docs/testing/D5-VALIDATION.md` |
 
 ## Exécution
 

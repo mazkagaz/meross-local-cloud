@@ -1,3 +1,19 @@
+## 3.1.0 — catalogue D2b complet
+
+Version stable. Requiert le broker **1.2.2 ou plus récent** (catalogue complet :
+**1.3.0**) et le pairer **2.0.9 ou plus récent**.
+
+- Moteur de profils 2.4 : entités `channel: $channels` clonées par canal
+  découvert, sélection d’état par clé (`state.select`, liste ou objet),
+  mapping booléen `on_values`, routage des sous-appareils par `id` ou `subId`
+  et quirk `garage_door`.
+- Catalogue enrichi : multiprises MSS425/MSP844, capteurs MS200/MS400/MS600,
+  GS559, portes de garage MSG/RSG, purificateur MAP100, sprinkler MST100,
+  compteurs EM/EM06, diffuseur MSXH0, HP110 et thermostat MTS9.
+- Séparation MTS200/MTS300 et correction de l’échelle MTS300 (centièmes).
+- Nouvelles trames dorées, tests fonctionnels par famille et matrice de
+  traçabilité mise à jour.
+
 ## 3.0.0 — backend profils obligatoire
 
 Version stable. Requiert le broker **1.2.2 ou plus récent** et le pairer

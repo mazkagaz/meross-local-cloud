@@ -14,7 +14,7 @@ le workflow de release refuse un tag dont la version diffère.
 
 | Canal | Version | Tag | Release GitHub |
 | ----- | ------- | --- | -------------- |
-| stable | `3.0.0` | `v3.0.0` | normale |
+| stable | `3.1.0` | `v3.1.0` | normale |
 | test | `3.0.0-beta.4` | `v3.0.0-beta.4` | **pre-release** |
 
 ## Publier une version de test
@@ -57,6 +57,7 @@ présente dans le dépôt suivi est proposée aux utilisateurs. Les releases
 stables du broker se font uniquement depuis `main` ; sa CI teste `main` et
 `dev`.
 
-L’intégration 3.0 exige un broker **1.2.2** ou plus récent (catalogue signé,
-endpoints profils, routage ACK et profils MRS100 corrigés). Avant de publier
-une version, vérifier que le broker installé expose bien ces endpoints.
+L’intégration 3.1 exige un broker **1.2.2** ou plus récent (catalogue signé,
+endpoints profils, routage ACK) ; **1.3.0** fournit le catalogue complet. Avant
+de publier une version, vérifier que le broker installé expose bien ces
+endpoints.

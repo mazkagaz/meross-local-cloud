@@ -1,12 +1,12 @@
-# Validation de la version 3.0.0
+# Validation de la version 3.1.0
 
 Cette checklist valide le backend profils obligatoire (D5) sur une installation
-réelle, avec la version stable `3.0.0`.
+réelle, avec la version stable `3.1.0`.
 
 ## Prérequis
 
 - Sauvegarde complète Home Assistant (Paramètres → Système → Sauvegardes).
-- Broker **1.2.2** installé et démarré.
+- Broker **1.3.0** installé et démarré.
 - Les 6 appareils de production appairés et en ligne.
 - Accès aux diagnostics de l'intégration et aux journaux Home Assistant.
 
@@ -16,12 +16,12 @@ d'abord l'état publié du catalogue.
 ## Installation
 
 1. HACS → Intégrations → Meross Local Cloud → installer la version
-   **3.0.0**.
+   **3.1.0**.
 2. Redémarrer Home Assistant.
 3. Paramètres → Appareils et services → Meross Local Cloud : vérifier que
    l'entrée existante est chargée sans reconfiguration.
 4. Télécharger les diagnostics et vérifier :
-   - `version.integration == 3.0.0` ;
+   - `version.integration == 3.1.0` ;
    - `profile_backend.state == connected` ;
    - `catalog_signature == valid` ;
    - `devices_matched` égal au nombre d'appareils attendus ;
@@ -45,9 +45,14 @@ indisponibilité et retour.
 | Lumières MSL | on/off, luminosité, RGB | ☐ |
 | Diffuseur | spray on/off ou mode, lumière | ☐ |
 
-Notes MRS100 : le catalogue 1.2.2 décrit les trames réelles. Si une valeur ou
+Notes MRS100 : le catalogue 1.3.0 décrit les trames réelles. Si une valeur ou
 un statut ne remonte pas, le noter ; le tuning fin se fait par overrides dans
 `/data/device_profiles`.
+
+Les autres familles du catalogue (multiprises, capteurs, garage, purificateur,
+MST, compteurs, MSXH0, HP110, MTS9) sont validées par des testeurs sur
+matériel réel : ouvrir une issue avec le modèle, le firmware et les fonctions
+observées.
 
 ## Cas dégradés
 
@@ -89,4 +94,4 @@ Conserver les diagnostics et les journaux de la bêta pour l'analyse.
 - [ ] Aucun doublon d'entité ou d'appareil.
 - [ ] Automatisations et tableaux de bord inchangés.
 - [ ] Aucun cas dégradé bloquant.
-- [ ] Décision : conserver **3.0.0**, corriger, ou revenir en arrière.
+- [ ] Décision : conserver **3.1.0**, corriger, ou revenir en arrière.

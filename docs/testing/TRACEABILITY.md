@@ -36,7 +36,7 @@ Exigences → spécification → décision → code → tests.
 
 | Élément | Validation |
 |---|---|
-| MRS100 réel, calibration et durées | checklist `D5-VALIDATION.md` |
+| Familles réelles (MRS100 de référence, autres familles via testeurs bénévoles) | checklist `D5-VALIDATION.md` + issues GitHub |
 | Automatisations historiques | vérification manuelle après installation |
 | Rollback HACS vers 2.4.6 | procédure manuelle |
 | Familles non couvertes par le catalogue | réparation « appareil sans profil » |

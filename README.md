@@ -13,16 +13,30 @@ les chemins de payload, les entités et les commandes, et le broker publie le
 catalogue signé. Ajouter une famille d'appareils ne demande donc plus de
 release de l'intégration, seulement un profil côté broker.
 
-Familles actuellement décrites : MRS100, MSS310, MSH300 avec sous-appareils
-MS100/MS130/MTS100, MTS200, lumières MSL, prises MSS et diffuseur.
+Familles actuellement décrites : MRS100, MSS310, multiprises MSS425/MSP844,
+MSH300 avec sous-appareils MS100/MS130/MTS100/MS200/MS400/GS559/MST,
+MTS200/MTS300/MTS9, MS600, lumières MSL, prises MSS, variateur MSS5,
+diffuseurs MOD/MSXH0, purificateur MAP100, compteurs EM/EM06, garages MSG/RSG
+et HP110.
 
-- entités `number` pour les durées d'ouverture/fermeture du MRS100 ;
-- boutons **Start calibration** / **Stop calibration** ;
-- capteur **Calibration status** ;
+- pour le MRS100 : entités `number` pour les durées d'ouverture/fermeture,
+  boutons **Start calibration** / **Stop calibration** et capteur
+  **Calibration status** ;
 - suppression fiable des appareils oubliés (Unbind), réparation des appareils
   absents depuis 48 h et réparation « appareil sans profil ».
 
-**Version stable 3.0.0**, compatible avec le broker **1.2.2** et le pairer
+## Appareils et testeurs recherchés
+
+Le **MRS100** est l'appareil de référence du montage. Les autres familles du
+catalogue (multiprises, capteurs, GS559, garage, purificateur, MST, compteurs
+d'énergie, MSXH0, HP110, MTS9, etc.) sont décrites à partir du protocole et de
+traces, mais **ont besoin de testeurs sur matériel réel**. Ouvrez une
+[issue](https://github.com/mazkagaz/meross-local-cloud/issues) en précisant le
+modèle, le firmware et les fonctions qui marchent ou non : c'est ce qui permet
+de valider chaque profil. Le MRS100 n'est pas un prérequis : toute famille du
+catalogue peut être testée.
+
+**Version stable 3.1.0**, compatible avec le broker **1.3.0** et le pairer
 **2.0.9**.
 
 ## Les trois briques du montage
@@ -44,8 +58,8 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 
 | Brique | Version minimale | Remarques |
 |---|---|---|
-| Meross Local Cloud | 3.0.0 | cette intégration, catalogue de profils |
-| Meross Local Broker | 1.2.2 | routage ACK, profils MRS100, CA valide, HTTPS |
+| Meross Local Cloud | 3.1.0 | cette intégration, moteur profils 2.4 |
+| Meross Local Broker | 1.3.0 | catalogue complet, routage ACK, CA valide, HTTPS |
 | Meross Local Pairer | 2.0.9 | HTTPS 2004 uniquement |
 | Home Assistant | 2025.6 | testé avec 2026.2 |
 
@@ -63,7 +77,8 @@ La documentation technique est indexée dans [docs/README.md](docs/README.md).
 1. L'add-on **Meross Local Broker** est installé et démarré.
 2. Un **compte local** a été créé dans l'add-on (login et mot de passe).
    N'utilisez pas votre compte Meross officiel : ce compte est indépendant.
-3. Le MRS100 a été appairé avec **Meross Local Pairer**.
+3. Au moins un appareil Meross (MRS100 ou autre famille du catalogue) a
+   été appairé avec **Meross Local Pairer**.
 4. **HACS** est installé dans Home Assistant.
 5. Home Assistant 2025.6 ou plus récent (testé avec 2026.2).
 
@@ -110,8 +125,9 @@ Au-dessus des champs, un exemple générique est affiché :
 
 4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
 
-Le broker doit être en **1.2.2 ou plus récent** pour le routage ACK, le
-catalogue de profils et les profils MRS100 corrigés. Sa CA locale est valide :
+Le broker doit être en **1.2.2 ou plus récent** pour le routage ACK et le
+catalogue de profils ; **1.3.0** est requis pour les nouvelles familles
+(multiprises, capteurs, garage, purificateur, MST, EM, MSXH0, HP110, MTS9). Sa CA locale est valide :
 elle est téléchargée depuis `/ca.crt`, vérifiée et épinglée par l'intégration, puis
 utilisée pour HTTP et MQTT (vérification du nom d'hôte incluse lorsque le
 certificat couvre l'adresse configurée).
@@ -204,6 +220,16 @@ Home Assistant. Une nouvelle release GitHub est publiée pour chaque version.
 | Appareil sans profil | ajouter ou corriger le profil dans le catalogue ; reload automatique à la nouvelle révision |
 | Entités fantômes après un oubli | Unbind (≤ 60 s), réparation 48 h, ou suppression manuelle de l'appareil |
 | Statut de calibration bloqué | vérifier les logs de l'add-on et le capteur `Calibration status` |
+
+## Outils de développement
+
+Les profils et les trames dorées s'appuient sur
+[meross_lan](https://github.com/krahabb/meross_lan) (**MIT**) : son client
+`merossclient` vendorisé (v6.0.2, commit épinglé) fournit le protocole et les
+descripteurs, et ses traces `emulator_traces/` servent de référence pour les
+familles sans capture locale. meross_lan n'est pas une dépendance runtime ;
+il est utilisé pour la conception, les tests et la validation des profils.
+Voir `NOTICE`, `MODIFICATIONS.md` et `vendor/merossclient/UPSTREAM.md`.
 
 ## Origine, licence et historique
 
