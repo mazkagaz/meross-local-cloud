@@ -1,8 +1,8 @@
-schema_version: 1
+schema_version: 2
 profile:
   id: meross.mrs100
-  version: "2026.11.0"
-  requires_engine: ">=1.1"
+  version: "2026.11.1"
+  requires_engine: ">=2.2"
   description: "Volet roulant MRS100 : position, durées persistées, calibration."
 match:
   type: [mrs100]
@@ -11,7 +11,7 @@ match:
     all: [Appliance.RollerShutter.State]
 payloads:
   Appliance.RollerShutter.State:
-    methods: [GETACK, SETACK, PUSH]
+    methods: [GETACK, PUSH]
     fields:
       channel: { type: integer }
       state:
@@ -22,21 +22,19 @@ payloads:
     fields:
       channel: { type: integer }
       position: { type: integer, unit: "%" }
-      state: { type: integer }
   Appliance.RollerShutter.Config:
-    methods: [SET, SETACK]
+    methods: [GETACK, SET, SETACK]
     fields:
       channel: { type: integer }
-      config:
-        type: object
-        fields:
-          signalOpen: { type: integer, unit: "ms" }
-          signalClose: { type: integer, unit: "ms" }
+      signalOpen: { type: integer, unit: "ms" }
+      signalClose: { type: integer, unit: "ms" }
+      autoAdjust: { type: integer }
   Appliance.RollerShutter.Adjust:
     methods: [GETACK, SET, SETACK, PUSH]
     fields:
       channel: { type: integer }
       value: { type: integer }
+      status: { type: integer }
 entities:
   - key: cover
     platform: cover
@@ -45,21 +43,20 @@ entities:
       namespace: Appliance.RollerShutter.Position
       channel: $channel
       fields:
-        position: position
-        state: state
+        position: "position[0].position"
     commands:
       open:
-        namespace: Appliance.RollerShutter.State
-        payload: { channel: $channel, state: 1 }
+        namespace: Appliance.RollerShutter.Position
+        payload: { position: { channel: $channel, position: 100 } }
       close:
-        namespace: Appliance.RollerShutter.State
-        payload: { channel: $channel, state: 2 }
+        namespace: Appliance.RollerShutter.Position
+        payload: { position: { channel: $channel, position: 0 } }
       stop:
-        namespace: Appliance.RollerShutter.State
-        payload: { channel: $channel, state: 0 }
+        namespace: Appliance.RollerShutter.Position
+        payload: { position: { channel: $channel, position: -1 } }
       set_position:
         namespace: Appliance.RollerShutter.Position
-        payload: { channel: $channel, position: $value }
+        payload: { position: { channel: $channel, position: $value } }
     quirks:
       - name: roller_shutter_config_replay
         params: { cooldown_s: 300 }
@@ -78,12 +75,12 @@ entities:
     state:
       namespace: Appliance.RollerShutter.Config
       channel: $channel
-      fields: { value: config.signalOpen }
+      fields: { value: "config[0].signalOpen" }
       scale: 0.001
     commands:
       set_value:
         namespace: Appliance.RollerShutter.Config
-        payload: { channel: $channel, config: { signalOpen: $value } }
+        payload: { config: { channel: $channel, signalOpen: $value } }
         value_scale: 1000
     quirks:
       - name: config_persist
@@ -102,12 +99,12 @@ entities:
     state:
       namespace: Appliance.RollerShutter.Config
       channel: $channel
-      fields: { value: config.signalClose }
+      fields: { value: "config[0].signalClose" }
       scale: 0.001
     commands:
       set_value:
         namespace: Appliance.RollerShutter.Config
-        payload: { channel: $channel, config: { signalClose: $value } }
+        payload: { config: { channel: $channel, signalClose: $value } }
         value_scale: 1000
     quirks:
       - name: config_persist
@@ -121,7 +118,7 @@ entities:
     commands:
       press:
         namespace: Appliance.RollerShutter.Adjust
-        payload: { channel: $channel, value: 1 }
+        payload: { adjust: { channel: $channel, value: 1 } }
     quirks:
       - name: adjust_start
 
@@ -134,7 +131,7 @@ entities:
     commands:
       press:
         namespace: Appliance.RollerShutter.Adjust
-        payload: { channel: $channel, value: 0 }
+        payload: { adjust: { channel: $channel, value: 2 } }
     quirks:
       - name: adjust_stop
 
@@ -147,7 +144,7 @@ entities:
     state:
       namespace: Appliance.RollerShutter.Adjust
       channel: $channel
-      fields: { value: value }
+      fields: { value: "adjust[0].status" }
     quirks:
       - name: adjust_status_names
 quirks:

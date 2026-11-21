@@ -44,6 +44,7 @@ class MRS100Simulator:
         self.state = 0
         self.config = {"signalOpen": 45000, "signalClose": 50000}
         self.adjust = 0
+        self.adjust_value = 0
         self.bus = None
         self.requests = []
         self.multiples = []
@@ -58,30 +59,34 @@ class MRS100Simulator:
         return DeviceDescriptor(MRS100_PAYLOAD)
 
     def _apply_set(self, namespace, payload):
-        if namespace == STATE:
-            state = payload.get("state", 0)
-            self.state = state
-            if state == 1:
-                self.position = 100
-            elif state == 2:
-                self.position = 0
-        elif namespace == POSITION:
-            self.position = payload.get("position", self.position)
+        if namespace == POSITION:
+            position = (payload.get("position") or {}).get("position")
+            if position is not None:
+                if position == -1:
+                    self.state = 0
+                else:
+                    self.position = int(position)
+                    self.state = 1 if int(position) > 0 else 2
         elif namespace == CONFIG:
-            self.config.update(payload.get("config") or {})
+            config = payload.get("config") or {}
+            self.config.update({
+                key: config[key] for key in ("signalOpen", "signalClose")
+                if key in config})
         elif namespace == ADJUST:
-            self.adjust = payload.get("value", 0)
+            adjust = payload.get("adjust") or {}
+            self.adjust_value = adjust.get("value", 0)
+            self.adjust = self.adjust_value
 
     def _body(self, namespace):
         if namespace == STATE:
-            return {"channel": 0, "state": self.state}
+            return {"state": [{"channel": 0, "state": self.state}]}
         if namespace == POSITION:
-            return {"channel": 0, "position": self.position,
-                    "state": self.state}
+            return {"position": [{"channel": 0, "position": self.position}]}
         if namespace == CONFIG:
-            return {"channel": 0, "config": dict(self.config)}
+            return {"config": [
+                {"channel": 0, **dict(self.config)}]}
         if namespace == ADJUST:
-            return {"channel": 0, "value": self.adjust}
+            return {"adjust": [{"channel": 0, "status": self.adjust}]}
         return {}
 
     async def async_request(self, uuid, namespace, method, payload):

@@ -3,7 +3,7 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from device_simulator import ADJUST, CONFIG, POSITION, STATE, MRS100Simulator
+from device_simulator import ADJUST, CONFIG, POSITION, MRS100Simulator
 from helpers import catalog_entry, wait_for
 
 from custom_components.meross_cloud.broker_adapter import BrokerProfileAdapter
@@ -45,19 +45,20 @@ async def test_f3_1_open_close_stop(hass):
     cover = adapter.runtimes["u1"].entities["cover"]
     try:
         await adapter.async_send(
-            "u1", STATE, "SET", {"channel": 0, "state": 1})
-        simulator.push(adapter, POSITION,
-                       {"channel": 0, "position": 100, "state": 1})
-        assert cover.values == {"position": 100, "state": 1}
+            "u1", POSITION, "SET",
+            {"position": {"channel": 0, "position": 100}})
+        assert cover.values == {"position": 100}
+        assert simulator.state == 1
 
         await adapter.async_send(
-            "u1", STATE, "SET", {"channel": 0, "state": 2})
-        simulator.push(adapter, POSITION,
-                       {"channel": 0, "position": 0, "state": 2})
-        assert cover.values == {"position": 0, "state": 2}
+            "u1", POSITION, "SET",
+            {"position": {"channel": 0, "position": 0}})
+        assert cover.values == {"position": 0}
+        assert simulator.state == 2
 
         await adapter.async_send(
-            "u1", STATE, "SET", {"channel": 0, "state": 0})
+            "u1", POSITION, "SET",
+            {"position": {"channel": 0, "position": -1}})
         assert simulator.state == 0
     finally:
         await adapter.async_stop()
@@ -71,7 +72,7 @@ async def test_f3_2_positions(hass):
         for position in (0, 50, 100):
             await adapter.async_send(
                 "u1", POSITION, "SET",
-                {"channel": 0, "position": position})
+                {"position": {"channel": 0, "position": position}})
             assert cover.values["position"] == position
             assert simulator.position == position
     finally:
@@ -84,8 +85,11 @@ async def test_f3_3_durations_are_set_and_kept(hass):
     runtime = adapter.runtimes["u1"]
     try:
         await adapter.async_send("u1", CONFIG, "SET", {
-            "channel": 0,
-            "config": {"signalOpen": 60000, "signalClose": 70000},
+            "config": {
+                "channel": 0,
+                "signalOpen": 60000,
+                "signalClose": 70000,
+            },
         })
 
         assert simulator.config == {
@@ -102,15 +106,18 @@ async def test_f3_4_calibration_status(hass):
     status = adapter.runtimes["u1"].entities["calibration_status"]
     try:
         await adapter.async_send(
-            "u1", ADJUST, "SET", {"channel": 0, "value": 1})
+            "u1", ADJUST, "SET",
+            {"adjust": {"channel": 0, "value": 1}})
         assert status.values["value"] == 1
 
-        simulator.push(adapter, ADJUST, {"channel": 0, "value": 2})
+        simulator.push(adapter, ADJUST, {
+            "adjust": [{"channel": 0, "status": 2}]})
         assert status.values["value"] == 2
 
         await adapter.async_send(
-            "u1", ADJUST, "SET", {"channel": 0, "value": 0})
-        assert status.values["value"] == 0
+            "u1", ADJUST, "SET",
+            {"adjust": {"channel": 0, "value": 2}})
+        assert status.values["value"] == 2
     finally:
         await adapter.async_stop()
 

@@ -155,7 +155,7 @@ async def test_light_mapping_and_commands(hass):
 
 async def test_cover_state_and_position_command(hass):
     device = runtime("mrs100")
-    device.entities["cover"].values.update({"position": 40, "state": 1})
+    device.entities["cover"].values.update({"position": 40})
     adapter = FakeAdapter(device)
     component = await setup_entities(hass, adapter, HA_COVER)
     entity = next(iter(component.entities))
@@ -164,7 +164,8 @@ async def test_cover_state_and_position_command(hass):
     assert entity.is_closed is False
 
     await entity.async_set_cover_position(position=55)
-    assert adapter.sent[-1][3] == {"channel": 0, "position": 55}
+    assert adapter.sent[-1][3] == {
+        "position": {"channel": 0, "position": 55}}
 
 
 async def test_number_range_and_scaled_command(hass):
@@ -182,7 +183,7 @@ async def test_number_range_and_scaled_command(hass):
 
     await entity.async_set_native_value(60)
     assert adapter.sent[-1][3] == {
-        "channel": 0, "config": {"signalOpen": 60000}}
+        "config": {"channel": 0, "signalOpen": 60000}}
 
 
 async def test_shutter_duration_prefers_the_p3_cache(hass):
@@ -206,7 +207,7 @@ async def test_shutter_duration_prefers_the_p3_cache(hass):
     assert entity.native_value == 60.0
     await entity.async_set_native_value(75)
     assert adapter.sent[-1][3] == {
-        "channel": 0, "config": {"signalOpen": 75000}}
+        "config": {"channel": 0, "signalOpen": 75000}}
     assert cache.cached_channel("u1", 0).signal_open_ms == 75000
     assert cache.cached_channel("u1", 0).signal_close_ms == 70000
 
@@ -258,7 +259,14 @@ async def test_button_press(hass):
 
     await entity.async_press()
 
-    assert adapter.sent[-1][3] == {"channel": 0, "value": 1}
+    assert adapter.sent[-1][3] == {
+        "adjust": {"channel": 0, "value": 1}}
+    stop = next(
+        item for item in component.entities
+        if item._spec.key == "stop_calibration")
+    await stop.async_press()
+    assert adapter.sent[-1][3] == {
+        "adjust": {"channel": 0, "value": 2}}
 
 
 async def test_sensor_value_and_entities_are_deduplicated(hass):

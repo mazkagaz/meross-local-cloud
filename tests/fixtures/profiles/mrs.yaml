@@ -1,7 +1,7 @@
 schema_version: 2
 profile:
   id: meross.mrs
-  version: "2026.11.0"
+  version: "2026.11.1"
   requires_engine: ">=2.2"
   description: "Famille volets roulants Meross (position et commandes)."
 match:
@@ -10,7 +10,7 @@ match:
     all: [Appliance.RollerShutter.State]
 payloads:
   Appliance.RollerShutter.State:
-    methods: [GETACK, SETACK, PUSH]
+    methods: [GETACK, PUSH]
     fields:
       channel: { type: integer }
       state:
@@ -21,7 +21,6 @@ payloads:
     fields:
       channel: { type: integer }
       position: { type: integer, unit: "%" }
-      state: { type: integer }
 entities:
   - key: cover
     platform: cover
@@ -30,18 +29,17 @@ entities:
       namespace: Appliance.RollerShutter.Position
       channel: $channel
       fields:
-        position: position
-        state: state
+        position: position[0].position
     commands:
       open:
-        namespace: Appliance.RollerShutter.State
-        payload: { channel: $channel, state: 1 }
+        namespace: Appliance.RollerShutter.Position
+        payload: { position: { channel: $channel, position: 100 } }
       close:
-        namespace: Appliance.RollerShutter.State
-        payload: { channel: $channel, state: 2 }
+        namespace: Appliance.RollerShutter.Position
+        payload: { position: { channel: $channel, position: 0 } }
       stop:
-        namespace: Appliance.RollerShutter.State
-        payload: { channel: $channel, state: 0 }
+        namespace: Appliance.RollerShutter.Position
+        payload: { position: { channel: $channel, position: -1 } }
       set_position:
         namespace: Appliance.RollerShutter.Position
-        payload: { channel: $channel, position: $value }
+        payload: { position: { channel: $channel, position: $value } }

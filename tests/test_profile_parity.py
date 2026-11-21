@@ -52,14 +52,14 @@ SIMPLE_CASES = {
          {"light": {"onoff": 1, "brightness": 40}}),
     ],
     "mrs": [
-        (POSITION, {"channel": 0, "position": 60, "state": 1},
-         {"cover": {"position": 60, "state": 1}}),
+        (POSITION, {"position": [{"channel": 0, "position": 60}]},
+         {"cover": {"position": 60}}),
     ],
     "mrs100": [
-        (POSITION, {"channel": 0, "position": 60, "state": 1},
-         {"cover": {"position": 60, "state": 1}}),
-        (CONFIG, {"channel": 0,
-                  "config": {"signalOpen": 45000, "signalClose": 50000}},
+        (POSITION, {"position": [{"channel": 0, "position": 60}]},
+         {"cover": {"position": 60}}),
+        (CONFIG, {"config": [{
+            "channel": 0, "signalOpen": 45000, "signalClose": 50000}]},
          {"open_duration": {"value": 45.0},
           "close_duration": {"value": 50.0}}),
     ],

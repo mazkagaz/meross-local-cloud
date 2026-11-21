@@ -66,8 +66,8 @@ def test_state_scale_is_applied_to_mrs100_durations():
     device = runtime("mrs100")
 
     applied = device.dispatch(CONFIG_NS, "GETACK", {
-        "channel": 0,
-        "config": {"signalOpen": 45000, "signalClose": 50000},
+        "config": [
+            {"channel": 0, "signalOpen": 45000, "signalClose": 50000}],
     })
 
     assert applied == 2
@@ -317,11 +317,10 @@ def test_generic_shutter_frame():
     device = DeviceRuntime("shutter", compiled_fixture("mrs"))
 
     applied = device.dispatch("Appliance.RollerShutter.Position", "PUSH", {
-        "channel": 0, "position": 60, "state": 1})
+        "position": [{"channel": 0, "position": 60}]})
 
-    assert applied == 2
-    assert device.entities["cover"].values == {
-        "position": 60, "state": 1}
+    assert applied == 1
+    assert device.entities["cover"].values == {"position": 60}
 
 
 def test_dimmer_frame():
