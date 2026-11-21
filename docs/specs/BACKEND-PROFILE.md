@@ -44,6 +44,7 @@ du broker et les descriptors MQTT.
 | MQTT indisponible | adapter en `error` ou entités indisponibles |
 | appareil hors ligne | entités indisponibles, retour automatique |
 | nouveau device | reload automatique de l’entrée |
+| reconnexion MQTT | rafale `devList` à 0/5/15/30 s, invalidation P3, refresh schedulers |
 
 ## Critères d’acceptation
 

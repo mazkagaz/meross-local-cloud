@@ -20,7 +20,12 @@ from .broker_profiles import (
     verify_catalog,
 )
 from .broker_transport import BrokerMqttTransport
-from .common import DOMAIN, MISSING_TRACKER, device_internal_id
+from .common import (
+    DOMAIN,
+    MISSING_TRACKER,
+    SHUTTER_CONFIG_CACHE,
+    device_internal_id,
+)
 from .profiles import (
     ENGINE_VERSION,
     CompiledProfile,
@@ -41,6 +46,7 @@ _DESCRIBE_TIMEOUT = 5
 _TOTAL_BUDGET = 20
 _MAX_COMPILE_ERRORS = 20
 CATALOG_CHECK_INTERVAL = 60.0
+RECONNECT_REFRESH_DELAYS = (0.0, 5.0, 15.0, 30.0)
 
 
 def unsupported_device_issue(device_uuid: str) -> str:
@@ -99,6 +105,9 @@ class BrokerProfileAdapter:
         self._unmatched: Dict[str, Dict[str, Any]] = {}
         self._ready_listeners: list = []
         self._listeners: list = []
+        self._ever_connected = False
+        self._transport_lost = False
+        self._reconnect_task: Optional[asyncio.Task] = None
         self.entities_only = False
 
     def add_listener(self, callback):
@@ -139,7 +148,60 @@ class BrokerProfileAdapter:
         return self.device_online.get(device_uuid, True)
 
     def _on_transport_state(self, connected: bool) -> None:
+        if not connected:
+            if self._ever_connected:
+                self._transport_lost = True
+            self._notify_changed()
+            return
+        if not self._ever_connected:
+            self._ever_connected = True
+            self._notify_changed()
+            return
+        if self._transport_lost:
+            self._transport_lost = False
+            self._hass.loop.call_soon_threadsafe(
+                self._start_reconnect_burst)
         self._notify_changed()
+
+    def _start_reconnect_burst(self) -> None:
+        if self.state != "connected":
+            return
+        if self._reconnect_task is not None and not self._reconnect_task.done():
+            return
+        task = self._hass.async_create_task(self._async_reconnect_burst())
+        self._reconnect_task = task
+        if task.done():
+            self._reconnect_task = None
+
+    async def _async_reconnect_burst(self) -> None:
+        """Re-sync devList, the P3 cache and schedulers after a reconnect."""
+        _LOGGER.info(
+            "Broker MQTT reconnected; refreshing devices and schedulers")
+        try:
+            for delay in RECONNECT_REFRESH_DELAYS:
+                if delay:
+                    await asyncio.sleep(delay)
+                if self.state != "connected":
+                    return
+                try:
+                    coordinator = self._coordinator
+                    refresh = getattr(
+                        coordinator, "async_request_refresh", None)
+                    if refresh is not None:
+                        await refresh()
+                    cache = (self._hass.data.get(DOMAIN) or {}).get(
+                        SHUTTER_CONFIG_CACHE)
+                    if cache is not None:
+                        cache.invalidate()
+                    for scheduler in self.schedulers.values():
+                        scheduler.request_refresh()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as err:  # noqa: BLE001 - retry next delay
+                    _LOGGER.debug(
+                        "Reconnect refresh failed: %s", err)
+        finally:
+            self._reconnect_task = None
 
     def unknown_devices(self, devices) -> set[str]:
         """UUIDs reported by devList that this adapter has not described."""
@@ -559,6 +621,11 @@ class BrokerProfileAdapter:
             watch_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await watch_task
+        reconnect_task, self._reconnect_task = self._reconnect_task, None
+        if reconnect_task is not None and not reconnect_task.done():
+            reconnect_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await reconnect_task
         for scheduler in self.schedulers.values():
             await scheduler.async_stop()
         self.schedulers.clear()

@@ -135,6 +135,7 @@ async def start_adapter_with_bus(hass, bus, profiles, uuids):
         mqtt_address=("localhost", 2001),
         mqtt_ssl_context=object(),
         http_api_endpoint="https://broker:2004",
+        async_request_refresh=AsyncMock(),
     )
     with patch(
             "custom_components.meross_cloud.broker_adapter."

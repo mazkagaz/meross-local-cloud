@@ -33,6 +33,24 @@ async def test_unsupported_device_repair_is_created_and_cleared(hass):
         await second.async_stop()
 
 
+async def test_reconnect_starts_a_refresh_burst(hass, monkeypatch):
+    from custom_components.meross_cloud import broker_adapter as module
+
+    monkeypatch.setattr(module, "RECONNECT_REFRESH_DELAYS", (0.0,))
+    bus = InMemoryMqttBus()
+    bus.add(MSS310Simulator())
+    adapter = await start_adapter_with_bus(hass, bus, ["mss310"], ["u1"])
+    try:
+        adapter._on_transport_state(True)
+        adapter._on_transport_state(False)
+        adapter._on_transport_state(True)
+        await hass.async_block_till_done()
+
+        assert adapter._coordinator.async_request_refresh.await_count == 1
+    finally:
+        await adapter.async_stop()
+
+
 async def test_transport_disconnect_marks_entities_unavailable(hass):
     bus = InMemoryMqttBus()
     bus.add(MSS310Simulator())

@@ -16,6 +16,9 @@ ligne. Sa suppression impose de rendre ces responsabilités explicites.
 - La disponibilité combine `devList`, pushes `System.Online`/`Hub.Online` et
   l’état du transport.
 - Un nouvel appareil détecté par polling déclenche un reload de l’entrée.
+- Une reconnexion MQTT déclenche une rafale bornée de `devList` (0/5/15/30 s),
+  l’invalidation du cache P3 et un rafraîchissement des schedulers ; elle est
+  annulée au stop et ne se superpose pas à une rafale en cours.
 - Un Unbind supprime appareil, subdevices, entités et runtime.
 - Les commandes de sécurité (`cover.stop`) sont publiées immédiatement, sans
   attente d’ACK ni fenêtre de rate-limit MQTT ; l’ACK éventuel est traité comme
