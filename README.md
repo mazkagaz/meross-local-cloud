@@ -22,7 +22,7 @@ MS100/MS130/MTS100, MTS200, lumières MSL, prises MSS et diffuseur.
 - suppression fiable des appareils oubliés (Unbind), réparation des appareils
   absents depuis 48 h et réparation « appareil sans profil ».
 
-**Version de test 3.0.0-beta.1**, compatible avec le broker **1.2.0** et le
+**Version de test 3.0.0-beta.2**, compatible avec le broker **1.2.1** et le
 pairer **2.0.8**.
 
 ## Les trois briques du montage
@@ -44,8 +44,8 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 
 | Brique | Version minimale | Remarques |
 |---|---|---|
-| Meross Local Cloud | 3.0.0-beta.1 | cette intégration, catalogue de profils |
-| Meross Local Broker | 1.2.0 | profils signés, CA valide, HTTPS, Unbind |
+| Meross Local Cloud | 3.0.0-beta.2 | cette intégration, catalogue de profils |
+| Meross Local Broker | 1.2.1 | profils MRS100 corrigés, CA valide, HTTPS, Unbind |
 | Meross Local Pairer | 2.0.8 | HTTPS 2004 uniquement |
 | Home Assistant | 2025.6 | testé avec 2026.2 |
 
@@ -110,8 +110,8 @@ Au-dessus des champs, un exemple générique est affiché :
 
 4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
 
-Le broker doit être en **1.2.0 ou plus récent** pour publier le catalogue de
-profils. Sa CA locale est valide : elle est téléchargée depuis `/ca.crt`,
+Le broker doit être en **1.2.1 ou plus récent** pour publier le catalogue de
+profils et les profils MRS100 corrigés. Sa CA locale est valide : elle est téléchargée depuis `/ca.crt`,
 vérifiée et épinglée par l'intégration, puis utilisée pour HTTP et MQTT
 (vérification du nom d'hôte incluse lorsque le certificat couvre l'adresse
 configurée).
@@ -199,8 +199,8 @@ Home Assistant. Une nouvelle release GitHub est publiée pour chaque version.
 | HACS ne trouve pas le dépôt | dépôt public, catégorie **Integration**, release publiée |
 | Aucun appareil découvert | add-on démarré, appareil ONLINE, compte local correct |
 | Erreur de connexion HTTP | adresse du broker et port HTTPS `2004` (TLS obligatoire) |
-| Certificat HTTPS refusé | mettre à jour le broker en 1.2.0 (CA valide) |
-| Erreur MQTT | adresse `…:2001` ; broker 1.2.0 requis |
+| Certificat HTTPS refusé | mettre à jour le broker en 1.2.1 (CA valide) |
+| Erreur MQTT | adresse `…:2001` ; broker 1.2.1 requis |
 | Entités absentes | vérifier la réparation « appareil sans profil » et le catalogue broker |
 | Appareil sans profil | ajouter ou corriger le profil dans le catalogue ; reload automatique à la nouvelle révision |
 | Entités fantômes après un oubli | Unbind en 60 s, réparation 48 h, ou suppression manuelle de l'appareil |

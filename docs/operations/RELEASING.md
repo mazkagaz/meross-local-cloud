@@ -15,7 +15,7 @@ le workflow de release refuse un tag dont la version diffère.
 | Canal | Version | Tag | Release GitHub |
 | ----- | ------- | --- | -------------- |
 | stable | `3.0.0` | `v3.0.0` | normale |
-| test | `3.0.0-beta.1` | `v3.0.0-beta.1` | **pre-release** |
+| test | `3.0.0-beta.2` | `v3.0.0-beta.2` | **pre-release** |
 
 ## Publier une version de test
 
@@ -23,8 +23,8 @@ le workflow de release refuse un tag dont la version diffère.
 2. Commit, puis taguer et pousser :
 
 ```bash
-git tag v3.0.0-beta.1
-git push origin v3.0.0-beta.1
+git tag v3.0.0-beta.2
+git push origin v3.0.0-beta.2
 ```
 
 3. Le workflow `Release` vérifie manifest ↔ tag et crée une **pre-release**.
@@ -57,6 +57,6 @@ présente dans le dépôt suivi est proposée aux utilisateurs. Les releases
 stables du broker se font uniquement depuis `main` ; sa CI teste `main` et
 `dev`.
 
-L’intégration 3.0 exige un broker **1.2.0** ou plus récent (catalogue signé et
-endpoints profils). Avant de publier une bêta, vérifier que le broker installé
+L’intégration 3.0 exige un broker **1.2.1** ou plus récent (catalogue signé,
+endpoints profils et profils MRS100 corrigés). Avant de publier une bêta, vérifier que le broker installé
 expose bien ces endpoints.

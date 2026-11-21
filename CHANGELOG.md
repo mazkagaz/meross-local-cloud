@@ -1,3 +1,17 @@
+## 3.0.0-beta.2 — stop volet immédiat
+
+Version de **test**. Requiert le broker **1.2.1** pour les profils MRS100
+corrigés.
+
+- `cover.stop` est publié immédiatement sur `Appliance.RollerShutter.Position`
+  (`position=-1`), sans attente d’ACK et sans rate-limit MQTT.
+- L’ACK tardif est traité comme un push non sollicité ; le scheduler rafraîchit
+  ensuite le namespace.
+- Profils MRS100/MRS de broker 1.2.1 : lecture des listes
+  `position`/`state`/`config`/`adjust`, commandes Position/Config/Adjust
+  corrigées, calibration start=1/stop=2.
+- Documentation réorganisée (architecture, specs, ADR, matrices de tests).
+
 ## 3.0.0-beta.1 — backend profils obligatoire
 
 Version de **test** (pré-release, branche `dev`). Pour l’installer, activer

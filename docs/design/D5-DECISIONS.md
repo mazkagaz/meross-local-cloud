@@ -9,7 +9,7 @@
 | D5-c | Identité historique et parité volet | IDs `#BASE`, P3, calibration |
 | D5-d | Suppression de `meross_iot` et des plateformes legacy | `paho-mqtt` seul |
 | D5-e | Réparations appareil sans profil et états dégradés | hardening |
-| D5-f | Pré-release 3.0.0-beta.1 et checklist de validation | release |
+| D5-f | Pré-releases 3.0.0-beta.x et checklist de validation | release |
 
 ## ADR
 
