@@ -3,6 +3,7 @@ from device_simulator import (
     DiffuserSimulator,
     LightSimulator,
     MTS200Simulator,
+    MTS300Simulator,
 )
 from helpers import start_adapter_with_bus, wait_for
 from mqtt_bus import InMemoryMqttBus
@@ -88,5 +89,25 @@ async def test_diffuser_over_the_bus(hass):
         assert spray["mode"] == 1
         assert light["brightness"] == 90
         assert light["onoff"] == 0
+    finally:
+        await adapter.async_stop()
+
+
+async def test_mts300_uses_hundredth_degree_scale(hass):
+    bus = InMemoryMqttBus()
+    simulator = bus.add(MTS300Simulator())
+    adapter = await start_adapter_with_bus(hass, bus, ["mts300"], ["t3"])
+    climate = adapter.runtimes["t3"].entities["climate"].values
+    try:
+        assert await wait_for(lambda: "current_temperature" in climate)
+        assert climate["current_temperature"] == 17.7
+        assert climate["target_temperature"] == 20.0
+        assert climate["min_temp"] == 5.0
+        assert climate["max_temp"] == 35.0
+
+        await adapter.async_send("t3", THERMOSTAT, "SET", {
+            "mode": [{"channel": 0, "targetTemp": 2500}]})
+        assert simulator.state["targetTemp"] == 2500
+        assert climate["target_temperature"] == 25.0
     finally:
         await adapter.async_stop()

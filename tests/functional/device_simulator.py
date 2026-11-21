@@ -580,3 +580,25 @@ class DiffuserSimulator:
         if self.bus is not None:
             self.bus.publish(self.uuid, namespace,
                              self._body(namespace), method)
+
+
+class MTS300Simulator(MTS200Simulator):
+    uuid = "t3"
+
+    def __init__(self, uuid="t3"):
+        super().__init__(uuid)
+        self.state = {"onoff": 1, "mode": 1, "state": 1,
+                      "currentTemp": 1770, "targetTemp": 2000,
+                      "min": 500, "max": 3500}
+
+    async def async_describe(self, device_uuid):
+        return DeviceDescriptor({
+            "all": {"system": {
+                "hardware": {"type": "mts300", "subType": "un",
+                             "version": "1.0.0", "uuid": self.uuid,
+                             "macAddress": "AA:BB:CC:DD:EE:06"},
+                "firmware": {"version": "3.0.0"},
+                "online": {"status": 1},
+            }, "digest": {}},
+            "ability": {self.NAMESPACE: {}},
+        })

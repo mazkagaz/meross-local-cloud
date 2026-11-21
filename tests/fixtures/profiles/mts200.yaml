@@ -3,9 +3,9 @@ profile:
   id: meross.mts200
   version: "2026.11.0"
   requires_engine: ">=2.2"
-  description: "Thermostat MTS200/MTS300 : température, mode et consigne."
+  description: "Thermostat MTS200 : température, mode et consigne."
 match:
-  type: [mts2, mts3]
+  type: [mts2]
 payloads:
   Appliance.Control.Thermostat.Mode:
     methods: [GET, SET, GETACK, SETACK, PUSH]

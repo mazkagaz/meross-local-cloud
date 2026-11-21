@@ -783,6 +783,7 @@ def test_lazy_compilation_cache_uses_id_version_and_digest():
     ("msl120", {"light"}),
     ("msh300", {"online"}),
     ("mts200", {"climate"}),
+    ("mts300", {"climate"}),
     ("mfc", {"fan"}),
     ("mss425", {"outlet"}),
     ("mss", {"switch"}),
@@ -838,7 +839,7 @@ def test_canonical_profile_entities_carry_stable_ids():
 
 
 @pytest.mark.parametrize("name", [
-    "mrs100", "mss310", "msl120", "msh300", "mts200", "mfc",
+    "mrs100", "mss310", "msl120", "msh300", "mts200", "mts300", "mfc",
     "mss425", "mss", "msl", "mrs", "mss5", "mod",
 ])
 def test_fixtures_match_the_canonical_broker_profiles(name):

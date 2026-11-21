@@ -74,6 +74,15 @@ SIMPLE_CASES = {
          {"climate": {"current_temperature": 17.7,
                       "target_temperature": 20.0, "mode": 1}}),
     ],
+    "mts300": [
+        (THERMOSTAT, {"mode": [{"channel": 0, "onoff": 1, "mode": 1,
+                               "state": 1, "currentTemp": 1770,
+                               "targetTemp": 2000, "min": 500,
+                               "max": 3500}]},
+         {"climate": {"current_temperature": 17.7,
+                      "target_temperature": 20.0,
+                      "min_temp": 5.0, "max_temp": 35.0}}),
+    ],
     "mfc": [
         (FAN, {"fan": [{"channel": 0, "speed": 2, "maxSpeed": 3}]},
          {"fan": {"speed": 2, "max_speed": 3}}),
