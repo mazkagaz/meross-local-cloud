@@ -1,3 +1,22 @@
+## 3.0.0 — backend profils obligatoire
+
+Version stable. Requiert le broker **1.2.2 ou plus récent** et le pairer
+**2.0.9 ou plus récent**.
+
+- Intégration entièrement pilotée par le catalogue de profils du broker ;
+  suppression de `meross_iot`, du manager, des patches et des plateformes
+  historiques.
+- `paho-mqtt==2.1.0` comme seule dépendance runtime.
+- Identités historiques conservées (`#BASE`, `#SUB`), migration des anciens
+  IDs de bêta et conservation des entités/automatisations.
+- Disponibilité par appareil, rafale de rechargement après reconnexion MQTT,
+  détection des nouveaux appareils, arrêt de volet prioritaire.
+- Réparations Unbind, appareil absent 48 h et appareil sans profil.
+- Profils broker 1.2.x pour MRS100/MRS, thermostat, prises, hubs, lumières et
+  diffuseur.
+- API native du climat et tâches d’arrière-plan pour le catalogue.
+- Documentation architecture/spécifications/ADR/traçabilité et validation 3.0.
+
 ## 3.0.0-beta.4 — démarrage et climat
 
 Version de **test**. Requiert le broker **1.2.1**.

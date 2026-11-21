@@ -57,6 +57,6 @@ présente dans le dépôt suivi est proposée aux utilisateurs. Les releases
 stables du broker se font uniquement depuis `main` ; sa CI teste `main` et
 `dev`.
 
-L’intégration 3.0 exige un broker **1.2.1** ou plus récent (catalogue signé,
-endpoints profils et profils MRS100 corrigés). Avant de publier une bêta, vérifier que le broker installé
-expose bien ces endpoints.
+L’intégration 3.0 exige un broker **1.2.2** ou plus récent (catalogue signé,
+endpoints profils, routage ACK et profils MRS100 corrigés). Avant de publier
+une version, vérifier que le broker installé expose bien ces endpoints.

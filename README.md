@@ -22,8 +22,8 @@ MS100/MS130/MTS100, MTS200, lumières MSL, prises MSS et diffuseur.
 - suppression fiable des appareils oubliés (Unbind), réparation des appareils
   absents depuis 48 h et réparation « appareil sans profil ».
 
-**Version de test 3.0.0-beta.4**, compatible avec le broker **1.2.1** et le
-pairer **2.0.9**.
+**Version stable 3.0.0**, compatible avec le broker **1.2.2** et le pairer
+**2.0.9**.
 
 ## Les trois briques du montage
 
@@ -44,8 +44,8 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 
 | Brique | Version minimale | Remarques |
 |---|---|---|
-| Meross Local Cloud | 3.0.0-beta.4 | cette intégration, catalogue de profils |
-| Meross Local Broker | 1.2.1 | profils MRS100 corrigés, CA valide, HTTPS, Unbind |
+| Meross Local Cloud | 3.0.0 | cette intégration, catalogue de profils |
+| Meross Local Broker | 1.2.2 | routage ACK, profils MRS100, CA valide, HTTPS |
 | Meross Local Pairer | 2.0.9 | HTTPS 2004 uniquement |
 | Home Assistant | 2025.6 | testé avec 2026.2 |
 
@@ -110,9 +110,9 @@ Au-dessus des champs, un exemple générique est affiché :
 
 4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
 
-Le broker doit être en **1.2.1 ou plus récent** pour publier le catalogue de
-profils et les profils MRS100 corrigés. Sa CA locale est valide : elle est
-téléchargée depuis `/ca.crt`, vérifiée et épinglée par l'intégration, puis
+Le broker doit être en **1.2.2 ou plus récent** pour le routage ACK, le
+catalogue de profils et les profils MRS100 corrigés. Sa CA locale est valide :
+elle est téléchargée depuis `/ca.crt`, vérifiée et épinglée par l'intégration, puis
 utilisée pour HTTP et MQTT (vérification du nom d'hôte incluse lorsque le
 certificat couvre l'adresse configurée).
 
