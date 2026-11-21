@@ -1,3 +1,16 @@
+## 3.1.1 — maintien d’état du volet
+
+Version stable. Requiert le broker **1.3.0 ou plus récent** ; **1.3.1** est
+recommandé pour le correctif d’interrogation du volet.
+
+- La position du volet et le statut de calibration sont amorcés depuis le cache
+  P3 du broker lorsque le runtime est vide : ils survivent aux rechargements de
+  l’intégration et aux redémarrages de Home Assistant.
+- Le statut de calibration observé est réécrit dans le cache pour être restitué
+  au démarrage suivant.
+- Compatible avec le profil `meross.mrs100` 2026.11.2 (broker 1.3.1), qui ne
+  sonde plus le namespace `Adjust` en lecture.
+
 ## 3.1.0 — catalogue D2b complet
 
 Version stable. Requiert le broker **1.2.2 ou plus récent** (catalogue complet :
