@@ -20,6 +20,11 @@ from .broker_profiles import (
     verify_catalog,
 )
 from .broker_transport import BrokerMqttTransport
+from .runtime_store import (
+    SAVE_DELAY,
+    RuntimeStateStore,
+    restore_runtimes,
+)
 from .common import (
     DOMAIN,
     MISSING_TRACKER,
@@ -117,6 +122,9 @@ class BrokerProfileAdapter:
         self._ever_connected = False
         self._transport_lost = False
         self._reconnect_task: Optional[asyncio.Task] = None
+        self._state_store = None
+        self._save_task: Optional[asyncio.Task] = None
+        self._restored_runtime_entities = 0
         self.entities_only = False
 
     def add_listener(self, callback):
@@ -313,6 +321,7 @@ class BrokerProfileAdapter:
                 "subdevices": _subdevice_descriptors(descriptor),
             }
         self._match_profiles()
+        await self._async_restore_state()
         self._sync_unsupported_issues()
         self._start_schedulers()
         if self.descriptors:
@@ -357,12 +366,65 @@ class BrokerProfileAdapter:
                 if len(self.compile_errors) < _MAX_COMPILE_ERRORS:
                     self.compile_errors.append(error)
             runtime = DeviceRuntime(device_uuid, compiled)
+            runtime.add_listener(self._schedule_state_save)
             if descriptor["subdevices"]:
                 bindings = self._match_subdevices(
                     compiled, descriptor["subdevices"])
                 for subdevice_id, template in bindings.items():
                     runtime.add_subdevice(subdevice_id, template)
             self.runtimes[device_uuid] = runtime
+
+    def _get_state_store(self):
+        if getattr(self, "_state_store", None) is None:
+            hass = getattr(self, "_hass", None)
+            if hass is None or not hasattr(hass, "data"):
+                return None
+            try:
+                self._state_store = RuntimeStateStore(hass)
+            except Exception as err:  # noqa: BLE001 - optional persistence
+                _LOGGER.debug("Runtime state store unavailable: %s", err)
+                return None
+        return self._state_store
+
+    async def _async_restore_state(self) -> None:
+        store = self._get_state_store()
+        if store is None:
+            return
+        data = await store.async_load()
+        if data is None:
+            return
+        self._restored_runtime_entities = restore_runtimes(data, self.runtimes)
+        if self._restored_runtime_entities:
+            _LOGGER.info(
+                "Restored %d profile entity state(s) from the previous run",
+                self._restored_runtime_entities)
+
+    def _schedule_state_save(self) -> None:
+        hass = getattr(self, "_hass", None)
+        if hass is None:
+            return
+        task = getattr(self, "_save_task", None)
+        if task is not None and not task.done():
+            return
+        if self._get_state_store() is None:
+            return
+        if not hasattr(hass, "async_create_background_task"):
+            self._save_task = hass.async_create_task(
+                self._async_save_state())
+            return
+        self._save_task = hass.async_create_background_task(
+            self._async_save_state(), name="meross_cloud_state_save")
+
+    async def _async_save_state(self) -> None:
+        try:
+            await asyncio.sleep(SAVE_DELAY)
+            store = self._get_state_store()
+            if store is not None:
+                await store.async_save(self.runtimes)
+        except asyncio.CancelledError:
+            raise
+        except Exception as err:  # noqa: BLE001 - persistence is best effort
+            _LOGGER.debug("Runtime state save task failed: %s", err)
 
     def _sync_unsupported_issues(self) -> None:
         if getattr(self._hass, "data", None) is None:
@@ -573,6 +635,7 @@ class BrokerProfileAdapter:
             await scheduler.async_stop()
         self.runtimes.pop(device_uuid, None)
         self.descriptors.pop(device_uuid, None)
+        self._schedule_state_save()
         self.device_online.pop(device_uuid, None)
         self._unmatched.pop(device_uuid, None)
         ir.async_delete_issue(
@@ -657,6 +720,14 @@ class BrokerProfileAdapter:
         for scheduler in self.schedulers.values():
             await scheduler.async_stop()
         self.schedulers.clear()
+        save_task, self._save_task = self._save_task, None
+        if save_task is not None and not save_task.done():
+            save_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await save_task
+        store = self._get_state_store()
+        if store is not None:
+            await store.async_save(self.runtimes)
         if self._transport is not None:
             await self._transport.async_stop()
             self._transport = None
@@ -677,6 +748,7 @@ class BrokerProfileAdapter:
             "subdevices_matched": self.subdevices_matched,
             "subdevices_unmatched": self.subdevices_unmatched,
             "match_ambiguities": self.match_ambiguities,
+            "restored_runtime_entities": self._restored_runtime_entities,
             "compile_errors": list(self.compile_errors),
             "runtime_messages": sum(
                 runtime.messages for runtime in self.runtimes.values()),

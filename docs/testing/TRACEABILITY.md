@@ -13,6 +13,7 @@ Exigences → spécification → décision → code → tests.
 | INT-SCHED-001 | Batching, lazy refresh, ACK unique, backoff | BACKEND-PROFILE | ADR-0003 | `profiles/scheduler.py`, `broker_transport.py` | `test_profile_scheduler.py`, `test_broker_d1.py` | F4, F5 |
 | INT-ENT-001 | Mapping des plateformes et commandes | ENTITIES-IDENTITY | ADR-0001 | `profile_entities.py` | `test_profile_entities.py`, `test_profile_parity.py` | F3 |
 | INT-ID-001 | IDs historiques et migration bêta | ENTITIES-IDENTITY | ADR-0002 | `common.py`, `profile_entities.py`, `__init__.py` | `test_d5_invariants.py`, `test_d5_migration.py` | F2, validation 3.0 |
+| INT-STATE-001 | Persistance générique des valeurs brutes du runtime | BACKEND-PROFILE | ADR-0003 | `runtime_store.py`, `broker_adapter.py` | `test_runtime_store.py`, `test_broker_adapter_availability.py` | F2 |
 | INT-AVAIL-001 | devList, Online, transport, rafale de reconnexion | ENTITIES-IDENTITY | ADR-0003 | `broker_adapter.py`, `broker_transport.py` | `test_broker_adapter_availability.py`, `test_broker_reconnect.py`, `test_d5_hardening_functional.py` | F2, F7 |
 | INT-REPAIR-001 | Absence 48 h, Unbind, sans profil | CONFIG-REPAIRS | ADR-0003 | `missing_devices.py`, `repairs.py`, `broker_adapter.py` | `test_missing_devices.py`, `test_repairs.py`, `test_d5_hardening_functional.py` | F7 |
 | INT-CFG-001 | Config flow, options, reload | CONFIG-REPAIRS | — | `config_flow.py`, `__init__.py` | `test_config_flow.py` | F1 |

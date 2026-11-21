@@ -1,5 +1,6 @@
 """D5-b/D5-c: availability, discovery and unbind cleanup."""
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -186,3 +187,41 @@ def test_profile_matching_expands_channel_entities():
     assert set(runtime.profile.entities) == {"outlet_0", "outlet_2"}
     assert set(runtime.entities) == {"outlet_0", "outlet_2"}
     assert instance.devices_matched == 1
+
+
+async def test_runtime_state_is_restored_before_entities():
+    from pathlib import Path
+
+    import yaml
+
+    from custom_components.meross_cloud.profiles import (
+        ProfileCompiler,
+        ProfileMeta,
+    )
+    from custom_components.meross_cloud.profiles.runtime import DeviceRuntime
+    from custom_components.meross_cloud.runtime_store import (
+        snapshot_runtimes,
+    )
+
+    data = yaml.safe_load(
+        (Path(__file__).parent / "fixtures" / "profiles" / "mrs100.yaml")
+        .read_text())
+    profile = ProfileMeta(
+        id=data["profile"]["id"], version=data["profile"]["version"],
+        source="test", digest="hash", requires_engine=None, data=data)
+    compiled = ProfileCompiler().compile(profile)
+    source = DeviceRuntime("u1", compiled)
+    source.entities["cover"].values["position"] = 0
+    source.entities["calibration_status"].values["value"] = 2
+
+    instance = adapter()
+    instance.runtimes = {"u1": DeviceRuntime("u1", compiled)}
+    instance._state_store = SimpleNamespace(
+        async_load=AsyncMock(return_value=snapshot_runtimes({"u1": source})))
+
+    await instance._async_restore_state()
+
+    assert instance._restored_runtime_entities == 2
+    assert instance.runtimes["u1"].entities["cover"].values == {"position": 0}
+    assert instance.runtimes["u1"].entities[
+        "calibration_status"].values == {"value": 2}

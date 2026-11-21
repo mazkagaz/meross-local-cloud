@@ -30,6 +30,17 @@ du broker et les descriptors MQTT.
 - Une ambiguïté est comptée ; un appareil sans profil est signalé par une
   réparation et ne crée aucune entité.
 
+## Persistance d’état
+
+- Les valeurs brutes du runtime sont sauvegardées dans le Store HA
+  (`meross_cloud.runtime_state`), de façon différée et à l’arrêt propre.
+- Elles sont restaurées au démarrage avant la création des entités, pour les
+  appareils et sous-appareils dont le profil et la plateforme correspondent
+  encore ; les valeurs non scalaires ou inconnues sont ignorées.
+- La disponibilité n’est jamais restaurée : elle reste pilotée par le transport
+  et le broker. Le cache P3 reste utilisé pour les données autoritatives du
+  volet.
+
 ## Runtime et scheduler
 
 - Un `DeviceRuntime` par appareil, un `DeviceScheduler` par appareil.
