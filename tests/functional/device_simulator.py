@@ -194,6 +194,73 @@ class MSS310Simulator:
             self.bus.publish(self.uuid, namespace, payload, method)
 
 
+class MSS425Simulator:
+    uuid = "strip1"
+    connected = True
+    NAMESPACE = "Appliance.Control.ToggleX"
+
+    def __init__(self, uuid="strip1"):
+        self.uuid = uuid
+        self.channels = (0, 1, 2)
+        self.onoff = {channel: 1 for channel in self.channels}
+        self.bus = None
+        self.requests = []
+        self.multiples = []
+
+    async def async_connect(self):
+        return None
+
+    async def async_stop(self):
+        return None
+
+    async def async_describe(self, device_uuid):
+        return DeviceDescriptor({
+            "all": {"system": {
+                "hardware": {"type": "mss425", "subType": "un",
+                             "version": "1.0.0", "uuid": self.uuid,
+                             "macAddress": "AA:BB:CC:DD:EE:05"},
+                "firmware": {"version": "4.0.0"},
+                "online": {"status": 1},
+            }, "digest": {"togglex": [
+                {"channel": channel, "onoff": self.onoff[channel]}
+                for channel in self.channels]}},
+            "ability": {self.NAMESPACE: {}},
+        })
+
+    def _body(self):
+        return {"togglex": [
+            {"channel": channel, "onoff": self.onoff[channel]}
+            for channel in reversed(self.channels)]}
+
+    async def async_request(self, uuid, namespace, method, payload):
+        self.requests.append((uuid, namespace, method, payload))
+        if method == "SET" and namespace == self.NAMESPACE:
+            for entry in payload.get("togglex") or []:
+                channel = entry.get("channel")
+                if channel in self.onoff and "onoff" in entry:
+                    self.onoff[channel] = entry["onoff"]
+        return SimpleNamespace(
+            uuid=uuid, namespace=namespace,
+            method="SETACK" if method == "SET" else "GETACK",
+            payload=self._body())
+
+    async def async_request_multiple(self, uuid, requests):
+        requests = list(requests)
+        self.multiples.append(requests)
+        return SimpleNamespace(
+            uuid=uuid, namespace="Appliance.Control.Multiple",
+            method="SETACK",
+            payload={"multiple": [{
+                "header": {"namespace": namespace, "method": "GETACK"},
+                "payload": self._body(),
+            } for namespace, _, _ in requests]})
+
+    def emit(self, method="PUSH"):
+        if self.bus is not None:
+            self.bus.publish(self.uuid, self.NAMESPACE,
+                             self._body(), method)
+
+
 class HubSimulator:
     uuid = "hub1"
     connected = True

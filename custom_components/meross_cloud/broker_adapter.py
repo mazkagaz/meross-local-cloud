@@ -36,6 +36,7 @@ from .profiles import (
     ProfileMeta,
     ProfileRegistry,
     SubDeviceTemplate,
+    expand_channel_entities,
     match_candidates,
     match_profile,
 )
@@ -51,6 +52,14 @@ RECONNECT_REFRESH_DELAYS = (0.0, 5.0, 15.0, 30.0)
 
 def unsupported_device_issue(device_uuid: str) -> str:
     return f"unsupported_device_{device_uuid}"
+
+
+def _descriptor_channels(descriptor) -> list[int]:
+    channels = getattr(descriptor, "channels", ()) or ()
+    return sorted({
+        channel for channel in channels
+        if isinstance(channel, int) and not isinstance(channel, bool)
+        and channel >= 0})
 
 
 def _subdevice_descriptors(descriptor) -> list[Dict[str, Any]]:
@@ -300,6 +309,7 @@ class BrokerProfileAdapter:
                 "abilities": sorted(descriptor.ability),
                 "mac": descriptor.macAddress,
                 "is_hub": descriptor.is_hub,
+                "channels": _descriptor_channels(descriptor),
                 "subdevices": _subdevice_descriptors(descriptor),
             }
         self._match_profiles()
@@ -338,7 +348,9 @@ class BrokerProfileAdapter:
                 }
                 continue
             self.devices_matched += 1
-            compiled = self.compiler.compile(result.profile)
+            compiled = expand_channel_entities(
+                self.compiler.compile(result.profile),
+                descriptor.get("channels") or ())
             for warning in compiled.warnings:
                 _LOGGER.debug("Profile warning: %s", warning)
             for error in compiled.errors:

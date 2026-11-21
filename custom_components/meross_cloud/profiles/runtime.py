@@ -125,7 +125,12 @@ class DeviceRuntime:
     def _apply(self, state: EntityState, entity: EntitySpec,
                spec: StateSpec, document: Dict[str, Any]) -> int:
         applied = 0
-        if spec.channel is not None:
+        if spec.select_path is not None:
+            document = _select_by_channel(
+                document, spec.select_path, spec.select_key, spec.channel)
+            if document is None:
+                return 0
+        elif spec.channel is not None:
             payload_channel = document.get("channel")
             if payload_channel is not None and payload_channel != spec.channel:
                 return 0
@@ -157,6 +162,20 @@ class DeviceRuntime:
             except Exception as err:  # noqa: BLE001 - never break dispatch
                 self._error(f"{entity.key}: {type(err).__name__}")
         return applied
+
+
+def _select_by_channel(document: Dict[str, Any], path: str, key: str,
+                       channel: Optional[int]) -> Optional[Dict[str, Any]]:
+    """Return the list item whose key equals channel, or None."""
+    if channel is None:
+        return None
+    items = get_path(document, path)
+    if not isinstance(items, (list, tuple)):
+        return None
+    for item in items:
+        if isinstance(item, dict) and item.get(key) == channel:
+            return item
+    return None
 
 
 def _payload_too_large(payload: Dict[str, Any]) -> bool:

@@ -1,5 +1,9 @@
 """Device profile engine (D2)."""
-from .compiler import ProfileCompiler, compile_profile
+from .compiler import (
+    ProfileCompiler,
+    compile_profile,
+    expand_channel_entities,
+)
 from .constants import ENGINE_VERSION
 from .match import (
     MatchContext,
@@ -42,6 +46,7 @@ __all__ = [
     "SubDeviceRuntime",
     "SubDeviceTemplate",
     "compile_profile",
+    "expand_channel_entities",
     "get_path",
     "match_candidates",
     "match_profile",

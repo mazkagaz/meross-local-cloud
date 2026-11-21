@@ -17,8 +17,11 @@ du broker et les descriptors MQTT.
 ## Découverte et matching
 
 - `devList` fournit l’UUID, le type, le sous-type et l’état en ligne.
-- Le descriptor MQTT fournit le type, le firmware, les abilities, la MAC et les
-  subdevices.
+- Le descriptor MQTT fournit le type, le firmware, les abilities, la MAC, les
+  subdevices et les canaux découverts.
+- Les entités `channel: $channels` sont clonées pour chaque canal exposé ; leur
+  `state.select` choisit l’élément de liste dont la clé vaut le canal. Moteur
+  2.3, refusé dans les templates de sous-appareils.
 - Le matching applique : MAC + sous-type, sous-type, type/abilities exacts,
   préfixe le plus long, puis `*`.
 - Une ambiguïté est comptée ; un appareil sans profil est signalé par une

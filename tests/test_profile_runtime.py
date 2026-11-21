@@ -3,7 +3,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from custom_components.meross_cloud.profiles.compiler import compile_profile
+from custom_components.meross_cloud.profiles.compiler import (
+    compile_profile,
+    expand_channel_entities,
+)
 from custom_components.meross_cloud.profiles.models import ProfileMeta
 from custom_components.meross_cloud.profiles.runtime import (
     MAX_PAYLOAD_BYTES,
@@ -469,3 +472,91 @@ def test_unknown_subdevice_id_is_ignored():
 
     assert applied == 0
     assert device.ignored == 1
+
+
+def channel_runtime(channels=(0, 1, 2)):
+    data = {
+        "schema_version": 2,
+        "profile": {"id": "test.multisocket", "version": "1"},
+        "match": {"type": ["mss425"]},
+        "payloads": {
+            TOGGLE_NS: {
+                "methods": ["GETACK", "PUSH"],
+                "fields": {},
+            },
+        },
+        "entities": [{
+            "key": "outlet",
+            "platform": "switch",
+            "channel": "$channels",
+            "name": "Outlet $channel_number",
+            "state": {
+                "namespace": TOGGLE_NS,
+                "channel": "$channel",
+                "select": {"path": "togglex", "key": "channel"},
+                "fields": {"onoff": "onoff"},
+            },
+            "commands": {
+                "turn_on": {
+                    "namespace": TOGGLE_NS,
+                    "payload": {"channel": "$channel",
+                                "togglex": [{"channel": "$channel",
+                                             "onoff": 1}]},
+                },
+            },
+        }],
+    }
+    compiled = expand_channel_entities(compile_data(data), channels)
+    return DeviceRuntime("strip1", compiled)
+
+
+def test_channel_selection_uses_the_item_channel_not_its_position():
+    device = channel_runtime()
+
+    applied = device.dispatch(TOGGLE_NS, "PUSH", {
+        "togglex": [
+            {"channel": 2, "onoff": 1},
+            {"channel": 0, "onoff": 0},
+        ],
+    })
+
+    assert applied == 2
+    assert device.entities["outlet_0"].values == {"onoff": 0}
+    assert device.entities["outlet_2"].values == {"onoff": 1}
+    assert device.entities["outlet_1"].values == {}
+
+
+def test_channel_selection_ignores_the_payload_top_level_channel():
+    device = channel_runtime()
+
+    device.dispatch(TOGGLE_NS, "PUSH", {
+        "channel": 0,
+        "togglex": [{"channel": 1, "onoff": 1}],
+    })
+
+    assert device.entities["outlet_1"].values == {"onoff": 1}
+    assert device.entities["outlet_0"].values == {}
+
+
+def test_channel_selection_misses_are_ignored():
+    device = channel_runtime()
+
+    applied = device.dispatch(TOGGLE_NS, "PUSH", {
+        "togglex": [{"channel": 7, "onoff": 1}],
+    })
+
+    assert applied == 0
+    assert all(not entity.values for entity in device.entities.values())
+
+
+@pytest.mark.parametrize("payload", [
+    {"togglex": {"channel": 0, "onoff": 1}},
+    {"togglex": None},
+    {"togglex": [1, 2]},
+    {},
+])
+def test_channel_selection_rejects_malformed_lists(payload):
+    device = channel_runtime()
+
+    assert device.dispatch(TOGGLE_NS, "PUSH", payload) == 0
+    assert all(not entity.values for entity in device.entities.values())

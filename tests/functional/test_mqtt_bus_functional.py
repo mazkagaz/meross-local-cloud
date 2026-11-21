@@ -3,7 +3,7 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from device_simulator import HubSimulator, MSS310Simulator
+from device_simulator import HubSimulator, MSS310Simulator, MSS425Simulator
 from helpers import start_adapter_with_bus, wait_for
 from mqtt_bus import InMemoryMqttBus
 
@@ -86,5 +86,33 @@ async def test_hub_subdevices_over_the_bus(hass):
         hub.emit("Appliance.Hub.Mts100.All")
         await asyncio.sleep(0)
         assert climate["target_temperature"] == 25.0
+    finally:
+        await adapter.async_stop()
+
+
+async def test_mss425_over_the_bus(hass):
+    bus = InMemoryMqttBus()
+    simulator = bus.add(MSS425Simulator())
+    adapter = await start_adapter_with_bus(hass, bus, ["mss425"], ["strip1"])
+    runtime = adapter.runtimes["strip1"]
+    try:
+        assert set(runtime.entities) == {
+            "outlet_0", "outlet_1", "outlet_2"}
+        assert await wait_for(
+            lambda: all(entity.values for entity in runtime.entities.values()))
+        assert runtime.entities["outlet_0"].values["onoff"] == 1
+        assert runtime.entities["outlet_2"].values["onoff"] == 1
+
+        await adapter.async_send("strip1", TOGGLE, "SET", {
+            "channel": 1,
+            "togglex": [{"channel": 1, "onoff": 0}]})
+        assert simulator.onoff[1] == 0
+        assert runtime.entities["outlet_1"].values["onoff"] == 0
+        assert runtime.entities["outlet_0"].values["onoff"] == 1
+
+        simulator.onoff[2] = 0
+        simulator.emit()
+        assert await wait_for(
+            lambda: runtime.entities["outlet_2"].values["onoff"] == 0)
     finally:
         await adapter.async_stop()

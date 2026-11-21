@@ -6,6 +6,7 @@ import yaml
 from custom_components.meross_cloud.profiles.compiler import (
     ProfileCompiler,
     compile_profile,
+    expand_channel_entities,
 )
 from custom_components.meross_cloud.profiles.models import ProfileMeta
 
@@ -783,6 +784,7 @@ def test_lazy_compilation_cache_uses_id_version_and_digest():
     ("msh300", {"online"}),
     ("mts200", {"climate"}),
     ("mfc", {"fan"}),
+    ("mss425", {"outlet"}),
     ("mss", {"switch"}),
     ("msl", {"light"}),
     ("mrs", {"cover"}),
@@ -837,10 +839,139 @@ def test_canonical_profile_entities_carry_stable_ids():
 
 @pytest.mark.parametrize("name", [
     "mrs100", "mss310", "msl120", "msh300", "mts200", "mfc",
-    "mss", "msl", "mrs", "mss5", "mod",
+    "mss425", "mss", "msl", "mrs", "mss5", "mod",
 ])
 def test_fixtures_match_the_canonical_broker_profiles(name):
     canonical = BROKER_PROFILES / f"{name}.yaml"
     if not canonical.exists():
         pytest.skip("broker profiles are not checked out next to the repo")
     assert (FIXTURES / f"{name}.yaml").read_bytes() == canonical.read_bytes()
+
+
+def channel_template_entity():
+    return entity(
+        key="outlet",
+        channel="$channels",
+        name="Outlet $channel_number",
+        state={
+            "namespace": TOGGLE_NS,
+            "channel": "$channel",
+            "select": {"path": "togglex", "key": "channel"},
+            "fields": {"onoff": "onoff"},
+        },
+        commands={
+            "turn_on": {
+                "namespace": TOGGLE_NS,
+                "payload": {"channel": "$channel", "onoff": 1},
+            },
+        },
+    )
+
+
+def test_channel_template_compiles_without_a_static_channel():
+    compiled = compile_profile(meta(doc(
+        entities=[channel_template_entity()])))
+
+    assert compiled.errors == []
+    item = compiled.entities["outlet"]
+    assert item.channel is None
+    assert item.channel_template is True
+    assert item.state.channel is None
+    assert item.state.select_path == "togglex"
+    assert item.state.select_key == "channel"
+
+
+def test_channel_template_expands_for_every_device_channel():
+    compiled = expand_channel_entities(
+        compile_profile(meta(doc(entities=[channel_template_entity()]))),
+        [2, 0])
+
+    assert set(compiled.entities) == {"outlet_0", "outlet_2"}
+    first = compiled.entities["outlet_0"]
+    assert first.channel == 0
+    assert first.state.channel == 0
+    assert first.channel_template is False
+    assert first.name == "Outlet 1"
+    assert first.uid == "test.profile:outlet:0"
+    assert compiled.entities["outlet_2"].state.channel == 2
+    assert compiled.entities["outlet_2"].name == "Outlet 3"
+
+
+def test_channel_expansion_falls_back_to_channel_zero():
+    compiled = expand_channel_entities(
+        compile_profile(meta(doc(entities=[channel_template_entity()]))),
+        [])
+
+    assert set(compiled.entities) == {"outlet_0"}
+
+
+def test_channel_expansion_leaves_static_entities_untouched():
+    static = entity()
+    compiled = compile_profile(meta(doc(
+        entities=[static, channel_template_entity()])))
+
+    expanded = expand_channel_entities(compiled, [1])
+
+    assert set(expanded.entities) == {"switch", "outlet_1"}
+
+
+def test_state_select_requires_an_entity_channel():
+    bad = entity(state={
+        "namespace": TOGGLE_NS,
+        "select": {"path": "togglex", "key": "channel"},
+        "fields": {"onoff": "onoff"},
+    }, channel=None)
+
+    compiled = compile_profile(meta(doc(entities=[bad])))
+
+    assert compiled.entities == {}
+    assert any("state.select requires an entity channel" in error
+               for error in compiled.errors)
+
+
+@pytest.mark.parametrize("select", [
+    "togglex",
+    {"path": "", "key": "channel"},
+    {"path": "a[-1]", "key": "channel"},
+    {"path": "togglex", "key": "Channel"},
+    {"path": "togglex", "key": ""},
+    {"path": "togglex"},
+])
+def test_invalid_state_select_is_refused(select):
+    compiled = compile_profile(meta(doc(
+        entities=[entity(state={
+            "namespace": TOGGLE_NS,
+            "channel": "$channel",
+            "select": select,
+            "fields": {"onoff": "onoff"},
+        })])))
+
+    assert compiled.entities == {}
+    assert any("state.select" in error for error in compiled.errors)
+
+
+def test_channel_templates_are_refused_in_subdevice_templates():
+    compiled = compile_profile(meta(doc(
+        match={"kind": "hub", "type": ["msh"]},
+        subdevices=[subdevice(entities=[{
+            "key": "temperature",
+            "platform": "sensor",
+            "channel": "$channels",
+            "state": {"namespace": SUBDEVICE_NS,
+                      "fields": {"value": "temperature"}},
+        }], payloads=subdevice_payloads())])))
+
+    assert compiled.errors
+    assert any("$channels is not supported in subdevice templates" in error
+               for error in compiled.errors)
+
+
+def test_channel_template_requires_a_channel_relative_state():
+    bad = channel_template_entity()
+    bad["state"] = dict(bad["state"], channel=0)
+
+    compiled = compile_profile(meta(doc(entities=[bad])))
+
+    assert compiled.entities == {}
+    assert any("must read state from $channel" in error
+               for error in compiled.errors)

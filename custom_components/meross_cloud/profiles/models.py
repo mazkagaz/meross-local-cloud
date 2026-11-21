@@ -71,6 +71,8 @@ class StateSpec:
     fields: Dict[str, FieldSpec] = field(default_factory=dict)
     digest: Optional[str] = None
     scale: Optional[float] = None
+    select_path: Optional[str] = None
+    select_key: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -98,6 +100,7 @@ class EntitySpec:
     max_value: Optional[float] = None
     step: Optional[float] = None
     device: str = "hub"
+    channel_template: bool = False
     state: Optional[StateSpec] = None
     commands: Dict[str, CommandSpec] = field(default_factory=dict)
     quirks: Tuple[Dict[str, Any], ...] = ()

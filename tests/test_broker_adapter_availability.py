@@ -129,3 +129,60 @@ async def test_unbind_removes_device_subdevice_and_entities(hass):
     assert instance.runtimes == {}
     assert instance.descriptors == {}
     assert instance.device_online == {}
+
+
+def test_descriptor_channels_are_normalized():
+    from custom_components.meross_cloud.broker_adapter import (
+        _descriptor_channels,
+    )
+
+    descriptor = SimpleNamespace(channels=[2, 0, True, -1, "1", 2])
+
+    assert _descriptor_channels(descriptor) == [0, 2]
+    assert _descriptor_channels(SimpleNamespace()) == []
+
+
+def test_profile_matching_expands_channel_entities():
+    from pathlib import Path
+
+    import yaml
+
+    from custom_components.meross_cloud.profiles import (
+        ProfileCompiler,
+        ProfileMeta,
+        ProfileRegistry,
+    )
+
+    data = yaml.safe_load(
+        (Path(__file__).parent / "fixtures" / "profiles" / "mss425.yaml")
+        .read_text())
+    profile = ProfileMeta(
+        id=data["profile"]["id"], version=data["profile"]["version"],
+        source="test", digest="hash", requires_engine=None, data=data)
+    registry = ProfileRegistry(
+        revision="rev", schema_version=2,
+        profiles={profile.id: profile})
+    instance = adapter()
+    instance.registry = registry
+    instance.compiler = ProfileCompiler()
+    instance.runtimes = {}
+    instance.descriptors = {"strip1": {
+        "name": "Strip", "type": "mss425", "subType": None,
+        "firmware": "4.0.0", "hardware": None,
+        "abilities": ["Appliance.Control.ToggleX"],
+        "mac": "AA:BB:CC:DD:EE:FF", "is_hub": False,
+        "channels": [0, 2], "subdevices": [],
+    }}
+    instance.match_ambiguities = 0
+    instance.devices_matched = 0
+    instance.devices_unmatched = 0
+    instance.subdevices_matched = 0
+    instance.subdevices_unmatched = 0
+    instance.compile_errors = []
+
+    instance._match_profiles()
+
+    runtime = instance.runtimes["strip1"]
+    assert set(runtime.profile.entities) == {"outlet_0", "outlet_2"}
+    assert set(runtime.entities) == {"outlet_0", "outlet_2"}
+    assert instance.devices_matched == 1

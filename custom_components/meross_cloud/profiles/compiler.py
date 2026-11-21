@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import replace
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from .models import (
     CommandSpec,
@@ -81,6 +82,43 @@ def compile_profile(profile: ProfileMeta) -> CompiledProfile:
     )
     compiled.subdevices = _compile_subdevices(profile.id, data, compiled)
     return compiled
+
+
+def expand_channel_entities(compiled: CompiledProfile,
+                            channels: Iterable[int]) -> CompiledProfile:
+    """Clone ``$channels`` entity templates for every device channel."""
+    templated = [entity for entity in compiled.entities.values()
+                 if entity.channel_template]
+    if not templated:
+        return compiled
+    indexes = tuple(sorted({
+        channel for channel in channels
+        if _is_int(channel) and channel >= 0})) or (0,)
+    entities = {key: entity for key, entity in compiled.entities.items()
+                if not entity.channel_template}
+    for entity in templated:
+        for channel in indexes:
+            state = entity.state
+            if state is not None and state.channel is None:
+                state = replace(state, channel=channel)
+            clone = replace(
+                entity,
+                uid=f"{entity.uid}:{channel}",
+                key=f"{entity.key}_{channel}",
+                channel=channel,
+                channel_template=False,
+                name=_channel_name(entity.name, channel),
+                state=state,
+            )
+            entities[clone.key] = clone
+    return replace(compiled, entities=entities)
+
+
+def _channel_name(name: Optional[str], channel: int) -> Optional[str]:
+    if name is None:
+        return None
+    return (name.replace("$channel_number", str(channel + 1))
+            .replace("$channel", str(channel)))
 
 
 class ProfileCompiler:
@@ -294,9 +332,19 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
 
     platform = raw["platform"]
     channel = raw.get("channel")
-    if channel is not None:
+    channel_template = channel == "$channels"
+    if channel_template:
+        channel = None
+        if default_device == "subdevice":
+            errors.append(
+                f"{prefix}: $channels is not supported in subdevice "
+                "templates")
+            channel_template = False
+    elif channel is not None:
         if not _is_int(channel) or channel < 0:
-            errors.append(f"{prefix}: channel must be a non-negative integer")
+            errors.append(
+                f"{prefix}: channel must be a non-negative integer or "
+                "$channels")
             channel = None
 
     device = raw.get("device", default_device)
@@ -319,10 +367,10 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
     step = _optional_number(prefix, raw, "step", errors)
 
     state = _compile_state(prefix, raw.get("state"), namespaces, channel,
-                           errors)
+                           errors, channel_template=channel_template)
     commands = _compile_commands(
         prefix, platform, raw.get("commands"), namespaces, channel, errors,
-        allow_subdevice=allow_subdevice)
+        allow_subdevice=allow_subdevice, channel_template=channel_template)
     quirks = _compile_entity_quirks(prefix, raw.get("quirks"), errors)
     legacy_classifiers = raw.get("legacy_classifiers", [])
     if not isinstance(legacy_classifiers, (list, tuple)) or not all(
@@ -350,6 +398,7 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
         max_value=max_value,
         step=step,
         device=device,
+        channel_template=channel_template,
         state=state,
         commands=commands,
         quirks=quirks,
@@ -425,7 +474,8 @@ def _optional_string(prefix: str, raw: Dict[str, Any], key: str,
 def _compile_state(prefix: str, raw: Any,
                    namespaces: Dict[str, NamespaceSpec],
                    entity_channel: Optional[int],
-                   errors: List[str]) -> Optional[StateSpec]:
+                   errors: List[str], *,
+                   channel_template: bool = False) -> Optional[StateSpec]:
     if raw is None:
         return None
     if not isinstance(raw, dict):
@@ -475,12 +525,16 @@ def _compile_state(prefix: str, raw: Any,
     channel: Optional[int] = None
     if state_channel is not None:
         if state_channel == "$channel":
-            if entity_channel is None:
+            if entity_channel is None and not channel_template:
                 errors.append(
                     f"{prefix}: $channel used without an entity channel")
             channel = entity_channel
         elif _is_int(state_channel) and state_channel >= 0:
             channel = state_channel
+            if channel_template:
+                errors.append(
+                    f"{prefix}: a $channels entity must read state from "
+                    "$channel")
         else:
             errors.append(
                 f"{prefix}: state channel must be a non-negative integer "
@@ -503,12 +557,40 @@ def _compile_state(prefix: str, raw: Any,
         errors.append(f"{prefix}: state.scale must be a number")
         scale = None
 
+    select_path = select_key = None
+    select = raw.get("select")
+    if select is not None:
+        if not isinstance(select, dict):
+            errors.append(f"{prefix}: state.select must be an object")
+        else:
+            path = select.get("path")
+            key = select.get("key")
+            if not isinstance(path, str) or not path:
+                errors.append(f"{prefix}: state.select.path must be a path")
+            else:
+                try:
+                    parse_path(path)
+                    select_path = path
+                except InvalidPath as err:
+                    errors.append(
+                        f"{prefix}: invalid state.select.path {path!r}: {err}")
+            if not isinstance(key, str) or not _KEY_RE.fullmatch(key):
+                errors.append(
+                    f"{prefix}: state.select.key must be a lowercase key")
+            else:
+                select_key = key
+        if entity_channel is None and not channel_template:
+            errors.append(
+                f"{prefix}: state.select requires an entity channel")
+
     return StateSpec(
         namespace=namespace,
         channel=channel,
         fields=fields,
         digest=digest,
         scale=float(scale) if scale is not None else None,
+        select_path=select_path,
+        select_key=select_key,
     )
 
 
@@ -516,7 +598,9 @@ def _compile_commands(prefix: str, platform: str, raw: Any,
                       namespaces: Dict[str, NamespaceSpec],
                       entity_channel: Optional[int],
                       errors: List[str], *,
-                      allow_subdevice: bool) -> Dict[str, CommandSpec]:
+                      allow_subdevice: bool,
+                      channel_template: bool = False
+                      ) -> Dict[str, CommandSpec]:
     if raw is None:
         return {}
     if not isinstance(raw, dict):
@@ -545,7 +629,8 @@ def _compile_commands(prefix: str, platform: str, raw: Any,
                 f"{', '.join(sorted(set(invalid_tokens)))}")
             continue
         tokens = set(find_tokens(payload))
-        if "$channel" in tokens and entity_channel is None:
+        if ("$channel" in tokens and entity_channel is None
+                and not channel_template):
             errors.append(
                 f"{prefix}: command {name}: $channel used without an "
                 "entity channel")

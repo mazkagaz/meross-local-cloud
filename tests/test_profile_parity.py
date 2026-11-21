@@ -4,8 +4,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from custom_components.meross_cloud.profiles.compiler import compile_profile
+from custom_components.meross_cloud.profiles.compiler import (
+    compile_profile,
+    expand_channel_entities,
+)
 from custom_components.meross_cloud.profiles.models import ProfileMeta
+from custom_components.meross_cloud.profiles.paths import substitute
 from custom_components.meross_cloud.profiles.runtime import DeviceRuntime
 
 FIXTURES = Path(__file__).parent / "fixtures" / "profiles"
@@ -128,3 +132,23 @@ def test_hub_profile_golden_frames():
     climate = runtime.subdevices["valve1"].entities["climate"].values
     assert climate["current_temperature"] == pytest.approx(22.0)
     assert climate["target_temperature"] == pytest.approx(20.0)
+
+
+def test_multisocket_profile_expands_and_selects_channels():
+    profile = expand_channel_entities(compiled("mss425"), [0, 1, 2])
+    runtime = DeviceRuntime("strip1", profile)
+
+    assert set(profile.entities) == {"outlet_0", "outlet_1", "outlet_2"}
+
+    assert runtime.dispatch(TOGGLE, "PUSH", {"togglex": [
+        {"channel": 2, "onoff": 1},
+        {"channel": 0, "onoff": 0},
+    ]}) == 2
+    assert runtime.entities["outlet_0"].values == {"onoff": 0}
+    assert runtime.entities["outlet_2"].values == {"onoff": 1}
+    assert runtime.entities["outlet_1"].values == {}
+
+    command = profile.entities["outlet_1"].commands["turn_on"].payload
+    assert command["channel"] == "$channel"
+    assert substitute(command, {"channel": 1}) == {
+        "channel": 1, "togglex": [{"channel": 1, "onoff": 1}]}
