@@ -127,8 +127,9 @@ Au-dessus des champs, un exemple générique est affiché :
 
 Le broker doit être en **1.2.2 ou plus récent** pour le routage ACK et le
 catalogue de profils ; **1.3.0** est requis pour les nouvelles familles
-(multiprises, capteurs, garage, purificateur, MST, EM, MSXH0, HP110, MTS9). Sa CA locale est valide :
-elle est téléchargée depuis `/ca.crt`, vérifiée et épinglée par l'intégration, puis
+(multiprises, capteurs, garage, purificateur, MST, EM, MSXH0, HP110, MTS9).
+Sa CA locale est valide : elle est téléchargée depuis `/ca.crt`, vérifiée et
+épinglée par l'intégration, puis
 utilisée pour HTTP et MQTT (vérification du nom d'hôte incluse lorsque le
 certificat couvre l'adresse configurée).
 
@@ -214,8 +215,8 @@ Home Assistant. Une nouvelle release GitHub est publiée pour chaque version.
 | HACS ne trouve pas le dépôt | dépôt public, catégorie **Integration**, release publiée |
 | Aucun appareil découvert | add-on démarré, appareil ONLINE, compte local correct |
 | Erreur de connexion HTTP | adresse du broker et port HTTPS `2004` (TLS obligatoire) |
-| Certificat HTTPS refusé | mettre à jour le broker en 1.2.1 (CA valide) |
-| Erreur MQTT | adresse `…:2001` ; broker 1.2.1 requis |
+| Certificat HTTPS refusé | mettre à jour le broker en 1.3.0 (CA valide) |
+| Erreur MQTT | adresse `…:2001` ; broker 1.3.0 requis |
 | Entités absentes | vérifier la réparation « appareil sans profil » et le catalogue broker |
 | Appareil sans profil | ajouter ou corriger le profil dans le catalogue ; reload automatique à la nouvelle révision |
 | Entités fantômes après un oubli | Unbind (≤ 60 s), réparation 48 h, ou suppression manuelle de l'appareil |
