@@ -357,12 +357,10 @@ subdevices:
         commands:
           turn_on:
             namespace: Appliance.Control.Water
-            payload:
-              { control: [{ subId: $id, channel: 0, onoff: 1 }] }
+            payload: { control: [{ subId: $id, channel: 0, onoff: 1 }] }
           turn_off:
             namespace: Appliance.Control.Water
-            payload:
-              { control: [{ subId: $id, channel: 0, onoff: 2 }] }
+            payload: { control: [{ subId: $id, channel: 0, onoff: 2 }] }
 
       - key: duration
         platform: number
