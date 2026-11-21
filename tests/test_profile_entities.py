@@ -580,3 +580,49 @@ async def test_purifier_fan_uses_single_speed_and_off(hass):
     await entity.async_turn_off()
     assert adapter.sent[-1][3] == {
         "fan": [{"channel": 0, "speed": 0}]}
+
+
+async def test_calibration_status_prefers_the_p3_cache(hass):
+    device = runtime("mrs100")
+    adapter = FakeAdapter(device)
+    cache = RollerShutterConfigCache(
+        SimpleNamespace(),
+        fetch=AsyncMock(return_value={
+            "u1": {"adjust": [{"channel": 0, "value": 0}]},
+        }))
+    component = await setup_entities(
+        hass, adapter, HA_SENSOR,
+        extra={SHUTTER_CONFIG_CACHE: cache})
+    entity = next(
+        item for item in component.entities
+        if item._spec.key == "calibration_status")
+
+    assert entity.native_value == "success"
+    assert entity.extra_state_attributes["status_code"] == 0
+
+    device.dispatch("Appliance.RollerShutter.Adjust", "PUSH", {
+        "adjust": [{"channel": 0, "status": 2}]})
+    await hass.async_block_till_done()
+    assert entity.native_value == "motor_blocked"
+    assert cache.cached_channel("u1", 0).adjust == 2
+
+
+async def test_cover_position_prefers_the_p3_cache(hass):
+    device = runtime("mrs100")
+    adapter = FakeAdapter(device)
+    cache = RollerShutterConfigCache(
+        SimpleNamespace(),
+        fetch=AsyncMock(return_value={
+            "u1": {"position": [{"channel": 0, "position": 75}]},
+        }))
+    component = await setup_entities(
+        hass, adapter, HA_COVER,
+        extra={SHUTTER_CONFIG_CACHE: cache})
+    entity = next(iter(component.entities))
+
+    assert entity.current_cover_position == 75
+    assert entity.is_closed is False
+
+    device.entities["cover"].values["position"] = 0
+    assert entity.current_cover_position == 0
+    assert entity.is_closed is True

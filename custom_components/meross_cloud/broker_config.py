@@ -151,13 +151,17 @@ class RollerShutterConfigCache:
 
     def update_from_set(self, uuid: str, channel: int,
                         signal_open_ms: Optional[int] = None,
-                        signal_close_ms: Optional[int] = None) -> None:
+                        signal_close_ms: Optional[int] = None,
+                        position: Optional[int] = None,
+                        adjust: Optional[int] = None) -> None:
         """Apply a known SET without waiting for the broker refresh."""
         if (not uuid or isinstance(channel, bool)
                 or not isinstance(channel, int) or channel < 0):
             return
         signal_open_ms = _non_negative(signal_open_ms)
         signal_close_ms = _non_negative(signal_close_ms)
+        position = _non_negative(position)
+        adjust = _non_negative(adjust)
         states = self._states.setdefault(uuid, {})
         previous = states.get(channel)
         states[channel] = ChannelState(
@@ -166,8 +170,10 @@ class RollerShutterConfigCache:
                             else previous.signal_open_ms if previous else None),
             signal_close_ms=(signal_close_ms if signal_close_ms is not None
                              else previous.signal_close_ms if previous else None),
-            position=previous.position if previous else None,
-            adjust=previous.adjust if previous else None,
+            position=(position if position is not None
+                      else previous.position if previous else None),
+            adjust=(adjust if adjust is not None
+                    else previous.adjust if previous else None),
         )
 
     def invalidate(self) -> None:

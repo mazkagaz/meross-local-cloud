@@ -1,7 +1,7 @@
 schema_version: 2
 profile:
   id: meross.mrs100
-  version: "2026.11.1"
+  version: "2026.11.2"
   requires_engine: ">=2.2"
   description: "Volet roulant MRS100 : position, durées persistées, calibration."
 match:
@@ -30,7 +30,7 @@ payloads:
       signalClose: { type: integer, unit: "ms" }
       autoAdjust: { type: integer }
   Appliance.RollerShutter.Adjust:
-    methods: [GETACK, SET, SETACK, PUSH]
+    methods: [SET, SETACK, PUSH]
     fields:
       channel: { type: integer }
       value: { type: integer }

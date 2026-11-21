@@ -286,10 +286,65 @@ class ProfileSensor(ProfileBaseEntity, SensorEntity):
             self._spec.device_class, SensorDeviceClass)
         self._adjust_status = _has_quirk(
             self._spec, "adjust_status_names")
+        self._p3_state: Optional[ChannelState] = None
+        self._last_adjust: Optional[int] = None
+
+    @property
+    def _config_cache(self):
+        if not self._adjust_status or self.hass is None:
+            return None
+        return self.hass.data.get(DOMAIN, {}).get(SHUTTER_CONFIG_CACHE)
+
+    async def async_added_to_hass(self) -> None:
+        await self._async_refresh_cache()
+        await super().async_added_to_hass()
+
+    async def _async_refresh_cache(self) -> None:
+        cache = self._config_cache
+        if cache is None:
+            return
+        try:
+            state = await cache.async_get_channel(
+                self._device_uuid,
+                self._spec.channel if self._spec.channel is not None else 0)
+        except Exception:  # noqa: BLE001 - cache failures fall back
+            state = None
+        if state is not None:
+            self._p3_state = state
+
+    def _adjust_value(self) -> Optional[int]:
+        value = self._values().get("value")
+        if value is not None:
+            return value
+        if self._p3_state is not None:
+            return self._p3_state.adjust
+        return None
+
+    def _write_state(self) -> None:
+        self._remember_adjust()
+        super()._write_state()
+
+    def _remember_adjust(self) -> None:
+        if not self._adjust_status:
+            return
+        value = self._values().get("value")
+        if not _is_int(value) or value == self._last_adjust:
+            return
+        self._last_adjust = value
+        cache = self._config_cache
+        if cache is None:
+            return
+        cache.update_from_set(
+            self._device_uuid,
+            self._spec.channel if self._spec.channel is not None else 0,
+            adjust=value)
+        self._p3_state = cache.cached_channel(
+            self._device_uuid,
+            self._spec.channel if self._spec.channel is not None else 0)
 
     @property
     def native_value(self):
-        value = self._values().get("value")
+        value = self._adjust_value()
         if self._adjust_status and _is_int(value):
             return _ADJUST_STATUS_NAMES.get(
                 value, f"failed_{value}")
@@ -299,7 +354,7 @@ class ProfileSensor(ProfileBaseEntity, SensorEntity):
     def extra_state_attributes(self) -> Dict[str, Any]:
         if not self._adjust_status:
             return {}
-        value = self._values().get("value")
+        value = self._adjust_value()
         return {
             "status_code": value if _is_int(value) else None,
             "channel": self._spec.channel,
@@ -333,13 +388,41 @@ class ProfileCover(ProfileBaseEntity, CoverEntity):
         if "set_position" in self._spec.commands:
             features |= CoverEntityFeature.SET_POSITION
         self._attr_supported_features = features
+        self._p3_state: Optional[ChannelState] = None
+
+    @property
+    def _config_cache(self):
+        if self.hass is None:
+            return None
+        return self.hass.data.get(DOMAIN, {}).get(SHUTTER_CONFIG_CACHE)
+
+    async def async_added_to_hass(self) -> None:
+        await self._async_refresh_cache()
+        await super().async_added_to_hass()
+
+    async def _async_refresh_cache(self) -> None:
+        cache = self._config_cache
+        if cache is None:
+            return
+        try:
+            state = await cache.async_get_channel(
+                self._device_uuid,
+                self._spec.channel if self._spec.channel is not None else 0)
+        except Exception:  # noqa: BLE001 - cache failures fall back
+            state = None
+        if state is not None:
+            self._p3_state = state
 
     @property
     def current_cover_position(self) -> Optional[int]:
         if _has_quirk(self._spec, "garage_door"):
             return None
         value = self._values().get("position")
-        return int(value) if value is not None else None
+        if value is not None:
+            return int(value)
+        if self._p3_state is not None:
+            return self._p3_state.position
+        return None
 
     @property
     def is_closed(self) -> Optional[bool]:
@@ -348,6 +431,8 @@ class ProfileCover(ProfileBaseEntity, CoverEntity):
             opened = values.get("open")
             return None if opened is None else not bool(opened)
         position = values.get("position")
+        if position is None and self._p3_state is not None:
+            position = self._p3_state.position
         if position is not None:
             return int(position) == 0
         state = values.get("state")

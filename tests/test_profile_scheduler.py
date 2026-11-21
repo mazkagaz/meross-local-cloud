@@ -219,3 +219,12 @@ async def test_malformed_multiple_response_is_ignored():
         assert scheduler.errors == 0
     finally:
         await scheduler.async_stop()
+
+
+def test_set_only_namespaces_are_not_polled():
+    profile = compiled_fixture("mrs100")
+    runtime = DeviceRuntime("u1", profile)
+    scheduler = DeviceScheduler("u1", profile, runtime, FakeSender())
+
+    assert "Appliance.RollerShutter.Adjust" not in scheduler._plan
+    assert "Appliance.RollerShutter.Position" in scheduler._plan
