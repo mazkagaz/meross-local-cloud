@@ -30,7 +30,8 @@ portées) ne créent plus d’entités tant que leur profil n’est pas publié.
 profils MRS100 actuels décrivent encore des chemins de payload à corriger ; le
 tuning est prévu après validation de la bêta.
 
-**Validation** : suivre [docs/D5-VALIDATION.md](docs/D5-VALIDATION.md).
+**Validation** : suivre
+[docs/testing/D5-VALIDATION.md](docs/testing/D5-VALIDATION.md).
 Retour arrière : réinstaller la version stable **2.4.6** dans HACS, puis
 redémarrer Home Assistant.
 

@@ -55,7 +55,8 @@ Les versions stables sont publiées depuis `main`. Les versions de test sont
 des **pre-releases** `X.Y.Z-beta.N` issues de la branche `dev` : pour les
 voir et les installer dans HACS, activer **« Afficher les versions bêta »**.
 Sans cette option, seules les versions stables sont proposées. Procédure
-complète : [docs/RELEASING.md](docs/RELEASING.md).
+complète : [docs/operations/RELEASING.md](docs/operations/RELEASING.md).
+La documentation technique est indexée dans [docs/README.md](docs/README.md).
 
 ## Avant de commencer
 
