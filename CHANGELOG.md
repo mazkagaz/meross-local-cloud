@@ -1,3 +1,16 @@
+## 3.0.0-beta.3 — resynchronisation après reconnexion
+
+Version de **test**. Requiert le broker **1.2.1**.
+
+- Après une reconnexion MQTT, rafale bornée de `devList` à 0/5/15/30 s pour
+  retrouver rapidement les statuts online.
+- Invalidation du cache volet P3 et rafraîchissement de tous les schedulers à
+  chaque passe.
+- Le premier connect au démarrage ne déclenche pas de rafale ; une seule
+  rafale à la fois ; annulation au reload/stop.
+- Un échec HTTP n’interrompt pas les tentatives suivantes.
+- Documentation architecture/specs/traçabilité mise à jour.
+
 ## 3.0.0-beta.2 — stop volet immédiat
 
 Version de **test**. Requiert le broker **1.2.1** pour les profils MRS100
