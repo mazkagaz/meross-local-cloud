@@ -1,7 +1,7 @@
-# Validation de la version 3.1.3
+# Validation de la version 3.1.4
 
 Cette checklist valide le backend profils obligatoire (D5) sur une installation
-réelle, avec la version stable `3.1.3`.
+réelle, avec la version stable `3.1.4`.
 
 ## Prérequis
 
@@ -16,12 +16,12 @@ d'abord l'état publié du catalogue.
 ## Installation
 
 1. HACS → Intégrations → Meross Local Cloud → installer la version
-   **3.1.3**.
+   **3.1.4**.
 2. Redémarrer Home Assistant.
 3. Paramètres → Appareils et services → Meross Local Cloud : vérifier que
    l'entrée existante est chargée sans reconfiguration.
 4. Télécharger les diagnostics et vérifier :
-   - `version.integration == 3.1.3` ;
+   - `version.integration == 3.1.4` ;
    - `profile_backend.state == connected` ;
    - `catalog_signature == valid` ;
    - `devices_matched` égal au nombre d'appareils attendus ;
@@ -94,4 +94,4 @@ Conserver les diagnostics et les journaux de la bêta pour l'analyse.
 - [ ] Aucun doublon d'entité ou d'appareil.
 - [ ] Automatisations et tableaux de bord inchangés.
 - [ ] Aucun cas dégradé bloquant.
-- [ ] Décision : conserver **3.1.3**, corriger, ou revenir en arrière.
+- [ ] Décision : conserver **3.1.4**, corriger, ou revenir en arrière.

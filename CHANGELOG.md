@@ -1,3 +1,12 @@
+## 3.1.4 — bannière finale dans la documentation
+
+Version stable. Aucun changement de comportement ; broker **1.3.0+** (1.3.1
+recommandé) et pairer **2.0.9+** inchangés.
+
+- Bannière finale appliquée dans le README et `info.md` (en-tête de document).
+- Les logos et icônes restent issus du logo PNG transparent ; les variantes
+  JPEG ne servent qu’aux emplacements qui exigent ce format.
+
 ## 3.1.3 — identité visuelle unifiée
 
 Version stable. Aucun changement de comportement ; broker **1.3.0+** (1.3.1
