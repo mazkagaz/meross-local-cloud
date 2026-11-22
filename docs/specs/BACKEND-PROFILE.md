@@ -33,7 +33,7 @@ du broker et les descriptors MQTT.
 ## Persistance d’état
 
 - Les valeurs brutes du runtime sont sauvegardées dans le Store HA
-  (`meross_cloud.runtime_state`), de façon différée et à l’arrêt propre.
+  (`meross_local_cloud.runtime_state`), de façon différée et à l’arrêt propre.
 - Elles sont restaurées au démarrage avant la création des entités, pour les
   appareils et sous-appareils dont le profil et la plateforme correspondent
   encore ; les valeurs non scalaires ou inconnues sont ignorées.

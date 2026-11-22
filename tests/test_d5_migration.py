@@ -1,18 +1,18 @@
 """D5-c: drop the unique_ids created by the pre-historical beta."""
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.meross_cloud import (
+from custom_components.meross_local_cloud import (
     _is_stale_profile_uid,
     async_prune_stale_profile_entities,
 )
-from custom_components.meross_cloud.common import DOMAIN
+from custom_components.meross_local_cloud.common import DOMAIN
 
 
 def test_stale_profile_uid_detection():
     assert _is_stale_profile_uid("switch:u1:0") is True
     assert _is_stale_profile_uid("sensor:sub1:0:temperature:°C") is True
     assert _is_stale_profile_uid("switch:#BASE:u1:0") is False
-    assert _is_stale_profile_uid("meross_cloud:u1:update:profile") is False
+    assert _is_stale_profile_uid("meross_local_cloud:u1:update:profile") is False
     assert _is_stale_profile_uid("broker_profile_backend") is False
     assert _is_stale_profile_uid("other:u1:0") is False
 
@@ -25,7 +25,7 @@ async def test_prune_removes_only_pre_d5c_entities(hass):
     registry = er.async_get(hass)
     keep = {
         "switch:#BASE:u1:0": "switch",
-        "meross_cloud:u1:update:profile": "update",
+        "meross_local_cloud:u1:update:profile": "update",
         "broker_profile_backend": "sensor",
     }
     for unique_id, platform in {

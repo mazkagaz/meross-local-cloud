@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 from device_simulator import ADJUST, CONFIG, POSITION, MRS100Simulator
 from helpers import catalog_entry, wait_for
 
-from custom_components.meross_cloud.broker_adapter import BrokerProfileAdapter
+from custom_components.meross_local_cloud.broker_adapter import BrokerProfileAdapter
 
 
 async def start_adapter(hass, simulator):
@@ -17,18 +17,18 @@ async def start_adapter(hass, simulator):
         http_api_endpoint="https://broker:2004",
     )
     with patch(
-            "custom_components.meross_cloud.broker_adapter."
+            "custom_components.meross_local_cloud.broker_adapter."
             "BrokerMqttTransport", return_value=simulator), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_list_devices", AsyncMock(return_value=[
                     SimpleNamespace(uuid="u1")])), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_revision", AsyncMock(return_value={
                     "revision": "rev1", "count": 1})), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_catalog", AsyncMock(return_value={
                     "schema_version": 1, "revision": "rev1",
                     "profiles": [catalog_entry("mrs100")]})):

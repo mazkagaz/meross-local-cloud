@@ -7,7 +7,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 
-from custom_components.meross_cloud.tls import (
+from custom_components.meross_local_cloud.tls import (
     build_client_ssl_context,
     certificate_hostnames,
     fingerprint,

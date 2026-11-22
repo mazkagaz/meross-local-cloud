@@ -4,14 +4,20 @@
     {
       "source": "README.fr.md",
       "translation": "README.md",
-      "source_sha256": "cb993bc88f2f5822f38f7bc20ea5286c6e6ee1eaf42c54830ca564006fb827dc",
-      "translation_sha256": "aa383a269d814a196eae65c7c5feca1ecfe8d392a12844a84c2ad6b741d8336e"
+      "source_sha256": "324eff99b94be4b4cce082402049b7dcfbee2865b24afa4eb11dbafc32a73c6a",
+      "translation_sha256": "0a857c26ca49e366ce03d9916fee1a1310a740d2697da8795eac403a795aaef2"
     },
     {
       "source": "info.fr.md",
       "translation": "info.md",
-      "source_sha256": "ef05432200a5a07ff5e5a435e8a3275d798f802a05a7f9d0ff3521c093b5cd99",
-      "translation_sha256": "1d9ad2e5794ed575cd80cfb8d9ca70933147c8e4df61a7ba1e67bed6d45698fe"
+      "source_sha256": "f79170cde93a0e7c41afc776c2e87bc69bb3ffa350e9593a983c1e8e4b1b5d2e",
+      "translation_sha256": "bed00ce573f51b351af292b1db774a33c0a619e0ef3df47abdc749dac4c917ed"
+    },
+    {
+      "source": "docs/MIGRATION-4.0.fr.md",
+      "translation": "docs/MIGRATION-4.0.md",
+      "source_sha256": "a179be4c16c730ac7b212d6e83e189f30887af33d4707f0ac2e6b76db6588814",
+      "translation_sha256": "c681f2aac43a55fbbaeb145fb3adfbddb74362dc6df3ac55e7289f3216d04099"
     }
   ]
 }

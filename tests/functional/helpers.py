@@ -11,10 +11,10 @@ from unittest.mock import AsyncMock, patch
 import yaml
 from homeassistant.helpers.entity_component import EntityComponent
 
-from custom_components.meross_cloud.common import BROKER_ADAPTER, DOMAIN
-from custom_components.meross_cloud.profiles.compiler import compile_profile
-from custom_components.meross_cloud.profiles.models import ProfileMeta
-from custom_components.meross_cloud.profiles.runtime import DeviceRuntime
+from custom_components.meross_local_cloud.common import BROKER_ADAPTER, DOMAIN
+from custom_components.meross_local_cloud.profiles.compiler import compile_profile
+from custom_components.meross_local_cloud.profiles.models import ProfileMeta
+from custom_components.meross_local_cloud.profiles.runtime import DeviceRuntime
 
 _LOGGER = logging.getLogger(__name__)
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "profiles"
@@ -117,7 +117,7 @@ async def setup_entities(hass, adapter, platform, config_entry):
         hass.async_create_task(component.async_add_entities(
             items, update_before_add=update_before_add))
 
-    from custom_components.meross_cloud.profile_entities import (
+    from custom_components.meross_local_cloud.profile_entities import (
         async_setup_profile_entities,
     )
     async_setup_profile_entities(hass, config_entry, platform, add)
@@ -126,7 +126,7 @@ async def setup_entities(hass, adapter, platform, config_entry):
 
 
 async def start_adapter_with_bus(hass, bus, profiles, uuids):
-    from custom_components.meross_cloud.broker_adapter import (
+    from custom_components.meross_local_cloud.broker_adapter import (
         BrokerProfileAdapter,
     )
 
@@ -138,19 +138,19 @@ async def start_adapter_with_bus(hass, bus, profiles, uuids):
         async_request_refresh=AsyncMock(),
     )
     with patch(
-            "custom_components.meross_cloud.broker_adapter."
+            "custom_components.meross_local_cloud.broker_adapter."
             "BrokerMqttTransport", return_value=bus), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_list_devices", AsyncMock(return_value=[
                     SimpleNamespace(uuid=uuid, online=True)
                     for uuid in uuids])), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_revision", AsyncMock(return_value={
                     "revision": "rev1", "count": len(profiles)})), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_catalog", AsyncMock(return_value={
                     "schema_version": 1, "revision": "rev1",
                     "profiles": [catalog_entry(name)

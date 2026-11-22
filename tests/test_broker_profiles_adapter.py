@@ -7,13 +7,13 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import yaml
 
-from custom_components.meross_cloud.broker_adapter import (
+from custom_components.meross_local_cloud.broker_adapter import (
     BrokerProfileAdapter,
     _subdevice_descriptors,
 )
-from custom_components.meross_cloud.broker_http import BrokerHttpError
-from custom_components.meross_cloud.vendor.merossclient import DeviceDescriptor
-from custom_components.meross_cloud.vendor.merossclient.protocol.message import (
+from custom_components.meross_local_cloud.broker_http import BrokerHttpError
+from custom_components.meross_local_cloud.vendor.merossclient import DeviceDescriptor
+from custom_components.meross_local_cloud.vendor.merossclient.protocol.message import (
     MerossResponse,
 )
 
@@ -132,18 +132,18 @@ class FakeHubTransport(FakeTransport):
 
 async def run_adapter(catalog, transport=FakeTransport):
     with patch(
-            "custom_components.meross_cloud.broker_adapter."
+            "custom_components.meross_local_cloud.broker_adapter."
             "async_list_devices", AsyncMock(
                 return_value=[SimpleNamespace(uuid="u1")])), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
             "BrokerMqttTransport", return_value=transport()), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_revision", AsyncMock(
                     return_value={"revision": "abc", "count": 1})), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_catalog", AsyncMock(return_value=catalog)):
         adapter = BrokerProfileAdapter(SimpleNamespace(loop=None), coordinator())
         await adapter.async_start()
@@ -283,21 +283,21 @@ def signed_catalog(catalog):
 async def run_signed_adapter(catalog, public):
     coordinator_stub = coordinator()
     with patch(
-            "custom_components.meross_cloud.broker_adapter."
+            "custom_components.meross_local_cloud.broker_adapter."
             "async_list_devices", AsyncMock(
                 return_value=[SimpleNamespace(uuid="u1")])), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
             "BrokerMqttTransport", return_value=FakeTransport()), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_revision", AsyncMock(
                     return_value={"revision": "abc", "count": 1})), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_catalog", AsyncMock(return_value=catalog)), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_public_key", AsyncMock(return_value=public)):
         adapter = BrokerProfileAdapter(
             SimpleNamespace(loop=None), coordinator_stub)
@@ -338,7 +338,7 @@ async def test_invalid_catalog_signature_is_refused():
 
 async def test_catalog_unavailable_keeps_the_adapter_in_error():
     with patch(
-            "custom_components.meross_cloud.broker_adapter."
+            "custom_components.meross_local_cloud.broker_adapter."
             "async_fetch_revision",
             AsyncMock(side_effect=BrokerHttpError("HTTP 503", status=503))):
         adapter = BrokerProfileAdapter(
@@ -367,7 +367,7 @@ async def test_catalog_change_advertises_update_without_reload(
     import asyncio
     import contextlib
 
-    from custom_components.meross_cloud import broker_adapter as module
+    from custom_components.meross_local_cloud import broker_adapter as module
 
     monkeypatch.setattr(module, "CATALOG_CHECK_INTERVAL", 0.01)
     coordinator = SimpleNamespace(
@@ -406,7 +406,7 @@ async def test_catalog_change_advertises_update_without_reload(
 
 
 async def test_profile_update_notifications(hass):
-    from custom_components.meross_cloud import broker_adapter as module
+    from custom_components.meross_local_cloud import broker_adapter as module
 
     coordinator = SimpleNamespace(
         config_entry_id="entry-1",
@@ -438,7 +438,7 @@ async def test_profile_update_notifications(hass):
     await adapter._async_sync_notifications(notifications)
     assert notifications.created
     assert notifications.created[0][1]["notification_id"] == (
-        "meross_cloud_profile_meross.mrs100")
+        "meross_local_cloud_profile_meross.mrs100")
 
     adapter.registry.profiles["meross.mrs100"].version = "1.0.0"
     await adapter._async_sync_notifications(notifications)
@@ -448,7 +448,7 @@ async def test_profile_update_notifications(hass):
 async def test_unchanged_catalog_does_not_reload(hass, monkeypatch):
     import asyncio
 
-    from custom_components.meross_cloud import broker_adapter as module
+    from custom_components.meross_local_cloud import broker_adapter as module
 
     monkeypatch.setattr(module, "CATALOG_CHECK_INTERVAL", 0.01)
     coordinator = SimpleNamespace(

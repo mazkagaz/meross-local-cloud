@@ -3,9 +3,9 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-from custom_components.meross_cloud import broker_adapter as module
-from custom_components.meross_cloud.broker_adapter import BrokerProfileAdapter
-from custom_components.meross_cloud.common import DOMAIN, SHUTTER_CONFIG_CACHE
+from custom_components.meross_local_cloud import broker_adapter as module
+from custom_components.meross_local_cloud.broker_adapter import BrokerProfileAdapter
+from custom_components.meross_local_cloud.common import DOMAIN, SHUTTER_CONFIG_CACHE
 
 
 def adapter(hass, refresh):
@@ -82,7 +82,7 @@ def test_catalog_watch_uses_a_background_task(hass, monkeypatch):
 
     instance._start_catalog_watch()
 
-    assert seen == ["meross_cloud_catalog_watch"]
+    assert seen == ["meross_local_cloud_catalog_watch"]
 
 
 async def test_one_failed_refresh_does_not_stop_the_burst(hass, monkeypatch):

@@ -40,6 +40,10 @@
 
 - [Branches, versions et publication](operations/RELEASING.md)
 
+### Migration
+
+- [Migration vers la 4.0.0 — changement de domaine](MIGRATION-4.0.fr.md)
+
 ### Traductions
 
 - [Politique de traduction](TRANSLATIONS.md)

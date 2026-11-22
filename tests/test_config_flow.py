@@ -10,7 +10,7 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.meross_cloud.common import (
+from custom_components.meross_local_cloud.common import (
     CONF_BROKER_HOST,
     CONF_CA_PEM,
     CONF_HTTP_ENDPOINT,
@@ -20,7 +20,7 @@ from custom_components.meross_cloud.common import (
     CONF_STORED_CREDS,
     DOMAIN,
 )
-from custom_components.meross_cloud.config_flow import MerossFlowHandler
+from custom_components.meross_local_cloud.config_flow import MerossFlowHandler
 
 
 @pytest.fixture(autouse=True)
@@ -34,7 +34,7 @@ def fake_ca(monkeypatch, ca_pem):
         return ca_pem
 
     monkeypatch.setattr(
-        "custom_components.meross_cloud.config_flow.async_fetch_ca", _fetch)
+        "custom_components.meross_local_cloud.config_flow.async_fetch_ca", _fetch)
     return ca_pem
 
 
@@ -344,7 +344,7 @@ def test_setup_schema_has_no_certificate_options():
 
 
 async def test_options_update_reloads_the_entry(hass, monkeypatch):
-    from custom_components.meross_cloud import update_listener
+    from custom_components.meross_local_cloud import update_listener
 
     reload = AsyncMock()
     monkeypatch.setattr(hass.config_entries, "async_reload", reload)

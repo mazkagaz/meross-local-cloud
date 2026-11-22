@@ -63,7 +63,7 @@ def _redact_args(redactor: Redactor, value):
 
 class RedactionFilter(logging.Filter):
     def __init__(self, redactor: Redactor,
-                 only_prefix: str = "custom_components.meross_cloud"):
+                 only_prefix: str = "custom_components.meross_local_cloud"):
         super().__init__()
         self._redactor = redactor
         self._only_prefix = only_prefix
@@ -79,7 +79,7 @@ class RedactionFilter(logging.Filter):
 
 
 def install(entry_id: str) -> None:
-    logger = logging.getLogger("custom_components.meross_cloud")
+    logger = logging.getLogger("custom_components.meross_local_cloud")
     if any(isinstance(item, RedactionFilter) for item in logger.filters):
         return
     redactor = Redactor(entry_id.encode("utf8"))

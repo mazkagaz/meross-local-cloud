@@ -192,7 +192,7 @@ class BrokerProfileAdapter:
         if create is not None:
             task = create(
                 self._async_reconnect_burst(),
-                name="meross_cloud_reconnect_refresh")
+                name="meross_local_cloud_reconnect_refresh")
         else:
             task = self._hass.async_create_task(
                 self._async_reconnect_burst())
@@ -416,7 +416,7 @@ class BrokerProfileAdapter:
                 self._async_save_state())
             return
         self._save_task = hass.async_create_background_task(
-            self._async_save_state(), name="meross_cloud_state_save")
+            self._async_save_state(), name="meross_local_cloud_state_save")
 
     async def _async_save_state(self) -> None:
         try:
@@ -506,7 +506,7 @@ class BrokerProfileAdapter:
             if create is not None:
                 self._watch_task = create(
                     self._async_watch_catalog(),
-                    name="meross_cloud_catalog_watch")
+                    name="meross_local_cloud_catalog_watch")
             else:
                 self._watch_task = self._hass.async_create_task(
                     self._async_watch_catalog())
@@ -549,7 +549,7 @@ class BrokerProfileAdapter:
 
     @staticmethod
     def _profile_notification_id(profile_id: str) -> str:
-        return f"meross_cloud_profile_{profile_id}"
+        return f"meross_local_cloud_profile_{profile_id}"
 
     def _async_sync_profile_updates(self) -> None:
         """Refresh update entities and persistent notifications."""

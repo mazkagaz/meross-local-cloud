@@ -1,3 +1,16 @@
+## 4.0.0 — nouveau domaine Home Assistant
+
+Version majeure, rupture volontaire.
+
+- Domaine Home Assistant `meross_cloud` → `meross_local_cloud` (dossier
+  `custom_components/meross_local_cloud`, manifeste, loggers, identifiants de
+  plateforme). L’ancienne config entry doit être supprimée puis l’intégration
+  réajoutée : voir [docs/MIGRATION-4.0.fr.md](docs/MIGRATION-4.0.fr.md).
+- La release inclut aussi la documentation bilingue préparée pour 3.2.3
+  (README/info anglais + versions françaises), afin que HACS affiche la
+  description anglaise.
+- Aucun changement broker, pairer, profil ou API.
+
 ## 3.2.2 — présentation des entités number
 
 Version stable. Broker **1.3.0+** ; **1.4.8 recommandé** pour la Position et

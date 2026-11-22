@@ -4,6 +4,10 @@
 
 ![Meross Local Cloud](branding/meross-local-cloud-banner.jpeg)
 
+> **La 4.0.0 change le domaine Home Assistant** de `meross_cloud` en
+> `meross_local_cloud`. Voir le
+> [guide de migration](docs/MIGRATION-4.0.fr.md).
+
 Intégration Home Assistant non officielle pour piloter des appareils Meross
 appairés à un **broker local**, sans cloud Meross au quotidien. Seul le mode
 local est proposé : aucun identifiant du cloud officiel n'est utilisé.

@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.meross_cloud.broker_devices import BrokerDeviceInfo
-from custom_components.meross_cloud.common import (
+from custom_components.meross_local_cloud.broker_devices import BrokerDeviceInfo
+from custom_components.meross_local_cloud.common import (
     BROKER_ADAPTER,
     CONF_CA_PEM,
     CONF_HTTP_ENDPOINT,
@@ -13,7 +13,7 @@ from custom_components.meross_cloud.common import (
     DEVICE_LIST_COORDINATOR,
     DOMAIN,
 )
-from custom_components.meross_cloud.diagnostics import (
+from custom_components.meross_local_cloud.diagnostics import (
     async_get_config_entry_diagnostics,
 )
 

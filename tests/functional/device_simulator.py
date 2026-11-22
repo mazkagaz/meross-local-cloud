@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from custom_components.meross_cloud.vendor.merossclient import DeviceDescriptor
+from custom_components.meross_local_cloud.vendor.merossclient import DeviceDescriptor
 
 STATE = "Appliance.RollerShutter.State"
 POSITION = "Appliance.RollerShutter.Position"

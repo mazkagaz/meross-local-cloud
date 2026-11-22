@@ -8,21 +8,21 @@ from unittest.mock import AsyncMock
 import jsonschema
 import pytest
 
-from custom_components.meross_cloud.broker_config import (
+from custom_components.meross_local_cloud.broker_config import (
     RollerShutterConfigCache,
 )
-from custom_components.meross_cloud.broker_devices import (
+from custom_components.meross_local_cloud.broker_devices import (
     DEVICE_LIST_PATH,
     async_list_devices,
     parse_devices,
 )
-from custom_components.meross_cloud.broker_http import BrokerCredentials
-from custom_components.meross_cloud.broker_profiles import (
+from custom_components.meross_local_cloud.broker_http import BrokerCredentials
+from custom_components.meross_local_cloud.broker_profiles import (
     async_fetch_catalog,
     async_fetch_public_key,
     async_fetch_revision,
 )
-from custom_components.meross_cloud.profiles import ProfileRegistry
+from custom_components.meross_local_cloud.profiles import ProfileRegistry
 
 CONTRACTS = Path(__file__).parent / "contracts"
 FIXTURES = CONTRACTS / "fixtures"

@@ -514,7 +514,7 @@ async def async_remove_entry(hass, entry) -> None:
 
 async def async_setup(hass, config):
     """
-    This method gets called if HomeAssistant has a valid meross_cloud: configuration entry within
+    This method gets called if HomeAssistant has a valid meross_local_cloud: configuration entry within
     configurations.yaml.
 
     Thus, in this method we simply trigger the creation of a config entry.

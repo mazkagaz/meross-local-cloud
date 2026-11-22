@@ -7,7 +7,7 @@ from device_simulator import HubSimulator, MSS310Simulator, MSS425Simulator
 from helpers import start_adapter_with_bus, wait_for
 from mqtt_bus import InMemoryMqttBus
 
-from custom_components.meross_cloud.broker_adapter import BrokerProfileAdapter
+from custom_components.meross_local_cloud.broker_adapter import BrokerProfileAdapter
 
 TOGGLE = "Appliance.Control.ToggleX"
 ELECTRICITY = "Appliance.Control.Electricity"

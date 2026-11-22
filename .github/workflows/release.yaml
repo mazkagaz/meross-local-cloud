@@ -16,7 +16,7 @@ jobs:
 
       - name: Validate the tag against the manifest
         run: |
-          VERSION=$(python3 -c "import json; print(json.load(open('custom_components/meross_cloud/manifest.json'))['version'])")
+          VERSION=$(python3 -c "import json; print(json.load(open('custom_components/meross_local_cloud/manifest.json'))['version'])")
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           if [ "$VERSION" != "$TAG_VERSION" ]; then
             echo "manifest version $VERSION does not match tag $GITHUB_REF_NAME" >&2

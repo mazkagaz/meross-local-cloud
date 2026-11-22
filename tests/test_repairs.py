@@ -6,9 +6,9 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.meross_cloud import repairs
-from custom_components.meross_cloud.common import DOMAIN
-from custom_components.meross_cloud.missing_devices import issue_id
+from custom_components.meross_local_cloud import repairs
+from custom_components.meross_local_cloud.common import DOMAIN
+from custom_components.meross_local_cloud.missing_devices import issue_id
 
 
 @pytest.fixture(autouse=True)

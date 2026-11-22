@@ -5,8 +5,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.meross_cloud.common import DOMAIN
-from custom_components.meross_cloud.missing_devices import (
+from custom_components.meross_local_cloud.common import DOMAIN
+from custom_components.meross_local_cloud.missing_devices import (
     MISSING_DEVICE_RETENTION,
     MissingDeviceTracker,
     issue_id,
@@ -24,7 +24,7 @@ def _issue(hass, uuid):
 def _freeze(monkeypatch, start):
     clock = {"now": start}
     monkeypatch.setattr(
-        "custom_components.meross_cloud.missing_devices.dt_util.utcnow",
+        "custom_components.meross_local_cloud.missing_devices.dt_util.utcnow",
         lambda: clock["now"])
     return clock
 

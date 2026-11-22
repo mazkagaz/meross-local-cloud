@@ -1,7 +1,7 @@
 import logging
 from types import SimpleNamespace
 
-from custom_components.meross_cloud.log_redaction import (
+from custom_components.meross_local_cloud.log_redaction import (
     RedactionFilter,
     Redactor,
 )
@@ -42,7 +42,7 @@ def test_keeps_loopback_and_masks_other_ips():
 def test_filter_redacts_message_arguments():
     redactor = Redactor(b"secret")
     record = logging.LogRecord(
-        "custom_components.meross_cloud.test", logging.INFO, __file__, 1,
+        "custom_components.meross_local_cloud.test", logging.INFO, __file__, 1,
         "device %s on %s", (UUID, IP), None)
     record = SimpleNamespace(
         name=record.name, msg=record.msg, args=record.args)

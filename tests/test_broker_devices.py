@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from custom_components.meross_cloud.broker_devices import (
+from custom_components.meross_local_cloud.broker_devices import (
     DEVICE_LIST_PATH,
     BrokerDeviceInfo,
     async_list_devices,

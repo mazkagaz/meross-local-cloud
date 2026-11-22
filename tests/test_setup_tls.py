@@ -1,8 +1,8 @@
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.meross_cloud import _async_prepare_tls
-from custom_components.meross_cloud.common import DOMAIN
+from custom_components.meross_local_cloud import _async_prepare_tls
+from custom_components.meross_local_cloud.common import DOMAIN
 
 
 @pytest.fixture(autouse=True)
@@ -18,9 +18,9 @@ async def test_prepare_tls_evaluates_sans(hass, monkeypatch, ca_pem, server_pem)
         return server_pem
 
     monkeypatch.setattr(
-        "custom_components.meross_cloud.async_fetch_ca", fake_fetch)
+        "custom_components.meross_local_cloud.async_fetch_ca", fake_fetch)
     monkeypatch.setattr(
-        "custom_components.meross_cloud.fetch_server_certificate",
+        "custom_components.meross_local_cloud.fetch_server_certificate",
         fake_server)
 
     entry = MockConfigEntry(domain=DOMAIN, data={})
@@ -43,7 +43,7 @@ async def test_prepare_tls_requires_a_valid_ca(hass, monkeypatch):
         return None
 
     monkeypatch.setattr(
-        "custom_components.meross_cloud.async_fetch_ca", fake_fetch)
+        "custom_components.meross_local_cloud.async_fetch_ca", fake_fetch)
 
     entry = MockConfigEntry(domain=DOMAIN, data={})
     entry.add_to_hass(hass)
