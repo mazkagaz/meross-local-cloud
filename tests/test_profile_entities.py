@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import yaml
+from homeassistant.components.number import NumberMode
 from homeassistant.helpers.entity_component import EntityComponent
 
 from custom_components.meross_cloud.broker_config import (
@@ -250,6 +251,30 @@ async def test_number_range_and_scaled_command(hass):
         "config": {"channel": 0, "signalOpen": 60000}}
 
 
+async def test_number_modes_and_position_command(hass):
+    device = runtime("mrs100")
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_NUMBER)
+    position = next(
+        item for item in component.entities if item._spec.key == "position")
+    open_duration = next(
+        item for item in component.entities
+        if item._spec.key == "open_duration")
+    close_duration = next(
+        item for item in component.entities
+        if item._spec.key == "close_duration")
+
+    assert position._attr_mode == NumberMode.SLIDER
+    assert open_duration._attr_mode == NumberMode.BOX
+    assert close_duration._attr_mode == NumberMode.BOX
+
+    device.entities["position"].values["value"] = 35
+    assert position.native_value == 35
+    await position.async_set_native_value(35)
+    assert adapter.sent[-1][3] == {
+        "position": {"channel": 0, "position": 35}}
+
+
 async def test_shutter_duration_prefers_the_p3_cache(hass):
     device = runtime("mrs100")
     device.entities["open_duration"].values["value"] = 45.0
@@ -471,7 +496,8 @@ async def test_legacy_classifiers_for_shutter_entities(hass):
         hass, adapter, HA_BUTTON, entry(only=True))
 
     assert sorted(entity.unique_id for entity in numbers.entities) == [
-        "number:#BASE:u1:0:close_timer", "number:#BASE:u1:0:open_timer"]
+        "number:#BASE:u1:0:close_timer", "number:#BASE:u1:0:open_timer",
+        "number:#BASE:u1:0:position"]
     assert sorted(entity.unique_id for entity in buttons.entities) == [
         "button:#BASE:u1:0:calibrate",
         "button:#BASE:u1:0:stop_calibration"]

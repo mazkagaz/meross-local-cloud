@@ -372,6 +372,14 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
     movement = _compile_state(
         f"{prefix}:movement", raw.get("movement"), namespaces, channel,
         errors, channel_template=channel_template)
+    mode = raw.get("mode")
+    if mode is not None:
+        if platform != "number":
+            errors.append(f"{prefix}: mode is only supported on numbers")
+            mode = None
+        elif mode not in ("slider", "box"):
+            errors.append(f"{prefix}: invalid mode {mode!r}")
+            mode = None
     commands = _compile_commands(
         prefix, platform, raw.get("commands"), namespaces, channel, errors,
         allow_subdevice=allow_subdevice, channel_template=channel_template)
@@ -405,6 +413,7 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
         channel_template=channel_template,
         state=state,
         movement=movement,
+        mode=mode,
         commands=commands,
         quirks=quirks,
         capabilities=capabilities,

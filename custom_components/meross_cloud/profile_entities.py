@@ -29,7 +29,11 @@ from homeassistant.components.light import (
     ColorMode,
     LightEntity,
 )
-from homeassistant.components.number import NumberDeviceClass, NumberEntity
+from homeassistant.components.number import (
+    NumberDeviceClass,
+    NumberEntity,
+    NumberMode,
+)
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.components.update import (
@@ -498,6 +502,10 @@ class ProfileNumber(ProfileBaseEntity, NumberEntity):
         self._attr_native_unit_of_measurement = self._spec.unit
         self._attr_device_class = _enum(
             self._spec.device_class, NumberDeviceClass)
+        if self._spec.mode == "box":
+            self._attr_mode = NumberMode.BOX
+        elif self._spec.mode == "slider":
+            self._attr_mode = NumberMode.SLIDER
         self._config_persist = _has_quirk(self._spec, "config_persist")
         self._p3_state: Optional[ChannelState] = None
 

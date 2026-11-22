@@ -1,3 +1,14 @@
+## 3.2.2 — présentation des entités number
+
+Version stable. Broker **1.3.0+** ; **1.4.8 recommandé** pour la Position et
+les durées en champ de saisie (profil MRS100 `2026.11.4`).
+
+- Nouveau champ de profil `mode: slider|box` sur les entités `number` :
+  l’intégration le mappe sur `NumberMode` (curseur ou champ typé avec flèches).
+- Les anciennes intégrations ignorent ce champ et conservent le curseur.
+- Moteur de profils **2.5.1**.
+- Tests : 543, dont compilation/validation du mode et modes des durées/position.
+
 ## 3.2.1 — correctif de test fonctionnel
 
 Version stable. Aucun changement de comportement par rapport à 3.2.0.

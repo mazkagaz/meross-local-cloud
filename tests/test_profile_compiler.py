@@ -209,6 +209,33 @@ def test_invalid_entity_channel_is_refused(channel):
     assert any("channel" in error for error in compiled.errors)
 
 
+@pytest.mark.parametrize("mode", ["slider", "box"])
+def test_number_mode_is_compiled(mode):
+    compiled = compile_profile(meta(doc(
+        entities=[entity(platform="number", mode=mode)])))
+
+    assert compiled.errors == []
+    assert compiled.entities["switch"].mode == mode
+
+
+@pytest.mark.parametrize("mode", ["auto", "dial", 1])
+def test_invalid_number_mode_is_refused(mode):
+    compiled = compile_profile(meta(doc(
+        entities=[entity(platform="number", mode=mode)])))
+
+    assert compiled.entities == {}
+    assert any("invalid mode" in error for error in compiled.errors)
+
+
+def test_mode_is_refused_outside_numbers():
+    compiled = compile_profile(meta(doc(
+        entities=[entity(platform="switch", mode="box")])))
+
+    assert compiled.entities == {}
+    assert any("only supported on numbers" in error
+               for error in compiled.errors)
+
+
 @pytest.mark.parametrize("token", ["$other", "$channel_x", "$"])
 def test_unknown_or_partial_command_token_is_refused(token):
     bad = entity(commands={
@@ -776,7 +803,7 @@ def test_lazy_compilation_cache_uses_id_version_and_digest():
 
 
 @pytest.mark.parametrize("name,expected", [
-    ("mrs100", {"cover", "open_duration", "close_duration",
+    ("mrs100", {"cover", "position", "open_duration", "close_duration",
                 "start_calibration", "stop_calibration",
                 "calibration_status"}),
     ("mss310", {"switch", "power", "voltage", "current"}),

@@ -102,6 +102,7 @@ class EntitySpec:
     step: Optional[float] = None
     device: str = "hub"
     channel_template: bool = False
+    mode: Optional[str] = None
     state: Optional[StateSpec] = None
     movement: Optional[StateSpec] = None
     commands: Dict[str, CommandSpec] = field(default_factory=dict)

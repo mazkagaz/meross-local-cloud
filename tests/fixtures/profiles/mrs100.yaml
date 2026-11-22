@@ -1,7 +1,7 @@
 schema_version: 2
 profile:
   id: meross.mrs100
-  version: "2026.11.3"
+  version: "2026.11.4"
   requires_engine: ">=2.2"
   description: "Volet roulant MRS100 : position, durées persistées, calibration."
 match:
@@ -68,6 +68,25 @@ entities:
       - name: roller_shutter_config_replay
         params: { cooldown_s: 300 }
 
+  - key: position
+    platform: number
+    channel: 0
+    name: "Position"
+    legacy_classifiers: [position]
+    unit: "%"
+    min_value: 0
+    max_value: 100
+    step: 1
+    mode: slider
+    state:
+      namespace: Appliance.RollerShutter.Position
+      channel: $channel
+      fields: { value: "position[0].position" }
+    commands:
+      set_value:
+        namespace: Appliance.RollerShutter.Position
+        payload: { position: { channel: $channel, position: $value } }
+
   - key: open_duration
     platform: number
     channel: 0
@@ -79,6 +98,7 @@ entities:
     min_value: 10
     max_value: 120
     step: 1
+    mode: box
     state:
       namespace: Appliance.RollerShutter.Config
       channel: $channel
@@ -103,6 +123,7 @@ entities:
     min_value: 10
     max_value: 120
     step: 1
+    mode: box
     state:
       namespace: Appliance.RollerShutter.Config
       channel: $channel
