@@ -103,6 +103,7 @@ class EntitySpec:
     device: str = "hub"
     channel_template: bool = False
     state: Optional[StateSpec] = None
+    movement: Optional[StateSpec] = None
     commands: Dict[str, CommandSpec] = field(default_factory=dict)
     quirks: Tuple[Dict[str, Any], ...] = ()
     capabilities: Optional[Dict[str, Any]] = None

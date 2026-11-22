@@ -20,8 +20,9 @@ diffuseurs MOD/MSXH0, purificateur MAP100, compteurs EM/EM06, garages MSG/RSG
 et HP110.
 
 - pour le MRS100 : entités `number` pour les durées d'ouverture/fermeture,
-  boutons **Start calibration** / **Stop calibration** et capteur
-  **Calibration status** ;
+  boutons **Start calibration** / **Stop calibration**, capteur
+  **Calibration status**, et icône du cover pilotée par le mouvement
+  (flèches pendant le déplacement, états ouvert/fermé/partiel à l'arrêt) ;
 - suppression fiable des appareils oubliés (Unbind), réparation des appareils
   absents depuis 48 h et réparation « appareil sans profil ».
 
@@ -36,8 +37,8 @@ modèle, le firmware et les fonctions qui marchent ou non : c'est ce qui permet
 de valider chaque profil. Le MRS100 n'est pas un prérequis : toute famille du
 catalogue peut être testée.
 
-**Version stable 3.1.4**, compatible avec le broker **1.3.0** (1.3.1
-recommandé) et le pairer **2.0.9**.
+**Version stable 3.2.0**, compatible avec le broker **1.3.0** (1.4.6
+recommandé pour les icônes MRS100) et le pairer **2.0.9**.
 
 ## Les trois briques du montage
 
@@ -58,8 +59,8 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 
 | Brique | Version minimale | Remarques |
 |---|---|---|
-| Meross Local Cloud | 3.1.4 | cette intégration, moteur profils 2.4 |
-| Meross Local Broker | 1.3.0 | catalogue complet ; 1.3.1 pour le correctif volet |
+| Meross Local Cloud | 3.2.0 | cette intégration, moteur profils 2.5 |
+| Meross Local Broker | 1.3.0 | catalogue complet ; 1.3.1 pour le correctif volet ; 1.4.6 pour les icônes MRS100 |
 | Meross Local Pairer | 2.0.9 | HTTPS 2004 uniquement |
 | Home Assistant | 2025.6 | testé avec 2026.2 |
 
@@ -165,9 +166,15 @@ changement de révision, l'intégration :
 
 Un appareil sans profil ne crée aucune entité et déclenche une réparation
 **Aucun profil pour …**. Corriger ou ajouter le profil dans le catalogue du
-broker suffit : l'intégration se recharge automatiquement quand la révision
-change. Pour préparer un profil, voir le workflow overrides/capture du dépôt
-broker.
+broker suffit. Lorsque la révision change, l'intégration signale la mise à
+jour : une notification persistante apparaît et l'entité `update` du profil
+propose **Installer**. L'installation reste manuelle afin de choisir le
+moment ; aucun rechargement automatique n'est effectué.
+Pour préparer un profil, voir le workflow overrides/capture du dépôt broker.
+
+Les commandes MQTT locales utilisent une limite adaptée au broker local
+(1 message/s soutenu, burst de 5 sur 5 s par appareil) au lieu de la limite
+cloud de 200 messages/heure.
 
 ## Options de l'intégration
 
@@ -218,7 +225,7 @@ Home Assistant. Une nouvelle release GitHub est publiée pour chaque version.
 | Certificat HTTPS refusé | mettre à jour le broker en 1.3.0 (CA valide) |
 | Erreur MQTT | adresse `…:2001` ; broker 1.3.0 requis |
 | Entités absentes | vérifier la réparation « appareil sans profil » et le catalogue broker |
-| Appareil sans profil | ajouter ou corriger le profil dans le catalogue ; reload automatique à la nouvelle révision |
+| Appareil sans profil | ajouter ou corriger le profil dans le catalogue ; notification puis **Installer** sur l'entité `update` |
 | Entités fantômes après un oubli | Unbind (≤ 60 s), réparation 48 h, ou suppression manuelle de l'appareil |
 | Statut de calibration bloqué | vérifier les logs de l'add-on et le capteur `Calibration status` |
 

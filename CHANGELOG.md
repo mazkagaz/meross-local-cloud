@@ -1,3 +1,23 @@
+## 3.2.0 — mises à jour manuelles et icônes de volet
+
+Version stable. Broker **1.3.0+** ; **1.4.6 recommandé** pour les icônes MRS100
+(profil `2026.11.3`). Pairer **2.0.9+** inchangé.
+
+- Mises à jour de profils : `latest_version` est lu depuis le catalogue du
+  broker, une notification persistante signale les nouvelles versions et
+  l'entité `update` propose **Installer**. Le rechargement automatique de
+  l'entrée à chaque changement de révision est supprimé : l'application reste
+  manuelle.
+- Rate limit MQTT local : 1 message/s soutenu et burst de 5 sur 5 s par
+  appareil, au lieu de la limite cloud (200 messages/h, 5/90 s). Le `stop` du
+  volet reste prioritaire.
+- Moteur de profils **2.5** : source auxiliaire `movement` compilée sur une
+  entité, sans entité Home Assistant supplémentaire.
+- MRS100 : icône du cover pilotée par le mouvement (flèches haut/bas), puis
+  volet ouvert, fermé ou partiel à l'arrêt (profil broker `2026.11.3`).
+- Tests : 506 tests d'intégration (hors fonctionnels) et couverture moteur
+  étendue au mouvement.
+
 ## 3.1.4 — bannière finale dans la documentation
 
 Version stable. Aucun changement de comportement ; broker **1.3.0+** (1.3.1

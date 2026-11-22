@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .broker_devices import async_list_devices
 from .broker_http import BrokerHttpClient
@@ -28,6 +29,7 @@ from .runtime_store import (
 from .common import (
     DOMAIN,
     MISSING_TRACKER,
+    PROFILE_CATALOG_SIGNAL,
     SHUTTER_CONFIG_CACHE,
     device_internal_id,
 )
@@ -324,6 +326,7 @@ class BrokerProfileAdapter:
         await self._async_restore_state()
         self._sync_unsupported_issues()
         self._start_schedulers()
+        self._async_sync_profile_updates()
         if self.descriptors:
             _LOGGER.info(
                 "Broker profile backend: revision %s, %d profile(s), "
@@ -509,7 +512,7 @@ class BrokerProfileAdapter:
                     self._async_watch_catalog())
 
     async def _async_watch_catalog(self) -> None:
-        """Reload the config entry when the broker catalog revision changes."""
+        """Advertise profile updates without applying them automatically."""
         try:
             while True:
                 await asyncio.sleep(CATALOG_CHECK_INTERVAL)
@@ -528,18 +531,83 @@ class BrokerProfileAdapter:
                 observed = revision.get("revision")
                 if not observed or not self.revision or observed == self.revision:
                     continue
+                previous = self.revision
+                try:
+                    await self._async_fetch_profiles()
+                except Exception as err:  # noqa: BLE001 - retry next tick
+                    _LOGGER.debug("Catalog refresh failed: %s", err)
+                    continue
                 _LOGGER.info(
-                    "Device profile catalog changed (%s -> %s), reloading "
-                    "the integration entry", self.revision[:16],
-                    observed[:16])
-                if self._entry_id is None:
-                    return
-                await self._hass.config_entries.async_reload(self._entry_id)
-                return
+                    "Device profile catalog changed (%s -> %s); updates are "
+                    "available for manual installation", previous[:16],
+                    (self.revision or "?")[:16])
+                self._async_sync_profile_updates()
         except asyncio.CancelledError:
             raise
         except Exception as err:  # noqa: BLE001 - watch is best effort
             _LOGGER.debug("Catalog watcher stopped: %s", err)
+
+    @staticmethod
+    def _profile_notification_id(profile_id: str) -> str:
+        return f"meross_cloud_profile_{profile_id}"
+
+    def _async_sync_profile_updates(self) -> None:
+        """Refresh update entities and persistent notifications."""
+        if not hasattr(self._hass, "async_create_task"):
+            return
+        try:
+            from homeassistant.components import persistent_notification
+        except Exception:  # noqa: BLE001 - notifications are best effort
+            persistent_notification = None
+        if persistent_notification is not None:
+            self._hass.async_create_task(
+                self._async_sync_notifications(persistent_notification))
+        try:
+            async_dispatcher_send(self._hass, PROFILE_CATALOG_SIGNAL)
+        except Exception:  # noqa: BLE001 - entity refresh is best effort
+            _LOGGER.debug("Profile catalog signal failed", exc_info=True)
+
+    async def _async_sync_notifications(self, notifications) -> None:
+        registry = self.registry
+        seen = set()
+        for runtime in self.runtimes.values():
+            profile_id = runtime.profile.profile_id
+            if profile_id in seen:
+                continue
+            seen.add(profile_id)
+            latest = None
+            if registry is not None:
+                meta = registry.profiles.get(profile_id)
+                latest = meta.version if meta is not None else None
+            installed = runtime.profile.version
+            notification_id = self._profile_notification_id(profile_id)
+            try:
+                if latest and installed and latest != installed:
+                    await notifications.async_create(
+                        self._hass,
+                        "Une mise à jour du profil est disponible : "
+                        f"`{profile_id}` {installed} → {latest}. "
+                        "Utilisez l'entité `update` correspondante puis "
+                        "**Installer**.",
+                        title="Meross Local Cloud — profil à mettre à jour",
+                        notification_id=notification_id)
+                else:
+                    await notifications.async_dismiss(
+                        self._hass, notification_id)
+            except Exception:  # noqa: BLE001 - notifications are best effort
+                _LOGGER.debug(
+                    "Profile update notification failed", exc_info=True)
+
+    def dismiss_profile_update(self, profile_id: str) -> None:
+        if not hasattr(self._hass, "async_create_task"):
+            return
+        try:
+            from homeassistant.components import persistent_notification
+        except Exception:  # noqa: BLE001 - notifications are best effort
+            return
+        self._hass.async_create_task(
+            persistent_notification.async_dismiss(
+                self._hass, self._profile_notification_id(profile_id)))
 
     async def async_reload_entry(self) -> bool:
         if not self._entry_id or not hasattr(self._hass, "config_entries"):

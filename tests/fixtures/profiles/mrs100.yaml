@@ -1,7 +1,7 @@
 schema_version: 2
 profile:
   id: meross.mrs100
-  version: "2026.11.2"
+  version: "2026.11.3"
   requires_engine: ">=2.2"
   description: "Volet roulant MRS100 : position, durées persistées, calibration."
 match:
@@ -17,6 +17,8 @@ payloads:
       state:
         type: integer
         values: { 0: stop, 1: open, 2: close }
+      timestamp: { type: integer }
+      stoppedBy: { type: integer }
   Appliance.RollerShutter.Position:
     methods: [GETACK, SETACK, PUSH]
     fields:
@@ -44,6 +46,11 @@ entities:
       channel: $channel
       fields:
         position: "position[0].position"
+    movement:
+      namespace: Appliance.RollerShutter.State
+      channel: $channel
+      fields:
+        movement: "state[0].state"
     commands:
       open:
         namespace: Appliance.RollerShutter.Position

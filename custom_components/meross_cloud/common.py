@@ -11,6 +11,7 @@ MEROSS_LOCAL_MDNS_API_SERVICE_TYPE = "_meross-api._tcp.local."
 MEROSS_LOCAL_MDNS_MQTT_SERVICE_TYPE = "_meross-mqtt._tcp.local."
 MEROSS_LOCAL_MDNS_SERVICE_TYPES = [MEROSS_LOCAL_MDNS_API_SERVICE_TYPE, MEROSS_LOCAL_MDNS_MQTT_SERVICE_TYPE]
 DOMAIN = "meross_cloud"
+PROFILE_CATALOG_SIGNAL = f"{DOMAIN}_profile_catalog"
 ATTR_CONFIG = "config"
 DEVICE_LIST_COORDINATOR = "device_list_coordinator"
 MISSING_TRACKER = "missing_device_tracker"

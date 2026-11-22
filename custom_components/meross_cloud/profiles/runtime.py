@@ -74,20 +74,21 @@ class DeviceRuntime:
 
         applied = 0
         for entity in self.profile.entities.values():
-            state = entity.state
-            if state is not None and state.namespace == namespace:
-                applied += self._apply(
-                    self.entities[entity.key], entity, state, payload)
+            for state in (entity.state, entity.movement):
+                if state is not None and state.namespace == namespace:
+                    applied += self._apply(
+                        self.entities[entity.key], entity, state, payload)
 
         for runtime in self.subdevices.values():
             document = _subdevice_document(payload, runtime.subdevice_id)
             if document is None:
                 continue
             for entity in runtime.template.entities.values():
-                state = entity.state
-                if state is not None and state.namespace == namespace:
-                    applied += self._apply(
-                        runtime.entities[entity.key], entity, state, document)
+                for state in (entity.state, entity.movement):
+                    if state is not None and state.namespace == namespace:
+                        applied += self._apply(
+                            runtime.entities[entity.key], entity, state,
+                            document)
 
         if applied:
             self.updates += applied

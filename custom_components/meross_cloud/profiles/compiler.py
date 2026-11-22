@@ -369,6 +369,9 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
 
     state = _compile_state(prefix, raw.get("state"), namespaces, channel,
                            errors, channel_template=channel_template)
+    movement = _compile_state(
+        f"{prefix}:movement", raw.get("movement"), namespaces, channel,
+        errors, channel_template=channel_template)
     commands = _compile_commands(
         prefix, platform, raw.get("commands"), namespaces, channel, errors,
         allow_subdevice=allow_subdevice, channel_template=channel_template)
@@ -401,6 +404,7 @@ def _compile_entity(context_id: str, raw: Dict[str, Any],
         device=device,
         channel_template=channel_template,
         state=state,
+        movement=movement,
         commands=commands,
         quirks=quirks,
         capabilities=capabilities,

@@ -181,6 +181,33 @@ async def test_priority_publish_bypasses_the_rate_limit():
     assert connection.rl_rate == 1.0
 
 
+async def test_local_connection_uses_the_relaxed_rate_limit(monkeypatch):
+    from custom_components.meross_cloud import broker_transport as module
+
+    created = {}
+
+    class Connection:
+        def __init__(self, *args, **kwargs):
+            created["connection"] = self
+            self.rl_rate = None
+            self.rl_window_size = None
+            self.connect_broadcast = SimpleNamespace(add=lambda cb: None)
+            self.disconnect_broadcast = SimpleNamespace(add=lambda cb: None)
+
+        async def async_connect(self, timeout=None):
+            return None
+
+    monkeypatch.setattr(module, "_BrokerAppClient", Connection)
+    transport = module.BrokerMqttTransport(
+        "localhost", 2001, "1", "key", None, None)
+
+    await transport.async_connect()
+
+    connection = created["connection"]
+    assert connection.rl_rate == module.LOCAL_MQTT_RATE == 1.0
+    assert connection.rl_window_size == module.LOCAL_MQTT_BURST == 5
+
+
 def test_devices_library_is_loaded_lazily():
     from custom_components.meross_cloud.vendor.merossclient import library
 

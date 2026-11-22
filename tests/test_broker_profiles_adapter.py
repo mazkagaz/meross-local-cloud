@@ -3,7 +3,7 @@ import json
 import logging
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import yaml
 
@@ -362,8 +362,10 @@ async def test_unsigned_catalog_is_reported():
     assert adapter.summary()["catalog_signature"] == "absent"
 
 
-async def test_catalog_change_reloads_the_entry(hass, monkeypatch):
+async def test_catalog_change_advertises_update_without_reload(
+        hass, monkeypatch):
     import asyncio
+    import contextlib
 
     from custom_components.meross_cloud import broker_adapter as module
 
@@ -379,18 +381,68 @@ async def test_catalog_change_reloads_the_entry(hass, monkeypatch):
     adapter.revision = "rev1"
     reload = AsyncMock()
     monkeypatch.setattr(hass.config_entries, "async_reload", reload)
+    sync = Mock()
+    monkeypatch.setattr(adapter, "_async_sync_profile_updates", sync)
+
+    async def refresh():
+        adapter.revision = "rev2"
+
+    monkeypatch.setattr(adapter, "_async_fetch_profiles", refresh)
     fetch = AsyncMock(side_effect=[
         {"revision": "rev1"}, {"revision": "rev2"}])
 
     with patch.object(module, "async_fetch_revision", fetch):
         task = hass.async_create_task(adapter._async_watch_catalog())
         for _ in range(100):
-            if reload.await_count:
+            if sync.called:
                 break
             await asyncio.sleep(0.01)
-        await task
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
 
-    reload.assert_awaited_once_with("entry-1")
+    assert sync.called
+    reload.assert_not_awaited()
+
+
+async def test_profile_update_notifications(hass):
+    from custom_components.meross_cloud import broker_adapter as module
+
+    coordinator = SimpleNamespace(
+        config_entry_id="entry-1",
+        client=object(),
+        http_api_endpoint="https://broker:2004",
+        credentials=SimpleNamespace(token="t"),
+        mqtt_ssl_context=object(),
+    )
+    adapter = BrokerProfileAdapter(hass, coordinator)
+    adapter.runtimes = {
+        "u1": SimpleNamespace(profile=SimpleNamespace(
+            profile_id="meross.mrs100", version="1.0.0")),
+    }
+    adapter.registry = SimpleNamespace(profiles={
+        "meross.mrs100": SimpleNamespace(version="2.0.0")})
+
+    class Notifications:
+        def __init__(self):
+            self.created = []
+            self.dismissed = []
+
+        async def async_create(self, *args, **kwargs):
+            self.created.append((args, kwargs))
+
+        async def async_dismiss(self, *args, **kwargs):
+            self.dismissed.append((args, kwargs))
+
+    notifications = Notifications()
+    await adapter._async_sync_notifications(notifications)
+    assert notifications.created
+    assert notifications.created[0][1]["notification_id"] == (
+        "meross_cloud_profile_meross.mrs100")
+
+    adapter.registry.profiles["meross.mrs100"].version = "1.0.0"
+    await adapter._async_sync_notifications(notifications)
+    assert notifications.dismissed
 
 
 async def test_unchanged_catalog_does_not_reload(hass, monkeypatch):

@@ -37,12 +37,14 @@ from homeassistant.components.update import (
     UpdateEntityFeature,
 )
 from homeassistant.const import UnitOfTemperature
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, EntityCategory
 
 from .broker_config import ChannelState
 from .common import (
     BROKER_ADAPTER,
     DOMAIN,
+    PROFILE_CATALOG_SIGNAL,
     SHUTTER_CONFIG_CACHE,
     calculate_id,
     device_internal_id,
@@ -424,6 +426,38 @@ class ProfileCover(ProfileBaseEntity, CoverEntity):
             return self._p3_state.position
         return None
 
+    def _movement(self) -> Optional[int]:
+        value = self._values().get("movement")
+        return int(value) if _is_int(value) else None
+
+    @property
+    def is_opening(self) -> Optional[bool]:
+        movement = self._movement()
+        return None if movement is None else movement == 1
+
+    @property
+    def is_closing(self) -> Optional[bool]:
+        movement = self._movement()
+        return None if movement is None else movement == 2
+
+    @property
+    def icon(self) -> Optional[str]:
+        movement = self._movement()
+        if movement == 1:
+            return "mdi:arrow-up-bold"
+        if movement == 2:
+            return "mdi:arrow-down-bold"
+        if _has_quirk(self._spec, "garage_door"):
+            return None
+        position = self.current_cover_position
+        if position is None:
+            return None
+        if position <= 0:
+            return "mdi:window-shutter"
+        if position >= 100:
+            return "mdi:window-shutter-open"
+        return "mdi:blinds"
+
     @property
     def is_closed(self) -> Optional[bool]:
         values = self._values()
@@ -689,12 +723,22 @@ class ProfileUpdateEntity(UpdateEntity):
             self._device_uuid, self._subdevice_id, self._template,
             descriptor)
 
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(async_dispatcher_connect(
+            self.hass, PROFILE_CATALOG_SIGNAL, self.async_write_ha_state))
+
     @property
     def installed_version(self) -> Optional[str]:
         return self._runtime.profile.version
 
     @property
     def latest_version(self) -> Optional[str]:
+        registry = getattr(self._adapter, "registry", None)
+        if registry is not None:
+            meta = registry.profiles.get(self._runtime.profile.profile_id)
+            if meta is not None and meta.version:
+                return meta.version
         return self._runtime.profile.version
 
     @property
@@ -703,6 +747,9 @@ class ProfileUpdateEntity(UpdateEntity):
 
     async def async_install(self, version: Optional[str],
                             backup: bool, **kwargs: Any) -> None:
+        dismiss = getattr(self._adapter, "dismiss_profile_update", None)
+        if dismiss is not None:
+            dismiss(self._runtime.profile.profile_id)
         await self._adapter.async_reload_entry()
 
 

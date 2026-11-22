@@ -11,6 +11,12 @@ from .vendor.merossclient.protocol.message import MerossRequest, MerossResponse
 
 _LOGGER = logging.getLogger(__name__)
 
+# The vendored client keeps the Meross cloud guard (200 messages/hour,
+# 5-message burst over 90 s). The local broker has no cloud-ban risk and
+# interactive cover commands need a much shorter window.
+LOCAL_MQTT_RATE = 1.0  # sustained messages per second, per device
+LOCAL_MQTT_BURST = 5  # burst size over LOCAL_MQTT_BURST seconds
+
 
 class _BrokerAppClient(MQTTAppClient):
     """App client that resolves pending transactions from MQTT replies.
@@ -88,6 +94,8 @@ class BrokerMqttTransport:
             timeout=self._timeout,
         )
         connection.message_listener = self._message_listener
+        connection.rl_rate = LOCAL_MQTT_RATE
+        connection.rl_window_size = LOCAL_MQTT_BURST
         connection.connect_broadcast.add(self._on_connect)
         connection.disconnect_broadcast.add(self._on_disconnect)
         await connection.async_connect(timeout=self._timeout)

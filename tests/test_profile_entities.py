@@ -53,6 +53,8 @@ class FakeAdapter:
         self.priority_sent = []
         self.ready = []
         self.reloads = 0
+        self.dismissed = []
+        self.registry = None
         self.device_online = {}
         self.listeners = []
 
@@ -82,6 +84,9 @@ class FakeAdapter:
     async def async_reload_entry(self):
         self.reloads += 1
         return True
+
+    def dismiss_profile_update(self, profile_id):
+        self.dismissed.append(profile_id)
 
     def add_ready_listener(self, callback):
         if self.state == "connected":
@@ -196,6 +201,35 @@ async def test_cover_state_and_position_command(hass):
     await entity.async_stop_cover()
     assert adapter.priority_sent[-1][3] == {
         "position": {"channel": 0, "position": -1}}
+
+
+async def test_cover_icons_follow_movement_and_position(hass):
+    device = runtime("mrs100")
+    device.entities["cover"].values.update({"position": 40})
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_COVER)
+    entity = next(iter(component.entities))
+
+    device.entities["cover"].values.update({"movement": 1})
+    assert entity.is_opening is True
+    assert entity.is_closing is False
+    assert entity.icon == "mdi:arrow-up-bold"
+
+    device.entities["cover"].values.update({"movement": 2})
+    assert entity.is_opening is False
+    assert entity.is_closing is True
+    assert entity.icon == "mdi:arrow-down-bold"
+
+    device.entities["cover"].values.update({"movement": 0, "position": 40})
+    assert entity.is_opening is False
+    assert entity.is_closing is False
+    assert entity.icon == "mdi:blinds"
+
+    device.entities["cover"].values.update({"position": 100})
+    assert entity.icon == "mdi:window-shutter-open"
+
+    device.entities["cover"].values.update({"position": 0})
+    assert entity.icon == "mdi:window-shutter"
 
 
 async def test_number_range_and_scaled_command(hass):
@@ -488,6 +522,23 @@ async def test_update_entities_cover_hub_and_subdevices(hass):
     assert sub.device_info["via_device"] == (DOMAIN, "#BASE:hub1")
 
     await hub.async_install(None, False)
+    assert adapter.reloads == 1
+
+
+async def test_update_entity_reports_the_catalog_version(hass):
+    device = runtime("mss310")
+    adapter = FakeAdapter(device)
+    adapter.registry = SimpleNamespace(profiles={
+        "meross.mss310": SimpleNamespace(version="9.9.9")})
+
+    component = await setup_updates(hass, adapter)
+    entity = next(iter(component.entities))
+
+    assert entity.installed_version == device.profile.version
+    assert entity.latest_version == "9.9.9"
+
+    await entity.async_install(None, False)
+    assert adapter.dismissed == ["meross.mss310"]
     assert adapter.reloads == 1
 
 

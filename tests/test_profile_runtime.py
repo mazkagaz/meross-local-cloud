@@ -17,6 +17,7 @@ FIXTURES = Path(__file__).parent / "fixtures" / "profiles"
 TOGGLE_NS = "Appliance.Control.ToggleX"
 ELECTRICITY_NS = "Appliance.Control.Electricity"
 CONFIG_NS = "Appliance.RollerShutter.Config"
+STATE_NS = "Appliance.RollerShutter.State"
 SUBDEVICE_NS = "Appliance.Hub.Sensor.TempHum"
 
 
@@ -38,6 +39,17 @@ def compiled_fixture(name):
 
 def runtime(name="mss310"):
     return DeviceRuntime("u1", compiled_fixture(name))
+
+
+def test_cover_movement_is_applied_from_state_push():
+    device = runtime("mrs100")
+
+    applied = device.dispatch(STATE_NS, "PUSH", {
+        "state": [{"channel": 0, "state": 2, "timestamp": 1}],
+    })
+
+    assert applied == 1
+    assert device.entities["cover"].values["movement"] == 2
 
 
 def test_toggle_push_updates_the_switch_state():
