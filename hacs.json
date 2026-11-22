@@ -1,18 +1,5 @@
 {
   "name": "Meross Local Cloud",
   "hacs": "1.6.0",
-  "homeassistant": "2025.6",
-  "domains": [
-    "sensor",
-    "climate",
-    "switch",
-    "cover",
-    "humidifier",
-    "light",
-    "number",
-    "button",
-    "binary_sensor",
-    "fan",
-    "update"
-  ]
+  "homeassistant": "2025.6"
 }

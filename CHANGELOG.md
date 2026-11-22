@@ -1,3 +1,14 @@
+## 4.0.1 — validation HACS et Hassfest
+
+Version stable. Aucun changement fonctionnel.
+
+- Manifeste : dépendances `network` et `zeroconf` déclarées, exigence
+  `paho-mqtt>=2.1.0`, clés triées.
+- Traductions : l’URL du broker passe par un placeholder dans le flux de
+  configuration, plus d’URL brute dans `strings.json`/`translations`.
+- `hacs.json` : suppression de la clé `domains`, refusée par le schéma HACS.
+- Ajout des workflows **HACS Action** et **Hassfest**.
+
 ## 4.0.0 — nouveau domaine Home Assistant
 
 Version majeure, rupture volontaire.

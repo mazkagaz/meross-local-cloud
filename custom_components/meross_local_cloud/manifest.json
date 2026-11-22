@@ -1,22 +1,26 @@
 {
   "domain": "meross_local_cloud",
   "name": "Meross Local Cloud",
-  "documentation": "https://github.com/mazkagaz/meross-local-cloud#readme",
-  "issue_tracker": "https://github.com/mazkagaz/meross-local-cloud/issues",
-  "dependencies": [
-    "persistent_notification"
+  "after_dependencies": [
+    "network",
+    "zeroconf"
   ],
   "codeowners": [
     "@mazkagaz"
   ],
-  "requirements": [
-    "paho-mqtt==2.1.0"
+  "config_flow": true,
+  "dependencies": [
+    "persistent_notification"
   ],
+  "documentation": "https://github.com/mazkagaz/meross-local-cloud#readme",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/mazkagaz/meross-local-cloud/issues",
   "loggers": [
     "custom_components.meross_local_cloud"
   ],
-  "config_flow": true,
   "quality_scale": "platinum",
-  "iot_class": "local_push",
-  "version": "4.0.0"
+  "requirements": [
+    "paho-mqtt>=2.1.0"
+  ],
+  "version": "4.0.1"
 }
