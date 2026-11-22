@@ -44,9 +44,10 @@ def test_manifest_and_changelog_versions_agree():
     assert changelog.startswith(f"## {manifest['version']} ")
 
 
-def test_dependency_is_paho_only_and_pinned():
+def test_dependency_is_paho_only_and_follows_core():
     manifest = json.loads((COMPONENT / "manifest.json").read_text())
-    assert manifest["requirements"] == ["paho-mqtt==2.1.0"]
+    assert manifest["requirements"] == ["paho-mqtt>=2.1.0"]
+    assert manifest["after_dependencies"] == ["network", "zeroconf"]
 
 
 def test_historical_unique_ids_include_the_registry_base():

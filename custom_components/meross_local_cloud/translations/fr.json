@@ -33,7 +33,7 @@
       },
       "configure_manager_missing": {
         "title": "Connexion à Meross Local Cloud",
-        "description": "Le broker n'a pas été détecté automatiquement. Vérifiez que l'add-on Meross Local Broker est installé et démarré : [Installer ou vérifier l'installation de l'add-on Meross Local Broker](https://github.com/mazkagaz/meross-local-broker#readme).\n\nSi les ports exposés de l'add-on ont été modifiés (Paramètres → Applications → Meross Local Broker → Configuration), renseignez manuellement l'adresse et les ports.\n\nExemple : 192.168.1.10 — HTTPS 2004, MQTT 2001.",
+        "description": "Le broker n'a pas été détecté automatiquement. Vérifiez que l'add-on Meross Local Broker est installé et démarré : {broker_url}.\n\nSi les ports exposés de l'add-on ont été modifiés (Paramètres → Applications → Meross Local Broker → Configuration), renseignez manuellement l'adresse et les ports.\n\nExemple : 192.168.1.10 — HTTPS 2004, MQTT 2001.",
         "data": {
           "broker_host": "Adresse du Meross Local Broker",
           "https_port": "Port HTTPS",
@@ -55,8 +55,7 @@
           "mfa_code": "Code MFA"
         }
       }
-    },
-    "title": "Meross Local Cloud"
+    }
   },
   "options": {
     "error": {},

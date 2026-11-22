@@ -99,12 +99,19 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     def _show_form(self, errors=None, username=None, password=None,
                    requires_mfa: bool = False):
+        kwargs = {}
+        if self._form_step == "configure_manager_missing":
+            kwargs["description_placeholders"] = {
+                "broker_url":
+                    "https://github.com/mazkagaz/meross-local-broker#readme",
+            }
         return self.async_show_form(
             step_id=self._form_step,
             data_schema=self._build_form_schema(
                 username=username, password=password,
                 requires_mfa=requires_mfa),
             errors=errors or {},
+            **kwargs,
         )
 
     @staticmethod
