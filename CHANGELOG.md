@@ -1,3 +1,11 @@
+## 3.2.1 — correctif de test fonctionnel
+
+Version stable. Aucun changement de comportement par rapport à 3.2.0.
+
+- `test_f3_1_open_close_stop` vérifie désormais la position du cover au lieu
+  du dictionnaire complet, qui contient aussi la clé `movement`.
+- Tests : 506 non fonctionnels + 30 fonctionnels.
+
 ## 3.2.0 — mises à jour manuelles et icônes de volet
 
 Version stable. Broker **1.3.0+** ; **1.4.6 recommandé** pour les icônes MRS100

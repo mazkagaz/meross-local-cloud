@@ -47,13 +47,13 @@ async def test_f3_1_open_close_stop(hass):
         await adapter.async_send(
             "u1", POSITION, "SET",
             {"position": {"channel": 0, "position": 100}})
-        assert cover.values == {"position": 100}
+        assert cover.values["position"] == 100
         assert simulator.state == 1
 
         await adapter.async_send(
             "u1", POSITION, "SET",
             {"position": {"channel": 0, "position": 0}})
-        assert cover.values == {"position": 0}
+        assert cover.values["position"] == 0
         assert simulator.state == 2
 
         await adapter.async_send(
