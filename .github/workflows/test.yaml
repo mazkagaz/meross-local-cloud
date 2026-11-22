@@ -48,6 +48,9 @@ jobs:
       - name: Prepare test reports
         run: mkdir -p reports
 
+      - name: Check documentation translations
+        run: python tools/check_docs_translations.py
+
       - name: Fast suites (unit and integration)
         run: python -m pytest tests --ignore=tests/functional -q
 

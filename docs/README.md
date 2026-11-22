@@ -39,3 +39,12 @@
 ### Exploitation
 
 - [Branches, versions et publication](operations/RELEASING.md)
+
+### Traductions
+
+- [Politique de traduction](TRANSLATIONS.md)
+- [Glossaire français / anglais](TRANSLATION-GLOSSARY.md)
+
+Les documents techniques restent en français pour l’instant ; les pages
+d’entrée (`README`, `info`) sont publiées en anglais avec une version
+française en `*.fr.md`.

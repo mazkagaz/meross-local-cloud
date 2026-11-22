@@ -1,0 +1,17 @@
+{
+  "source_language": "fr",
+  "pairs": [
+    {
+      "source": "README.fr.md",
+      "translation": "README.md",
+      "source_sha256": "cb993bc88f2f5822f38f7bc20ea5286c6e6ee1eaf42c54830ca564006fb827dc",
+      "translation_sha256": "aa383a269d814a196eae65c7c5feca1ecfe8d392a12844a84c2ad6b741d8336e"
+    },
+    {
+      "source": "info.fr.md",
+      "translation": "info.md",
+      "source_sha256": "ef05432200a5a07ff5e5a435e8a3275d798f802a05a7f9d0ff3521c093b5cd99",
+      "translation_sha256": "1d9ad2e5794ed575cd80cfb8d9ca70933147c8e4df61a7ba1e67bed6d45698fe"
+    }
+  ]
+}

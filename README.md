@@ -1,252 +1,255 @@
-# Meross Local Cloud — intégration Home Assistant pour broker local
+**English** · [Français](README.fr.md)
+
+# Meross Local Cloud — Home Assistant integration for a local broker
 
 ![Meross Local Cloud](branding/meross-local-cloud-banner.jpeg)
 
-Intégration **non officielle** pour Home Assistant, distribuée via HACS. Elle
-pilote les appareils Meross appairés à un broker local, sans passer par le cloud
-Meross pour l'usage quotidien. Elle ne propose que le mode local : aucun
-identifiant du cloud officiel n'est demandé ni utilisé.
+**Unofficial** Home Assistant integration, distributed via HACS. It controls
+Meross devices paired to a local broker, without using the Meross cloud for
+daily operation. Only local mode is supported: no official cloud credentials
+are requested or used.
 
-Depuis la 3.0, l'intégration est **pilotée par les profils d'appareils** du
-broker. Elle ne dépend plus de `meross_iot` : un profil décrit les namespaces,
-les chemins de payload, les entités et les commandes, et le broker publie le
-catalogue signé. Ajouter une famille d'appareils ne demande donc plus de
-release de l'intégration, seulement un profil côté broker.
+Since 3.0, the integration is **driven by the broker's device profiles**. It no
+longer depends on `meross_iot`: a profile describes namespaces, payload paths,
+entities and commands, and the broker publishes the signed catalog. Adding a
+device family no longer requires an integration release, only a profile on the
+broker side.
 
-Familles actuellement décrites : MRS100, MSS310, multiprises MSS425/MSP844,
-MSH300 avec sous-appareils MS100/MS130/MTS100/MS200/MS400/GS559/MST,
-MTS200/MTS300/MTS9, MS600, lumières MSL, prises MSS, variateur MSS5,
-diffuseurs MOD/MSXH0, purificateur MAP100, compteurs EM/EM06, garages MSG/RSG
-et HP110.
+Families currently described: MRS100, MSS310, MSS425/MSP844 power strips,
+MSH300 with MS100/MS130/MTS100/MS200/MS400/GS559/MST subdevices,
+MTS200/MTS300/MTS9, MS600, MSL lights, MSS plugs, MSS5 dimmer, MOD/MSXH0
+diffusers, MAP100 purifier, EM/EM06 energy meters, MSG/RSG garage doors and
+HP110.
 
-- pour le MRS100 : entités `number` pour les durées d'ouverture/fermeture,
-  boutons **Start calibration** / **Stop calibration**, capteur
-  **Calibration status**, et icône du cover pilotée par le mouvement
-  (flèches pendant le déplacement, états ouvert/fermé/partiel à l'arrêt) ;
-- suppression fiable des appareils oubliés (Unbind), réparation des appareils
-  absents depuis 48 h et réparation « appareil sans profil ».
+- for the MRS100: `number` entities for open/close durations (typed fields), a
+  Position slider, **Start calibration** / **Stop calibration** buttons, a
+  **Calibration status** sensor, and a cover icon driven by movement (arrows
+  while moving, open/closed/partial at rest);
+- reliable removal of forgotten devices (Unbind), repairs for devices missing
+  for 48 h and for “device without profile”.
 
-## Appareils et testeurs recherchés
+## Devices and testers wanted
 
-Le **MRS100** est l'appareil de référence du montage. Les autres familles du
-catalogue (multiprises, capteurs, GS559, garage, purificateur, MST, compteurs
-d'énergie, MSXH0, HP110, MTS9, etc.) sont décrites à partir du protocole et de
-traces, mais **ont besoin de testeurs sur matériel réel**. Ouvrez une
-[issue](https://github.com/mazkagaz/meross-local-cloud/issues) en précisant le
-modèle, le firmware et les fonctions qui marchent ou non : c'est ce qui permet
-de valider chaque profil. Le MRS100 n'est pas un prérequis : toute famille du
-catalogue peut être testée.
+The **MRS100** is the reference device for this setup. The other families in
+the catalog (power strips, sensors, GS559, garage doors, purifier, MST, energy
+meters, MSXH0, HP110, MTS9, etc.) are described from the protocol and traces,
+but **need testers on real hardware**. Open an
+[issue](https://github.com/mazkagaz/meross-local-cloud/issues) with the model,
+firmware and the functions that work or fail: that is what makes it possible to
+validate each profile. The MRS100 is not a prerequisite: any family in the
+catalog can be tested.
 
-**Version stable 3.2.2**, compatible avec le broker **1.3.0** (1.4.6
-recommandé pour les icônes MRS100, 1.4.8 pour Position et les durées en champ
-de saisie) et le pairer **2.0.9**.
+**Stable version 3.2.2**, compatible with broker **1.3.0** (1.4.6 recommended
+for MRS100 icons, 1.4.8 for Position and typed durations) and pairer **2.0.9**.
 
-## Les trois briques du montage
+## The three building blocks
 
-| Brique | Rôle | Dépôt |
+| Component | Role | Repository |
 |---|---|---|
-| **Meross Local Broker** | add-on : broker MQTT + API locale | [mazkagaz/meross-local-broker](https://github.com/mazkagaz/meross-local-broker) |
-| **Meross Local Cloud** | cette intégration Home Assistant (HACS) | [mazkagaz/meross-local-cloud](https://github.com/mazkagaz/meross-local-cloud) |
-| **Meross Local Pairer** | application Android d'appairage | [mazkagaz/meross-local-pairer](https://github.com/mazkagaz/meross-local-pairer) |
+| **Meross Local Broker** | add-on: MQTT broker + local API | [mazkagaz/meross-local-broker](https://github.com/mazkagaz/meross-local-broker) |
+| **Meross Local Cloud** | this Home Assistant integration (HACS) | [mazkagaz/meross-local-cloud](https://github.com/mazkagaz/meross-local-cloud) |
+| **Meross Local Pairer** | Android pairing app | [mazkagaz/meross-local-pairer](https://github.com/mazkagaz/meross-local-pairer) |
 
 ```
-MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> cette intégration
+MRS100 ──MQTT/TLS──> Meross Local Broker add-on ──API/MQTT──> this integration
                             ^
-                            │ appairage initial
+                            │ initial pairing
                        Meross Local Pairer (Android)
 ```
 
-## Compatibilité des versions
+## Version compatibility
 
-| Brique | Version minimale | Remarques |
+| Component | Minimum version | Notes |
 |---|---|---|
-| Meross Local Cloud | 3.2.2 | cette intégration, moteur profils 2.5 |
-| Meross Local Broker | 1.3.0 | catalogue complet ; 1.3.1 volet ; 1.4.6 icônes MRS100 ; 1.4.8 Position |
-| Meross Local Pairer | 2.0.9 | HTTPS 2004 uniquement |
-| Home Assistant | 2025.6 | testé avec 2026.2 |
+| Meross Local Cloud | 3.2.2 | this integration, profile engine 2.5 |
+| Meross Local Broker | 1.3.0 | full catalog; 1.3.1 shutter fix; 1.4.6 MRS100 icons; 1.4.8 Position |
+| Meross Local Pairer | 2.0.9 | HTTPS 2004 only |
+| Home Assistant | 2025.6 | tested with 2026.2 |
 
-## Canal de test (bêta)
+## Beta channel
 
-Les versions stables sont publiées depuis `main`. Les versions de test sont
-des **préversions** `X.Y.Z-beta.N` issues de la branche `dev` : pour les
-voir et les installer dans HACS, activer **« Afficher les versions bêta »**.
-Sans cette option, seules les versions stables sont proposées. Procédure
-complète : [docs/operations/RELEASING.md](docs/operations/RELEASING.md).
-La documentation technique est indexée dans [docs/README.md](docs/README.md).
+Stable versions are published from `main`. Test versions are `X.Y.Z-beta.N`
+**pre-releases** from the `dev` branch: to see and install them in HACS, enable
+**“Show beta versions”**. Without that option, only stable versions are
+offered. Full procedure: [docs/operations/RELEASING.md](docs/operations/RELEASING.md).
 
-## Avant de commencer
+Technical documentation is indexed in [docs/README.md](docs/README.md)
+(currently in French; the English translation is in progress).
 
-1. L'add-on **Meross Local Broker** est installé et démarré.
-2. Un **compte local** a été créé dans l'add-on (login et mot de passe).
-   N'utilisez pas votre compte Meross officiel : ce compte est indépendant.
-3. Au moins un appareil Meross (MRS100 ou autre famille du catalogue) a
-   été appairé avec **Meross Local Pairer**.
-4. **HACS** est installé dans Home Assistant.
-5. Home Assistant 2025.6 ou plus récent (testé avec 2026.2).
+## Before you start
 
-## Installation avec HACS
+1. The **Meross Local Broker** add-on is installed and running.
+2. A **local account** has been created in the add-on (login and password).
+   Do not use your official Meross account: this account is independent.
+3. At least one Meross device (MRS100 or another family in the catalog) has
+   been paired with **Meross Local Pairer**.
+4. **HACS** is installed in Home Assistant.
+5. Home Assistant 2025.6 or newer (tested with 2026.2).
 
-[![Ouvrir votre instance Home Assistant et ajouter ce dépôt à HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mazkagaz&repository=meross-local-cloud&category=integration)
+## Install with HACS
 
-Cliquer sur le badge ci-dessus, ou :
+[![Open your Home Assistant instance and add this repository to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mazkagaz&repository=meross-local-cloud&category=integration)
 
-1. Ouvrir **HACS → Intégrations**.
-2. Menu **⋮ → Dépôts personnalisés**.
-3. Ajouter :
-   - URL : `https://github.com/mazkagaz/meross-local-cloud`
-   - Catégorie : **Integration**
-4. Ouvrir la fiche **Meross Local Cloud**, télécharger la dernière version.
-5. Redémarrer Home Assistant.
+Click the badge above, or:
 
-HACS installe l'intégration, pas l'add-on. L'add-on se trouve dans la boutique
-des modules complémentaires (lien ci-dessus).
+1. Open **HACS → Integrations**.
+2. Open the **⋮ → Custom repositories** menu.
+3. Add:
+   - URL: `https://github.com/mazkagaz/meross-local-cloud`
+   - Category: **Integration**
+4. Open the **Meross Local Cloud** entry and download the latest version.
+5. Restart Home Assistant.
 
-## Ajouter l'intégration
+HACS installs the integration, not the add-on. The add-on lives in the add-on
+store (link above).
 
-1. **Paramètres → Appareils et services → Ajouter une intégration**.
-2. Chercher **Meross Local Cloud**.
-3. L'assistant découvre le broker en mDNS et affiche un formulaire unique :
+## Add the integration
 
-| Champ | Valeur |
+1. **Settings → Devices & services → Add integration**.
+2. Search for **Meross Local Cloud**.
+3. The wizard discovers the broker over mDNS and shows a single form:
+
+| Field | Value |
 |---|---|
-| Meross Local Broker address | hôte ou IP, sans `https://` (prérempli si détecté) |
-| HTTPS port | `2004` (prérempli si détecté) |
-| MQTT port | `2001` (prérempli si détecté) |
-| Local login | le compte local de l'add-on |
-| Password | le mot de passe local |
+| Meross Local Broker address | host or IP, without `https://` (pre-filled when detected) |
+| HTTPS port | `2004` (pre-filled when detected) |
+| MQTT port | `2001` (pre-filled when detected) |
+| Local login | the add-on's local account |
+| Password | the local password |
 
-Au-dessus des champs, un exemple générique est affiché :
-`Exemple : 192.168.1.10 — HTTPS 2004, MQTT 2001`.
+Above the fields, a generic example is shown:
+`Example: 192.168.1.10 — HTTPS 2004, MQTT 2001`.
 
-- Broker détecté : les champs sont préremplis et la mention
-  « Broker détecté automatiquement » est affichée en vert.
-- Broker non détecté : les champs sont vides et le message « Broker non
-  détecté » s'affiche en rouge, suivi du lien
-  **Installer ou vérifier l'installation de l'add-on Meross Local Broker**
-  vers `https://github.com/mazkagaz/meross-local-broker#readme`.
+- Broker detected: the fields are pre-filled and “Broker detected
+  automatically” is shown in green.
+- Broker not detected: the fields are empty and “Broker not detected” is shown
+  in red, followed by the link
+  **Install or check the Meross Local Broker add-on installation** to
+  `https://github.com/mazkagaz/meross-local-broker#readme`.
 
-4. Valider. Les appareils déjà appairés apparaissent avec leurs entités.
+4. Confirm. Devices already paired appear with their entities.
 
-Le broker doit être en **1.2.2 ou plus récent** pour le routage ACK et le
-catalogue de profils ; **1.3.0** est requis pour les nouvelles familles
-(multiprises, capteurs, garage, purificateur, MST, EM, MSXH0, HP110, MTS9).
-Sa CA locale est valide : elle est téléchargée depuis `/ca.crt`, vérifiée et
-épinglée par l'intégration, puis
-utilisée pour HTTP et MQTT (vérification du nom d'hôte incluse lorsque le
-certificat couvre l'adresse configurée).
+The broker must be **1.2.2 or newer** for ACK routing and the profile catalog;
+**1.3.0** is required for the new families (power strips, sensors, garage
+doors, purifier, MST, EM, MSXH0, HP110, MTS9). Its local CA is valid: it is
+downloaded from `/ca.crt`, verified and pinned by the integration, then used
+for HTTP and MQTT (hostname verification is included when the certificate
+covers the configured address).
 
-Le HTTP non chiffré (port 2003) et les options « ignorer la validation du
-certificat » ont été **supprimés** : toute connexion passe par TLS avec une CA
-valide. Un broker ancien (CA invalide) doit être mis à jour avant de configurer
-l'intégration.
+Unencrypted HTTP (port 2003) and the “ignore certificate validation” options
+have been **removed**: every connection uses TLS with a valid CA. An old broker
+(invalid CA) must be updated before configuring the integration.
 
-Le login local n'est pas obligatoirement une adresse email : un simple nom
-d'utilisateur suffit. **N'utilisez jamais les identifiants du cloud Meross
-officiel** ; l'intégration ne contacte que le broker local.
+The local login does not have to be an email address: a simple username is
+enough. **Never use official Meross cloud credentials**; the integration only
+contacts the local broker.
 
-## Oubli d'un appareil
+## Forgetting a device
 
-- Quand le broker publie `Appliance.Control.Unbind`, l'appareil, ses
-  sous-appareils et ses entités sont supprimés de Home Assistant immédiatement.
-- Un appareil absent de tous les polls HTTP réussis pendant **48 heures**
-  déclenche une réparation « Appareil plus appairé ». La confirmer supprime
-  l'appareil et ses entités ; un retour de l'appareil annule la réparation.
-- Les entrées héritées d'anciennes versions sont réconciliées au démarrage et
-  suivent le même délai de 48 h. Pour nettoyer immédiatement, supprimer
-  l'appareil dans **Paramètres → Appareils**.
+- When the broker publishes `Appliance.Control.Unbind`, the device, its
+  subdevices and its entities are removed from Home Assistant immediately.
+- A device absent from all successful HTTP polls for **48 hours** triggers a
+  “Device no longer paired” repair. Confirming it removes the device and its
+  entities; if the device comes back, the repair is cancelled.
+- Entries inherited from older versions are reconciled at startup and follow
+  the same 48 h delay. To clean up immediately, delete the device in
+  **Settings → Devices**.
 
-## Backend profils
+## Profile backend
 
-Le broker publie un catalogue signé (Ed25519). Au démarrage et à chaque
-changement de révision, l'intégration :
+The broker publishes a signed catalog (Ed25519). At startup and whenever the
+revision changes, the integration:
 
-1. vérifie la signature et charge les profils ;
-2. interroge chaque appareil (`System.All`/`Ability`) ;
-3. associe l'appareil au profil le plus précis ;
-4. crée les entités et démarre un scheduler par appareil.
+1. verifies the signature and loads the profiles;
+2. queries each device (`System.All`/`Ability`);
+3. matches the device to the most specific profile;
+4. creates the entities and starts one scheduler per device.
 
-Un appareil sans profil ne crée aucune entité et déclenche une réparation
-**Aucun profil pour …**. Corriger ou ajouter le profil dans le catalogue du
-broker suffit. Lorsque la révision change, l'intégration signale la mise à
-jour : une notification persistante apparaît et l'entité `update` du profil
-propose **Installer**. L'installation reste manuelle afin de choisir le
-moment ; aucun rechargement automatique n'est effectué.
-Pour préparer un profil, voir le workflow overrides/capture du dépôt broker.
+A device without a profile creates no entities and triggers an **No profile
+for …** repair. Fixing or adding the profile in the broker catalog is enough.
+When the revision changes, the integration advertises the update: a persistent
+notification appears and the profile `update` entity offers **Install**. The
+installation remains manual so you can choose the moment; no automatic reload
+is performed.
+To prepare a profile, see the overrides/capture workflow in the broker
+repository.
 
-Les commandes MQTT locales utilisent une limite adaptée au broker local
-(1 message/s soutenu, burst de 5 sur 5 s par appareil) au lieu de la limite
-cloud de 200 messages/heure.
+Local MQTT commands use a limit suitable for the local broker (1 message/s
+sustained, burst of 5 over 5 s per device) instead of the cloud limit of 200
+messages/hour.
 
-## Options de l'intégration
+## Integration options
 
-Dans **Paramètres → Appareils et services → Meross Local Cloud → Configurer** :
+In **Settings → Devices & services → Meross Local Cloud → Configure**:
 
-- **Custom HTTP User-Agent** : laisser vide sauf besoin particulier. Un
-  changement recharge l'intégration pour s'appliquer à tous les appels HTTP.
+- **Custom HTTP User-Agent**: leave empty unless you need a specific value.
+  Changing it reloads the integration so it applies to all HTTP calls.
 
-Les diagnostics (**Paramètres → Appareils et services → Meross Local Cloud →
-Télécharger les diagnostics**) sont expurgés : identifiants masqués, CA,
-certificat serveur, appareils, état du backend profils (révision, signature,
-appareils associés/non associés, erreurs) et compteurs du scheduler. Les
-journaux pseudonymisent UUID, MAC, IP, emails et secrets, pour pouvoir être
-collés dans une issue sans masquage manuel.
+Diagnostics (**Settings → Devices & services → Meross Local Cloud → Download
+diagnostics**) are redacted: credentials hidden, CA, server certificate,
+devices, profile backend state (revision, signature, matched/unmatched
+devices, errors) and scheduler counters. Logs pseudonymize UUIDs, MAC
+addresses, IPs, emails and secrets, so they can be pasted into an issue without
+manual masking.
 
-## Entités créées
+## Entities created
 
-| Entité | Usage |
+| Entity | Purpose |
 |---|---|
-| `cover.*` | ouvrir, fermer, position |
-| `number.*open*` | durée d'ouverture (10 à 120 secondes) |
-| `number.*close*` | durée de fermeture (10 à 120 secondes) |
-| `button.*start_calibration*` | démarrer la calibration |
-| `button.*stop_calibration*` | interrompre la calibration |
+| `cover.*` | open, close, position |
+| `number.*position*` | position slider, 0–100 % |
+| `number.*open*` | opening duration (10–120 seconds) |
+| `number.*close*` | closing duration (10–120 seconds) |
+| `button.*start_calibration*` | start calibration |
+| `button.*stop_calibration*` | interrupt calibration |
 | `sensor.*calibration_status*` | `success`, `timeout`, `motor_blocked`, `failed_N` |
 
-## Utilisation
+## Usage
 
-- **Durées** : modifier les entités `number`. L'add-on persiste les valeurs et
-  les réapplique après une reconnexion du volet.
-- **Calibration** : lancer **Start calibration**. Le scheduler rafraîchit
-  `Adjust` après la commande ; le capteur affiche ensuite le statut renvoyé par
-  l’appareil (`success`, `timeout`, `motor_blocked`, `failed_N`).
-- **Stop calibration** : interrompt le mouvement en cours.
+- **Durations**: edit the `number` entities. The add-on persists the values
+  and re-applies them after the shutter reconnects.
+- **Position**: use the slider or the cover entity; both stay in sync.
+- **Calibration**: start **Start calibration**. The scheduler refreshes
+  `Adjust` after the command; the sensor then shows the status returned by the
+  device (`success`, `timeout`, `motor_blocked`, `failed_N`).
+- **Stop calibration**: interrupts the current movement.
 
-## Mise à jour
+## Update
 
-HACS → Intégrations → Meross Local Cloud → **Mettre à jour**, puis redémarrer
-Home Assistant. Une nouvelle release GitHub est publiée pour chaque version.
+HACS → Integrations → Meross Local Cloud → **Update**, then restart Home
+Assistant. A new GitHub release is published for each version.
 
-## Dépannage
+## Troubleshooting
 
-| Problème | Vérifier |
+| Problem | Check |
 |---|---|
-| HACS ne trouve pas le dépôt | dépôt public, catégorie **Integration**, release publiée |
-| Aucun appareil découvert | add-on démarré, appareil ONLINE, compte local correct |
-| Erreur de connexion HTTP | adresse du broker et port HTTPS `2004` (TLS obligatoire) |
-| Certificat HTTPS refusé | mettre à jour le broker en 1.3.0 (CA valide) |
-| Erreur MQTT | adresse `…:2001` ; broker 1.3.0 requis |
-| Entités absentes | vérifier la réparation « appareil sans profil » et le catalogue broker |
-| Appareil sans profil | ajouter ou corriger le profil dans le catalogue ; notification puis **Installer** sur l'entité `update` |
-| Entités fantômes après un oubli | Unbind (≤ 60 s), réparation 48 h, ou suppression manuelle de l'appareil |
-| Statut de calibration bloqué | vérifier les logs de l'add-on et le capteur `Calibration status` |
+| HACS cannot find the repository | public repository, **Integration** category, published release |
+| No device discovered | add-on running, device ONLINE, correct local account |
+| HTTP connection error | broker address and HTTPS port `2004` (TLS required) |
+| HTTPS certificate rejected | update the broker to 1.3.0 (valid CA) |
+| MQTT error | `…:2001` address; broker 1.3.0 required |
+| Entities missing | check the “device without profile” repair and the broker catalog |
+| Device without profile | add or fix the profile in the catalog; notification then **Install** on the `update` entity |
+| Ghost entities after forgetting | Unbind (≤ 60 s), 48 h repair, or delete the device manually |
+| Calibration status stuck | check the add-on logs and the `Calibration status` sensor |
 
-## Outils de développement
+## Development tools
 
-Les profils et les trames dorées s'appuient sur
-[meross_lan](https://github.com/krahabb/meross_lan) (**MIT**) : son client
-`merossclient` vendorisé (v6.0.2, commit épinglé) fournit le protocole et les
-descripteurs, et ses traces `emulator_traces/` servent de référence pour les
-familles sans capture locale. meross_lan n'est pas une dépendance runtime ;
-il est utilisé pour la conception, les tests et la validation des profils.
-Voir `NOTICE`, `MODIFICATIONS.md` et `vendor/merossclient/UPSTREAM.md`.
+Profiles and golden frames rely on
+[meross_lan](https://github.com/krahabb/meross_lan) (**MIT**): its vendored
+`merossclient` (v6.0.2, pinned commit) provides the protocol and descriptors,
+and its `emulator_traces/` traces are the reference for families without a
+local capture. meross_lan is not a runtime dependency; it is used for design,
+tests and profile validation. See `NOTICE`, `MODIFICATIONS.md` and
+`vendor/merossclient/UPSTREAM.md`.
 
-## Origine, licence et historique
+## Origin, license and history
 
-Fork non officiel de
+Unofficial fork of
 [albertogeniola/meross-homeassistant](https://github.com/albertogeniola/meross-homeassistant),
-créé par Alberto Geniola, sous **licence MIT**. Le copyright d'origine et la
-notice de licence sont conservés dans `LICENSE`, avec une ligne pour les
-modifications du fork. Voir aussi `NOTICE`, `MODIFICATIONS.md` et `LEGAL.md`.
+created by Alberto Geniola, under the **MIT license**. The original copyright
+and license notice are kept in `LICENSE`, with a line for the fork changes.
+See also `NOTICE`, `MODIFICATIONS.md` and `LEGAL.md`.
 
-Ce fork n'est ni affilié, ni approuvé, ni sponsorisé par Meross ou l'auteur
-upstream. Meross est une marque de son propriétaire respectif.
+This fork is neither affiliated with, approved by, nor sponsored by Meross or
+the upstream author. Meross is a trademark of its respective owner.

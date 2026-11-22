@@ -1,44 +1,45 @@
-# Meross Local Cloud — broker local (fork)
+**English** · [Français](info.fr.md)
+
+# Meross Local Cloud — local broker (fork)
 
 ![Meross Local Cloud](branding/meross-local-cloud-banner.jpeg)
 
-Intégration Home Assistant non officielle pour piloter des appareils Meross
-appairés à un **broker local**, sans cloud Meross au quotidien. Seul le mode
-local est proposé : aucun identifiant du cloud officiel n'est utilisé.
+Unofficial Home Assistant integration to control Meross devices paired to a
+**local broker**, without the Meross cloud in daily use. Only local mode is
+supported: no official cloud credentials are used.
 
-## Installation rapide
+## Quick install
 
-1. Installer d'abord l'add-on
-   [Meross Local Broker](https://github.com/mazkagaz/meross-local-broker).
-2. Appairer l'appareil avec
+1. First install the
+   [Meross Local Broker](https://github.com/mazkagaz/meross-local-broker) add-on.
+2. Pair the device with
    [Meross Local Pairer](https://github.com/mazkagaz/meross-local-pairer).
-3. Dans HACS : **Intégrations → ⋮ → Dépôts personnalisés**, ajouter
-   `https://github.com/mazkagaz/meross-local-cloud` en catégorie **Integration**.
-4. Télécharger l'intégration, redémarrer Home Assistant.
-5. **Paramètres → Appareils et services → Ajouter une intégration →
-   Meross Local Cloud**, puis saisir :
-   - adresse du broker : hôte ou IP (préremplie si le broker est découvert) ;
-   - HTTPS : `2004`, MQTT : `2001` ;
-   - le **login local** de l'add-on (un nom d'utilisateur suffit, ce n'est pas
-     obligatoirement un email).
+3. In HACS: **Integrations → ⋮ → Custom repositories**, add
+   `https://github.com/mazkagaz/meross-local-cloud` with category **Integration**.
+4. Download the integration and restart Home Assistant.
+5. **Settings → Devices & services → Add integration → Meross Local Cloud**,
+   then enter:
+   - broker address: host or IP (pre-filled when the broker is discovered);
+   - HTTPS: `2004`, MQTT: `2001`;
+   - the add-on's **local login** (a username is enough, it does not have to be
+     an email address).
 
-N'utilisez pas les identifiants du cloud Meross officiel : l'intégration ne
-contacte que le broker local. Le broker **1.2.1** et TLS sont obligatoires.
+Do not use official Meross cloud credentials: the integration only contacts the
+local broker. Broker **1.2.1** and TLS are required.
 
-## Apports du fork
+## What the fork brings
 
-- backend entièrement piloté par les profils d'appareils du broker, sans
-  `meross_iot` ;
-- catalogue profils signé, scheduler central et disponibilité par appareil ;
-- entités `number` pour les durées d'ouverture/fermeture, boutons de
-  calibration et capteur de statut ;
-- réparations pour les appareils absents, dissociés ou sans profil.
+- a backend fully driven by the broker's device profiles, without `meross_iot`;
+- a signed profile catalog, a central scheduler and per-device availability;
+- `number` entities for open/close durations, a Position slider, calibration
+  buttons and a calibration status sensor;
+- repairs for missing, unbound or profile-less devices.
 
-La procédure détaillée, les entités et le dépannage sont dans le
+The detailed procedure, entities and troubleshooting are in the
 [README](https://github.com/mazkagaz/meross-local-cloud#readme).
 
-## Licence
+## License
 
-MIT. Fork non officiel de
-[albertogeniola/meross-homeassistant](https://github.com/albertogeniola/meross-homeassistant) ;
-attribution conservée dans `LICENSE`, `NOTICE` et `MODIFICATIONS.md`.
+MIT. Unofficial fork of
+[albertogeniola/meross-homeassistant](https://github.com/albertogeniola/meross-homeassistant);
+attribution kept in `LICENSE`, `NOTICE` and `MODIFICATIONS.md`.
