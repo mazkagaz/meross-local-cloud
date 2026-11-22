@@ -1,10 +1,10 @@
 import logging
 
-from custom_components.meross_cloud.profiles import (
+from custom_components.meross_local_cloud.profiles import (
     ENGINE_VERSION,
     ProfileRegistry,
 )
-from custom_components.meross_cloud.profiles.registry import engine_satisfies
+from custom_components.meross_local_cloud.profiles.registry import engine_satisfies
 
 
 def entry(profile_id, requires=None):

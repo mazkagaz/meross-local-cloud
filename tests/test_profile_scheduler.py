@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import yaml
 
-from custom_components.meross_cloud.profiles import scheduler as scheduler_module
-from custom_components.meross_cloud.profiles.compiler import compile_profile
-from custom_components.meross_cloud.profiles.models import ProfileMeta
-from custom_components.meross_cloud.profiles.runtime import DeviceRuntime
-from custom_components.meross_cloud.profiles.scheduler import DeviceScheduler
+from custom_components.meross_local_cloud.profiles import scheduler as scheduler_module
+from custom_components.meross_local_cloud.profiles.compiler import compile_profile
+from custom_components.meross_local_cloud.profiles.models import ProfileMeta
+from custom_components.meross_local_cloud.profiles.runtime import DeviceRuntime
+from custom_components.meross_local_cloud.profiles.scheduler import DeviceScheduler
 
 FIXTURES = Path(__file__).parent / "fixtures" / "profiles"
 TOGGLE_NS = "Appliance.Control.ToggleX"

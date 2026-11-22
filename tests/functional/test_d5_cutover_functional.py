@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 from helpers import FakeAdapter, entry, runtime, setup_entities
 
-from custom_components.meross_cloud.common import DOMAIN, HA_SENSOR, HA_SWITCH
+from custom_components.meross_local_cloud.common import DOMAIN, HA_SENSOR, HA_SWITCH
 
 
 async def test_f2_1_profile_only_uses_legacy_ids(hass):

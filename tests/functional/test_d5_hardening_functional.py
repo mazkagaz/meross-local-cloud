@@ -5,10 +5,10 @@ from mqtt_bus import InMemoryMqttBus
 
 from homeassistant.helpers import issue_registry as ir
 
-from custom_components.meross_cloud.broker_adapter import (
+from custom_components.meross_local_cloud.broker_adapter import (
     unsupported_device_issue,
 )
-from custom_components.meross_cloud.common import DOMAIN, HA_SWITCH
+from custom_components.meross_local_cloud.common import DOMAIN, HA_SWITCH
 
 
 async def test_unsupported_device_repair_is_created_and_cleared(hass):
@@ -34,7 +34,7 @@ async def test_unsupported_device_repair_is_created_and_cleared(hass):
 
 
 async def test_reconnect_starts_a_refresh_burst(hass, monkeypatch):
-    from custom_components.meross_cloud import broker_adapter as module
+    from custom_components.meross_local_cloud import broker_adapter as module
 
     monkeypatch.setattr(module, "RECONNECT_REFRESH_DELAYS", (0.0,))
     bus = InMemoryMqttBus()

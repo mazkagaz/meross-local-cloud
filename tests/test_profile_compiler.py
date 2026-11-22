@@ -3,12 +3,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from custom_components.meross_cloud.profiles.compiler import (
+from custom_components.meross_local_cloud.profiles.compiler import (
     ProfileCompiler,
     compile_profile,
     expand_channel_entities,
 )
-from custom_components.meross_cloud.profiles.models import ProfileMeta
+from custom_components.meross_local_cloud.profiles.models import ProfileMeta
 
 FIXTURES = Path(__file__).parent / "fixtures" / "profiles"
 BROKER_PROFILES = (

@@ -7,10 +7,10 @@ import yaml
 from homeassistant.components.number import NumberMode
 from homeassistant.helpers.entity_component import EntityComponent
 
-from custom_components.meross_cloud.broker_config import (
+from custom_components.meross_local_cloud.broker_config import (
     RollerShutterConfigCache,
 )
-from custom_components.meross_cloud.common import (
+from custom_components.meross_local_cloud.common import (
     BROKER_ADAPTER,
     DOMAIN,
     HA_BUTTON,
@@ -25,13 +25,13 @@ from custom_components.meross_cloud.common import (
     HA_UPDATE,
     SHUTTER_CONFIG_CACHE,
 )
-from custom_components.meross_cloud.profile_entities import (
+from custom_components.meross_local_cloud.profile_entities import (
     async_setup_profile_entities,
     async_setup_profile_updates,
 )
-from custom_components.meross_cloud.profiles.compiler import compile_profile
-from custom_components.meross_cloud.profiles.models import ProfileMeta
-from custom_components.meross_cloud.profiles.runtime import DeviceRuntime
+from custom_components.meross_local_cloud.profiles.compiler import compile_profile
+from custom_components.meross_local_cloud.profiles.models import ProfileMeta
+from custom_components.meross_local_cloud.profiles.runtime import DeviceRuntime
 
 _LOGGER = logging.getLogger(__name__)
 FIXTURES = Path(__file__).parent / "fixtures" / "profiles"

@@ -1,12 +1,12 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from custom_components.meross_cloud.broker_adapter import BrokerProfileAdapter
-from custom_components.meross_cloud.broker_profile_sensor import (
+from custom_components.meross_local_cloud.broker_adapter import BrokerProfileAdapter
+from custom_components.meross_local_cloud.broker_profile_sensor import (
     BrokerProfileSensor,
 )
-from custom_components.meross_cloud.broker_profiles import async_fetch_revision
-from custom_components.meross_cloud.vendor.merossclient import DeviceDescriptor
+from custom_components.meross_local_cloud.broker_profiles import async_fetch_revision
+from custom_components.meross_local_cloud.vendor.merossclient import DeviceDescriptor
 
 PAYLOAD = {
     "all": {
@@ -42,10 +42,10 @@ async def test_app_client_resolves_pending_transactions(hass):
     import ssl
     from types import SimpleNamespace as NS
 
-    from custom_components.meross_cloud.broker_transport import (
+    from custom_components.meross_local_cloud.broker_transport import (
         _BrokerAppClient,
     )
-    from custom_components.meross_cloud.vendor.merossclient import (
+    from custom_components.meross_local_cloud.vendor.merossclient import (
         HostAddress,
     )
 
@@ -81,10 +81,10 @@ async def test_app_client_notifies_the_payload_listener(hass):
     import ssl
     from types import SimpleNamespace as NS
 
-    from custom_components.meross_cloud.broker_transport import (
+    from custom_components.meross_local_cloud.broker_transport import (
         _BrokerAppClient,
     )
-    from custom_components.meross_cloud.vendor.merossclient import (
+    from custom_components.meross_local_cloud.vendor.merossclient import (
         HostAddress,
     )
 
@@ -132,7 +132,7 @@ async def test_app_client_notifies_the_payload_listener(hass):
 
 
 def test_transport_reports_connection_state_changes():
-    from custom_components.meross_cloud.broker_transport import (
+    from custom_components.meross_local_cloud.broker_transport import (
         BrokerMqttTransport,
     )
 
@@ -148,7 +148,7 @@ def test_transport_reports_connection_state_changes():
 
 
 async def test_priority_publish_bypasses_the_rate_limit():
-    from custom_components.meross_cloud.broker_transport import (
+    from custom_components.meross_local_cloud.broker_transport import (
         BrokerMqttTransport,
     )
 
@@ -182,7 +182,7 @@ async def test_priority_publish_bypasses_the_rate_limit():
 
 
 async def test_local_connection_uses_the_relaxed_rate_limit(monkeypatch):
-    from custom_components.meross_cloud import broker_transport as module
+    from custom_components.meross_local_cloud import broker_transport as module
 
     created = {}
 
@@ -209,7 +209,7 @@ async def test_local_connection_uses_the_relaxed_rate_limit(monkeypatch):
 
 
 def test_devices_library_is_loaded_lazily():
-    from custom_components.meross_cloud.vendor.merossclient import library
+    from custom_components.meross_local_cloud.vendor.merossclient import library
 
     assert not hasattr(library, "DEVICES_LIBRARY")
     assert library.get_devices_library()
@@ -245,18 +245,18 @@ async def test_adapter_builds_descriptors_and_summary():
                 return_value=[SimpleNamespace(uuid="u1")])),
     )
     with patch(
-            "custom_components.meross_cloud.broker_adapter."
+            "custom_components.meross_local_cloud.broker_adapter."
             "async_list_devices", AsyncMock(
                 return_value=[SimpleNamespace(uuid="u1")])), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
             "BrokerMqttTransport", return_value=FakeTransport()), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_revision", AsyncMock(
                     return_value={"revision": "abc", "count": 3})), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_catalog", AsyncMock(
                     return_value={"revision": "abc"})):
         adapter = BrokerProfileAdapter(SimpleNamespace(loop=None), coordinator)
@@ -277,19 +277,19 @@ async def test_adapter_opens_a_single_mqtt_transport():
         http_api_endpoint="https://broker:2004",
     )
     with patch(
-            "custom_components.meross_cloud.broker_adapter."
+            "custom_components.meross_local_cloud.broker_adapter."
             "async_list_devices", AsyncMock(
                 return_value=[SimpleNamespace(uuid="u1")])), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "BrokerMqttTransport",
                 return_value=FakeTransport()) as factory, \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_revision", AsyncMock(
                     return_value={"revision": "abc", "count": 0})), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_catalog", AsyncMock(
                     return_value={"revision": "abc", "profiles": []})):
         adapter = BrokerProfileAdapter(
@@ -318,19 +318,19 @@ async def test_adapter_aborts_after_the_first_descriptor_failure():
                 SimpleNamespace(uuid="u1"), SimpleNamespace(uuid="u2")])),
     )
     with patch(
-            "custom_components.meross_cloud.broker_adapter."
+            "custom_components.meross_local_cloud.broker_adapter."
             "async_list_devices", AsyncMock(
                 return_value=[SimpleNamespace(uuid="u1"),
                               SimpleNamespace(uuid="u2")])), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
             "BrokerMqttTransport", return_value=FailingTransport()), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_revision", AsyncMock(
                     return_value={"revision": "abc", "count": 3})), \
             patch(
-                "custom_components.meross_cloud.broker_adapter."
+                "custom_components.meross_local_cloud.broker_adapter."
                 "async_fetch_catalog", AsyncMock(
                     return_value={"revision": "abc"})):
         adapter = BrokerProfileAdapter(SimpleNamespace(loop=None), coordinator)

@@ -6,15 +6,15 @@ import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-import custom_components.meross_cloud as integration
-from custom_components.meross_cloud import MerossCoordinator
-from custom_components.meross_cloud.broker_devices import BrokerDeviceInfo
-from custom_components.meross_cloud.broker_http import (
+import custom_components.meross_local_cloud as integration
+from custom_components.meross_local_cloud import MerossCoordinator
+from custom_components.meross_local_cloud.broker_devices import BrokerDeviceInfo
+from custom_components.meross_local_cloud.broker_http import (
     BrokerCredentials,
     BrokerHttpError,
     BrokerTokenError,
 )
-from custom_components.meross_cloud.common import (
+from custom_components.meross_local_cloud.common import (
     CONF_HTTP_ENDPOINT,
     CONF_STORED_CREDS,
     DOMAIN,

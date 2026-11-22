@@ -3,10 +3,10 @@ from pathlib import Path
 
 import yaml
 
-from custom_components.meross_cloud.profiles.compiler import compile_profile
-from custom_components.meross_cloud.profiles.models import ProfileMeta
-from custom_components.meross_cloud.profiles.runtime import DeviceRuntime
-from custom_components.meross_cloud.runtime_store import (
+from custom_components.meross_local_cloud.profiles.compiler import compile_profile
+from custom_components.meross_local_cloud.profiles.models import ProfileMeta
+from custom_components.meross_local_cloud.profiles.runtime import DeviceRuntime
+from custom_components.meross_local_cloud.runtime_store import (
     STORE_VERSION,
     restore_runtimes,
     snapshot_runtimes,

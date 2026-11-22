@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.meross_cloud.broker_adapter import BrokerProfileAdapter
-from custom_components.meross_cloud.common import (
+from custom_components.meross_local_cloud.broker_adapter import BrokerProfileAdapter
+from custom_components.meross_local_cloud.common import (
     DOMAIN,
     MISSING_TRACKER,
 )
@@ -133,7 +133,7 @@ async def test_unbind_removes_device_subdevice_and_entities(hass):
 
 
 def test_descriptor_channels_are_normalized():
-    from custom_components.meross_cloud.broker_adapter import (
+    from custom_components.meross_local_cloud.broker_adapter import (
         _descriptor_channels,
     )
 
@@ -148,7 +148,7 @@ def test_profile_matching_expands_channel_entities():
 
     import yaml
 
-    from custom_components.meross_cloud.profiles import (
+    from custom_components.meross_local_cloud.profiles import (
         ProfileCompiler,
         ProfileMeta,
         ProfileRegistry,
@@ -194,12 +194,12 @@ async def test_runtime_state_is_restored_before_entities():
 
     import yaml
 
-    from custom_components.meross_cloud.profiles import (
+    from custom_components.meross_local_cloud.profiles import (
         ProfileCompiler,
         ProfileMeta,
     )
-    from custom_components.meross_cloud.profiles.runtime import DeviceRuntime
-    from custom_components.meross_cloud.runtime_store import (
+    from custom_components.meross_local_cloud.profiles.runtime import DeviceRuntime
+    from custom_components.meross_local_cloud.runtime_store import (
         snapshot_runtimes,
     )
 

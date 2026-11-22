@@ -3,20 +3,20 @@ import json
 import re
 from pathlib import Path
 
-from custom_components.meross_cloud.common import (
+from custom_components.meross_local_cloud.common import (
     HA_UPDATE,
     MEROSS_PLATFORMS,
     calculate_id,
     device_internal_id,
 )
-from custom_components.meross_cloud.profile_entities import (
+from custom_components.meross_local_cloud.profile_entities import (
     PLATFORM_CLASSES,
     _device_info,
 )
 
 COMPONENT = (
     Path(__file__).resolve().parents[1]
-    / "custom_components" / "meross_cloud"
+    / "custom_components" / "meross_local_cloud"
 )
 
 _IMPORT = re.compile(r"^\s*(?:from|import)\s+meross_iot\b", re.MULTILINE)
@@ -65,7 +65,7 @@ def test_device_registry_identifiers_match_historical_format():
 
     top = _device_info("uuid")
     sub = _device_info("hub", "sub")
-    assert top["identifiers"] == {("meross_cloud", "#BASE:uuid")}
+    assert top["identifiers"] == {("meross_local_cloud", "#BASE:uuid")}
     assert sub["identifiers"] == {
-        ("meross_cloud", "#BASE:hub#SUB:sub")}
-    assert sub["via_device"] == ("meross_cloud", "#BASE:hub")
+        ("meross_local_cloud", "#BASE:hub#SUB:sub")}
+    assert sub["via_device"] == ("meross_local_cloud", "#BASE:hub")

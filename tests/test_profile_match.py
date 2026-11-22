@@ -1,13 +1,13 @@
 import logging
 
-from custom_components.meross_cloud.profiles.match import (
+from custom_components.meross_local_cloud.profiles.match import (
     MatchContext,
     match_candidates,
     match_profile,
     normalize_mac,
 )
-from custom_components.meross_cloud.profiles.models import ProfileMeta
-from custom_components.meross_cloud.profiles.registry import ProfileRegistry
+from custom_components.meross_local_cloud.profiles.models import ProfileMeta
+from custom_components.meross_local_cloud.profiles.registry import ProfileRegistry
 
 
 def profile(profile_id, types=("mss310",), *, sub_type=None, abilities=None,

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 PACKAGE = Path(__file__).resolve().parents[1] / "custom_components" / \
-    "meross_cloud" / "profiles"
+    "meross_local_cloud" / "profiles"
 ALLOWED_IMPORTS = {
     "__future__",
     "asyncio",

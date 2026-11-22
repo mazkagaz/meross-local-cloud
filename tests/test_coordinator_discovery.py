@@ -5,9 +5,9 @@ import pytest
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from custom_components.meross_cloud import MerossCoordinator
-from custom_components.meross_cloud import broker_http
-from custom_components.meross_cloud.broker_devices import BrokerDeviceInfo
+from custom_components.meross_local_cloud import MerossCoordinator
+from custom_components.meross_local_cloud import broker_http
+from custom_components.meross_local_cloud.broker_devices import BrokerDeviceInfo
 
 
 def coordinator():
@@ -24,7 +24,7 @@ async def test_poll_uses_the_broker_client():
                                 device_type="mrs100", online=True)]
 
     with patch(
-            "custom_components.meross_cloud.async_list_devices",
+            "custom_components.meross_local_cloud.async_list_devices",
             AsyncMock(return_value=devices)):
         data = await instance._async_fetch_http_data()
 
@@ -50,7 +50,7 @@ async def test_poll_errors_are_mapped(error, expected):
     instance = coordinator()
 
     with patch(
-            "custom_components.meross_cloud.async_list_devices",
+            "custom_components.meross_local_cloud.async_list_devices",
             AsyncMock(side_effect=error)):
         with pytest.raises(expected):
             await instance._async_fetch_http_data()

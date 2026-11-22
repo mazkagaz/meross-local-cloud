@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from custom_components.meross_cloud.broker_http import (
+from custom_components.meross_local_cloud.broker_http import (
     MEROSS_SECRET,
     BrokerAuthError,
     BrokerHttpClient,

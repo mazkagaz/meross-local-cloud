@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from custom_components.meross_cloud.broker_config import (
+from custom_components.meross_local_cloud.broker_config import (
     ChannelState,
     RollerShutterConfigCache,
 )
@@ -197,7 +197,7 @@ async def test_refresh_and_invalidate_force_a_fetch():
 async def test_hanging_fetch_times_out(monkeypatch):
     import asyncio
 
-    from custom_components.meross_cloud import broker_config
+    from custom_components.meross_local_cloud import broker_config
 
     monkeypatch.setattr(broker_config, "FETCH_TIMEOUT", 0.01)
 

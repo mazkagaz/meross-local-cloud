@@ -22,7 +22,7 @@
 - Appareil principal : `#BASE:<uuid>`.
 - Subdevice : `#BASE:<hub_uuid>#SUB:<subdevice_id>`.
 - `via_device` du subdevice pointe vers `#BASE:<hub_uuid>`.
-- Les entités update utilisent `meross_cloud:<uuid>:update:<profil>`.
+- Les entités update utilisent `meross_local_cloud:<uuid>:update:<profil>`.
 - Au démarrage, les entités de la bêta 2.5 sans `#BASE:` sont supprimées ;
   les entrées historiques sont conservées.
 

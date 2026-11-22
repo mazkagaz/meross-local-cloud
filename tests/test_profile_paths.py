@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.meross_cloud.profiles import paths as paths_module
-from custom_components.meross_cloud.profiles.paths import (
+from custom_components.meross_local_cloud.profiles import paths as paths_module
+from custom_components.meross_local_cloud.profiles.paths import (
     MISSING,
     UnknownToken,
     find_tokens,
