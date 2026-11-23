@@ -43,7 +43,7 @@ firmware and the functions that work or fail: that is what makes it possible to
 validate each profile. The MRS100 is not a prerequisite: any family in the
 catalog can be tested.
 
-**Stable version 4.0.1**, compatible with broker **1.3.0** (1.4.6 recommended
+**Stable version 4.0.2**, compatible with broker **1.3.0** (1.4.6 recommended
 for MRS100 icons, 1.4.8 for Position and typed durations) and pairer **2.0.9**.
 
 ## The three building blocks
@@ -65,7 +65,7 @@ MRS100 ──MQTT/TLS──> Meross Local Broker add-on ──API/MQTT──> th
 
 | Component | Minimum version | Notes |
 |---|---|---|
-| Meross Local Cloud | 4.0.1 | this integration, profile engine 2.5 |
+| Meross Local Cloud | 4.0.2 | this integration, profile engine 2.5 |
 | Meross Local Broker | 1.3.0 | full catalog; 1.3.1 shutter fix; 1.4.6 MRS100 icons; 1.4.8 Position |
 | Meross Local Pairer | 2.0.9 | HTTPS 2004 only |
 | Home Assistant | 2025.6 | tested with 2026.2 |

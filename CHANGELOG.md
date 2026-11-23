@@ -1,3 +1,14 @@
+## 4.0.2 — images de marque régénérées
+
+Version stable. Aucun changement fonctionnel.
+
+- Images du dossier `brand/` régénérées depuis le master transparent
+  1024×1024 : icônes 256×256 et 512×512, logos 256×256 et 512×512,
+  variantes sombres identiques aux claires.
+- Les installations existantes utilisent ces images localement ; dans le
+  magasin HACS, l’icône réapparaît avec le listing par défaut (PR #14768).
+  Les navigateurs cachent les images de marque pendant 7 jours.
+
 ## 4.0.1 — validation HACS et Hassfest
 
 Version stable. Aucun changement fonctionnel.
