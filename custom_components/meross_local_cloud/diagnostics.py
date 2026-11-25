@@ -25,6 +25,8 @@ TO_REDACT = {
     "key",
     "password",
     "issued_on",
+    "user_email",
+    "user_id",
 }
 
 

@@ -44,7 +44,7 @@ modèle, le firmware et les fonctions qui marchent ou non : c'est ce qui permet
 de valider chaque profil. Le MRS100 n'est pas un prérequis : toute famille du
 catalogue peut être testée.
 
-**Version stable 4.0.2**, compatible avec le broker **1.3.0** (1.4.6
+**Version stable 4.0.3**, compatible avec le broker **1.3.0** (1.4.6
 recommandé pour les icônes MRS100, 1.4.8 pour Position et les durées en champ
 de saisie) et le pairer **2.0.9**.
 
@@ -67,7 +67,7 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 
 | Brique | Version minimale | Remarques |
 |---|---|---|
-| Meross Local Cloud | 4.0.2 | cette intégration, moteur profils 2.5 |
+| Meross Local Cloud | 4.0.3 | cette intégration, moteur profils 2.5 |
 | Meross Local Broker | 1.3.0 | catalogue complet ; 1.3.1 volet ; 1.4.6 icônes MRS100 ; 1.4.8 Position |
 | Meross Local Pairer | 2.0.9 | HTTPS 2004 uniquement |
 | Home Assistant | 2025.6 | testé avec 2026.2 |
@@ -92,6 +92,12 @@ La documentation technique est indexée dans [docs/README.md](docs/README.md).
 5. Home Assistant 2025.6 ou plus récent (testé avec 2026.2).
 
 ## Installation avec HACS
+
+Ouvrir **HACS → Intégrations**, rechercher **Meross Local Cloud**, ouvrir la
+fiche et télécharger la dernière version, puis redémarrer Home Assistant.
+
+Si la fiche n'apparaît pas encore (listing par défaut en attente), ajouter le
+dépôt en dépôt personnalisé :
 
 [![Ouvrir votre instance Home Assistant et ajouter ce dépôt à HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mazkagaz&repository=meross-local-cloud&category=integration)
 

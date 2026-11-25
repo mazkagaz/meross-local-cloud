@@ -69,7 +69,8 @@ async def test_diagnostics_redacts_secrets(hass, ca_pem):
     assert creds["token"] == "**REDACTED**"
     assert creds["key"] == "**REDACTED**"
     assert creds["password"] == "**REDACTED**"
-    assert creds["user_email"] == "local-user"
+    assert creds["user_email"] == "**REDACTED**"
+    assert creds["user_id"] == "**REDACTED**"
 
     assert result["tls"]["ca"]["valid_ca"] is True
     assert len(result["tls"]["ca"]["fingerprint"]) == 64

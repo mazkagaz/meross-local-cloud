@@ -1,3 +1,14 @@
+## 4.0.3 — diagnostics expurgés
+
+Version stable. Aucun changement fonctionnel hors confidentialité.
+
+- Diagnostics : `user_email` et `user_id` sont désormais expurgés du bloc
+  `stored_credentials` (`TO_REDACT`), comme `token`, `key` et `password`. Le
+  test de diagnostics vérifie que ces deux champs sont masqués.
+- README EN/FR : l’installation commence par la recherche dans HACS ; l’ajout
+  en dépôt personnalisé reste documenté en repli.
+- Correction demandée par la revue du listing HACS (PR #14768).
+
 ## 4.0.2 — images de marque régénérées
 
 Version stable. Aucun changement fonctionnel.
