@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -80,6 +81,35 @@ async def test_diagnostics_redacts_secrets(hass, ca_pem):
     assert result["tls"]["mqtt"]["verified_context"] is True
     assert result["devices"][0]["uuid"] == "uuid-1"
     assert result["profile_backend"] is None
+
+
+async def test_diagnostics_export_never_contains_credentials(hass, ca_pem):
+    """The whole exported payload must not contain any credential value."""
+    secrets = {
+        "token": "leak-token-9f3a",
+        "key": "leak-key-9f3a",
+        "password": "leak-password-9f3a",
+        "issued_on": "leak-issued-on-9f3a",
+        "user_email": "leak-user@example.invalid",
+        "user_id": "leak-user-id-9f3a",
+    }
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HTTP_ENDPOINT: "https://10.0.0.5:2004",
+            CONF_CA_PEM: ca_pem,
+            CONF_STORED_CREDS: dict(secrets),
+        },
+    )
+    entry.add_to_hass(hass)
+    hass.data[DOMAIN] = {}
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+    payload = json.dumps(result, sort_keys=True)
+
+    for value in secrets.values():
+        assert value not in payload
+    assert payload.count("**REDACTED**") == len(secrets)
 
 
 async def test_diagnostics_reports_the_profile_backend(hass, ca_pem):
