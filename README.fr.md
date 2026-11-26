@@ -44,7 +44,7 @@ modèle, le firmware et les fonctions qui marchent ou non : c'est ce qui permet
 de valider chaque profil. Le MRS100 n'est pas un prérequis : toute famille du
 catalogue peut être testée.
 
-**Version stable 4.0.3**, compatible avec le broker **1.3.0** (1.4.6
+**Version stable 4.0.4**, compatible avec le broker **1.3.0** (1.4.6
 recommandé pour les icônes MRS100, 1.4.8 pour Position et les durées en champ
 de saisie) et le pairer **2.0.9**.
 
@@ -67,10 +67,10 @@ MRS100 ──MQTT/TLS──> add-on Meross Local Broker ──API/MQTT──> ce
 
 | Brique | Version minimale | Remarques |
 |---|---|---|
-| Meross Local Cloud | 4.0.3 | cette intégration, moteur profils 2.5 |
-| Meross Local Broker | 1.3.0 | catalogue complet ; 1.3.1 volet ; 1.4.6 icônes MRS100 ; 1.4.8 Position |
+| Meross Local Cloud | 4.0.4 | cette intégration, moteur profils 2.5 |
+| Meross Local Broker | 1.3.0 | catalogue complet ; 1.3.1 volet ; 1.4.6 icônes MRS100 ; 1.4.8 Position ; **1.5.0 pour HA Container** |
 | Meross Local Pairer | 2.0.9 | HTTPS 2004 uniquement |
-| Home Assistant | 2025.6 | testé avec 2026.2 |
+| Home Assistant | 2025.6 | testé avec 2026.11 |
 
 ## Canal de test (bêta)
 
@@ -83,20 +83,27 @@ La documentation technique est indexée dans [docs/README.md](docs/README.md).
 
 ## Avant de commencer
 
-1. L'add-on **Meross Local Broker** est installé et démarré.
-2. Un **compte local** a été créé dans l'add-on (login et mot de passe).
+| Votre installation | Broker | Cette intégration |
+|---|---|---|
+| Home Assistant OS ou Supervised | installer l'**add-on** | installer avec HACS |
+| Home Assistant Container | lancer le **broker Docker** ([guide](https://github.com/mazkagaz/meross-local-broker/blob/main/docs/guides/DOCKER.fr.md)) | installer avec HACS, configurer manuellement |
+
+Prérequis communs :
+
+1. Un broker est installé et démarré (add-on ou conteneur Docker).
+2. Un **compte local** a été créé dans le broker (login et mot de passe).
    N'utilisez pas votre compte Meross officiel : ce compte est indépendant.
 3. Au moins un appareil Meross (MRS100 ou autre famille du catalogue) a
    été appairé avec **Meross Local Pairer**.
 4. **HACS** est installé dans Home Assistant.
-5. Home Assistant 2025.6 ou plus récent (testé avec 2026.2).
+5. Home Assistant 2025.6 ou plus récent (testé avec 2026.11).
 
 ## Installation avec HACS
 
 Ouvrir **HACS → Intégrations**, rechercher **Meross Local Cloud**, ouvrir la
 fiche et télécharger la dernière version, puis redémarrer Home Assistant.
 
-Si la fiche n'apparaît pas encore (listing par défaut en attente), ajouter le
+Si la fiche n'apparaît pas (ancienne version de HACS ou cache), ajouter le
 dépôt en dépôt personnalisé :
 
 [![Ouvrir votre instance Home Assistant et ajouter ce dépôt à HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mazkagaz&repository=meross-local-cloud&category=integration)
@@ -111,16 +118,19 @@ Cliquer sur le badge ci-dessus, ou :
 4. Ouvrir la fiche **Meross Local Cloud**, télécharger la dernière version.
 5. Redémarrer Home Assistant.
 
-HACS installe l'intégration, pas l'add-on. L'add-on se trouve dans la boutique
-des modules complémentaires (lien ci-dessus).
+HACS installe l'intégration, pas le broker. Sous Home Assistant OS ou
+Supervised, le broker est l'add-on ; sous Home Assistant Container, c'est le
+conteneur Docker autonome.
 
 ## Home Assistant Container
 
 L'add-on broker a besoin du Supervisor. Sous **Home Assistant Container**,
-faire tourner le broker comme conteneur Docker autonome :
+faire tourner le broker **1.5.0 ou plus récent** comme conteneur Docker
+autonome :
 [guide Docker](https://github.com/mazkagaz/meross-local-broker/blob/main/docs/guides/DOCKER.fr.md).
-Ajouter ensuite cette intégration manuellement avec l'adresse du broker et le
-compte local ; les ports HTTPS et MQTT valent 2004/2001 par défaut.
+L'intégration s'installe avec HACS comme d'habitude, puis se configure
+manuellement avec l'adresse du broker et le compte local ; les ports HTTPS et
+MQTT valent 2004/2001 par défaut.
 
 ## Ajouter l'intégration
 
@@ -131,9 +141,9 @@ compte local ; les ports HTTPS et MQTT valent 2004/2001 par défaut.
 | Champ | Valeur |
 |---|---|
 | Meross Local Broker address | hôte ou IP, sans `https://` (prérempli si détecté) |
-| HTTPS port | `2004` (prérempli si détecté) |
-| MQTT port | `2001` (prérempli si détecté) |
-| Local login | le compte local de l'add-on |
+| HTTPS port | `2004` (détecté ou valeur par défaut) |
+| MQTT port | `2001` (détecté ou valeur par défaut) |
+| Local login | le compte local du broker |
 | Password | le mot de passe local |
 
 Au-dessus des champs, un exemple générique est affiché :
