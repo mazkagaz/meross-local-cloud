@@ -1,3 +1,17 @@
+## 4.0.5 — Correctif des profils et de la luminosité
+
+Correctif de la mise à jour des profils et des réglages lumineux.
+
+- Mise à jour d’un profil depuis l’entité `update` : les notifications
+  persistantes sont désormais appelées comme des callbacks synchrones HA.
+  L’erreur « a coroutine was expected, got None » est supprimée et le
+  rechargement de l’intégration est lancé automatiquement.
+- Limiteur MQTT local relevé à 10 messages/s avec une fenêtre de 20 messages :
+  les réglages de luminosité/couleur ne déclenchent plus
+  `MQTTRateLimitExceeded` lors de mouvements rapprochés du curseur.
+- Tests ajoutés pour les notifications synchrones et le nouveau limiteur.
+- Aucun changement broker ; compatible broker 1.5.1.
+
 ## 4.0.4 — Home Assistant Container
 
 Version stable. Compatible broker **1.3.0+** ; **1.5.0** requis pour le mode
