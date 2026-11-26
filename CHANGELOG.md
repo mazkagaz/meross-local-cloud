@@ -1,3 +1,18 @@
+## 4.0.4 — Home Assistant Container
+
+Version stable. Compatible broker **1.3.0+** ; **1.5.0** requis pour le mode
+Docker autonome (HA Container).
+
+- Formulaire manuel : ports HTTPS **2004** et MQTT **2001** préremplis, même
+  sans découverte mDNS ; seul l’hôte et le compte local restent à saisir.
+- Import de `BrokerProfileAdapter` déplacé au chargement du module : paho
+  n’est plus importé sur la boucle d’événements, ce qui supprime
+  l’avertissement « blocking call » de Home Assistant 2026.11.
+- Documentation : section Home Assistant Container dans le README EN/FR et
+  page de test Docker.
+- Tests : 520 unitaires/intégration + 30 fonctionnels ; test E2E Docker
+  HA Container + broker autonome.
+
 ## 4.0.3 — diagnostics expurgés
 
 Version stable. Aucun changement fonctionnel hors confidentialité.

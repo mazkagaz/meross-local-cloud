@@ -14,7 +14,7 @@ le workflow de release refuse un tag dont la version diffère.
 
 | Canal | Version | Tag | Release GitHub |
 | ----- | ------- | --- | -------------- |
-| stable | `4.0.3` | `v4.0.3` | normale |
+| stable | `4.0.4` | `v4.0.4` | normale |
 | test | `3.0.0-beta.4` | `v3.0.0-beta.4` | **pre-release** |
 
 ## Publier une version de test
@@ -44,6 +44,11 @@ git push origin v3.0.0
 ```
 
 4. Le workflow valide la version et publie la release normale.
+
+Avant de publier une version qui renvoie vers une fonctionnalité broker
+(par exemple **4.0.4** et le mode Docker), publier d’abord la version broker
+correspondante (**1.5.0**) : le README de l’intégration pointe vers son guide
+sur `main`.
 
 ## Retour arrière
 
