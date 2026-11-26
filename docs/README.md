@@ -33,6 +33,7 @@
 ### Tests
 
 - [Stratégie de test](testing/STRATEGY.md)
+- [Test E2E Docker (HA Container + broker autonome)](testing/DOCKER-E2E.md)
 - [Matrice de traçabilité](testing/TRACEABILITY.md)
 - [Validation de la bêta 3.0](testing/D5-VALIDATION.md)
 

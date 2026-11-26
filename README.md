@@ -113,6 +113,14 @@ Click the badge above, or:
 HACS installs the integration, not the add-on. The add-on lives in the add-on
 store (link above).
 
+## Home Assistant Container
+
+The broker add-on needs the Supervisor. On **Home Assistant Container**, run
+the broker as a standalone Docker container instead:
+[Docker guide](https://github.com/mazkagaz/meross-local-broker/blob/main/docs/guides/DOCKER.md).
+Then add this integration manually with the broker host and the local account;
+the HTTPS and MQTT ports default to 2004/2001.
+
 ## Add the integration
 
 1. **Settings → Devices & services → Add integration**.
