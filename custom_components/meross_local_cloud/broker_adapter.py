@@ -583,7 +583,7 @@ class BrokerProfileAdapter:
             notification_id = self._profile_notification_id(profile_id)
             try:
                 if latest and installed and latest != installed:
-                    await notifications.async_create(
+                    notifications.async_create(
                         self._hass,
                         "Une mise à jour du profil est disponible : "
                         f"`{profile_id}` {installed} → {latest}. "
@@ -592,22 +592,23 @@ class BrokerProfileAdapter:
                         title="Meross Local Cloud — profil à mettre à jour",
                         notification_id=notification_id)
                 else:
-                    await notifications.async_dismiss(
+                    notifications.async_dismiss(
                         self._hass, notification_id)
             except Exception:  # noqa: BLE001 - notifications are best effort
                 _LOGGER.debug(
                     "Profile update notification failed", exc_info=True)
 
     def dismiss_profile_update(self, profile_id: str) -> None:
-        if not hasattr(self._hass, "async_create_task"):
-            return
         try:
             from homeassistant.components import persistent_notification
         except Exception:  # noqa: BLE001 - notifications are best effort
             return
-        self._hass.async_create_task(
+        try:
             persistent_notification.async_dismiss(
-                self._hass, self._profile_notification_id(profile_id)))
+                self._hass, self._profile_notification_id(profile_id))
+        except Exception:  # noqa: BLE001 - notifications are best effort
+            _LOGGER.debug(
+                "Dismissing profile notification failed", exc_info=True)
 
     async def async_reload_entry(self) -> bool:
         if not self._entry_id or not hasattr(self._hass, "config_entries"):
