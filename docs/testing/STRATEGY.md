@@ -8,6 +8,7 @@
 | Contrat | schémas et fixtures broker ↔ intégration | `tests/test_contracts.py`, `tests/contracts/` |
 | Intégration HA | config flow, coordinator, diagnostics, réparations | `tests/test_*.py` |
 | Fonctionnel H2 | bus MQTT en mémoire + simulateurs | `tests/functional/` |
+| E2E Docker | HA Container réel + broker autonome, flux de configuration réel | `../meross-local-broker/tests/docker/` |
 | Matériel | toutes les familles du catalogue (MRS100 de référence, autres via testeurs) | `docs/testing/D5-VALIDATION.md` |
 
 ## Exécution
@@ -21,6 +22,10 @@ make test-contracts       # contrats
 
 La CI exécute les suites rapides, les fonctionnels puis la suite complète, et
 publie les rapports JUnit.
+
+Le test E2E Docker se lance manuellement (Docker requis) :
+`CLOUD_ROOT=… HA_PYTHON=… bash ../meross-local-broker/tests/docker/run.sh`.
+Voir `docs/testing/DOCKER-E2E.md`.
 
 ## Règles
 
