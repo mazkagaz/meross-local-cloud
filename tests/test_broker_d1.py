@@ -204,8 +204,8 @@ async def test_local_connection_uses_the_relaxed_rate_limit(monkeypatch):
     await transport.async_connect()
 
     connection = created["connection"]
-    assert connection.rl_rate == module.LOCAL_MQTT_RATE == 1.0
-    assert connection.rl_window_size == module.LOCAL_MQTT_BURST == 5
+    assert connection.rl_rate == module.LOCAL_MQTT_RATE == 10.0
+    assert connection.rl_window_size == module.LOCAL_MQTT_BURST == 20
 
 
 def test_devices_library_is_loaded_lazily():
