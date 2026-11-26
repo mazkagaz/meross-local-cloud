@@ -1,0 +1,66 @@
+# Modified or added for the MRS100 fork of ha-meross-local-broker (2026-11).
+schema_version: 2
+profile:
+  id: meross.msl610
+  version: "2026.11.0"
+  requires_engine: ">=2.2"
+  description: "Ampoule MSL610 : luminosité, température de couleur et on/off via ToggleX."
+match:
+  type: [msl610]
+  abilities:
+    all: [Appliance.Control.Light, Appliance.Control.ToggleX]
+payloads:
+  Appliance.Control.Light:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      channel: { type: integer }
+      capacity: { type: integer }
+      light:
+        type: object
+        fields:
+          channel: { type: integer }
+          onoff: { type: integer, values: { 0: off, 1: on } }
+          luminance: { type: integer, unit: "%" }
+          temperature: { type: integer }
+          capacity: { type: integer }
+          effect: { type: integer }
+  Appliance.Control.ToggleX:
+    methods: [GET, SET, GETACK, SETACK, PUSH]
+    fields:
+      togglex:
+        type: array
+        items:
+          type: object
+          fields:
+            channel: { type: integer }
+            onoff: { type: integer, values: { 0: off, 1: on } }
+            lmTime: { type: integer }
+entities:
+  - key: light
+    platform: light
+    channel: 0
+    state:
+      namespace: Appliance.Control.Light
+      channel: $channel
+      fields:
+        brightness: light.luminance
+        color_temp: light.temperature
+    movement:
+      namespace: Appliance.Control.ToggleX
+      channel: $channel
+      select: { path: togglex, key: channel }
+      fields:
+        onoff: onoff
+    commands:
+      turn_on:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { onoff: 1 } }
+      turn_off:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { onoff: 0 } }
+      set_brightness:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { luminance: $value } }
+      set_color_temp:
+        namespace: Appliance.Control.Light
+        payload: { channel: $channel, light: { temperature: $value } }

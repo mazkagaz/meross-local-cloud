@@ -1,9 +1,11 @@
+import json
 import logging
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import yaml
+from homeassistant.components.light import ColorMode
 from homeassistant.components.number import NumberMode
 from homeassistant.helpers.entity_component import EntityComponent
 
@@ -165,6 +167,56 @@ async def test_light_mapping_and_commands(hass):
     assert adapter.sent[-1][3] == {
         "channel": 0, "light": {"onoff": 1}}
 
+
+
+async def test_msl610_light_exposes_color_temperature(hass):
+    device = runtime("msl610")
+    device.entities["light"].values.update(
+        {"onoff": 1, "brightness": 50, "color_temp": 50})
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
+
+    assert entity.is_on is True
+    assert entity.brightness == 128
+    assert entity.color_temp_kelvin is not None
+    assert 4500 <= entity.color_temp_kelvin <= 4700
+    assert entity.supported_color_modes == {ColorMode.COLOR_TEMP}
+
+    await entity.async_turn_on(brightness=255, color_temp_kelvin=2700)
+    assert adapter.sent[-3][3] == {
+        "channel": 0, "light": {"temperature": 1}}
+    assert adapter.sent[-2][3] == {
+        "channel": 0, "light": {"luminance": 100}}
+    assert adapter.sent[-1][3] == {
+        "channel": 0, "light": {"onoff": 1}}
+
+
+async def test_msl610_captured_frames_feed_color_temperature_entity(hass):
+    device = runtime("msl610")
+    frames = [
+        json.loads(line)
+        for line in (FIXTURES / "msl610_frames.jsonl").read_text().splitlines()
+        if line.strip()
+    ]
+    for frame in frames:
+        device.dispatch(frame["namespace"], frame["method"],
+                        frame["payload"])
+
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
+
+    assert entity.is_on is True
+    assert entity.brightness == 20
+    assert entity.color_temp_kelvin is not None
+    assert 4500 <= entity.color_temp_kelvin <= 4700
+
+    await entity.async_turn_on(color_temp_kelvin=2700)
+    assert adapter.sent[-2][3] == {
+        "channel": 0, "light": {"temperature": 1}}
+    assert adapter.sent[-1][3] == {
+        "channel": 0, "light": {"onoff": 1}}
 
 async def test_device_info_uses_broker_name_and_metadata(hass):
     device = runtime("mrs100")

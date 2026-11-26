@@ -1,3 +1,15 @@
+## 4.0.6 — Température de couleur MSL610
+
+- Support `ColorMode.COLOR_TEMP` pour les entités `light` dont le profil
+  expose `color_temp`.
+- Conversion native Meross 1–100 ↔ **2700–6500 K**.
+- Commande `set_color_temp` vers `Appliance.Control.Light.temperature`.
+- Tests golden frames MSL610 : luminosité, chaud/froid/mix, mise en veille,
+  `ToggleX` et `TriggerX` non bloquant.
+- Compatible broker **1.5.2** pour le profil bundled `meross.msl610` ;
+  un override reste possible avec 1.5.1.
+- La minuterie `TriggerX` n'est pas encore exposée comme entité.
+
 ## 4.0.5 — Correctif des profils et de la luminosité
 
 Correctif de la mise à jour des profils et des réglages lumineux.

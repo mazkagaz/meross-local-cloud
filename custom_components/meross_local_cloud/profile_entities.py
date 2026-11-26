@@ -232,8 +232,23 @@ class ProfileSwitch(ProfileBaseEntity, SwitchEntity):
         await self._send("turn_off")
 
 
+def _kelvin_to_native_temperature(kelvin: int) -> int:
+    """Map Home Assistant kelvin to the Meross 1-100 native scale."""
+    native = round(
+        1 + (float(kelvin) - 2700) * (100 - 1) / (6500 - 2700))
+    return max(1, min(100, native))
+
+
+def _native_temperature_to_kelvin(temperature: int) -> int:
+    """Map the Meross 1-100 native scale to Home Assistant kelvin."""
+    return round(
+        2700 + (int(temperature) - 1) * (6500 - 2700) / (100 - 1))
+
+
 class ProfileLight(ProfileBaseEntity, LightEntity):
     _attr_color_mode = ColorMode.BRIGHTNESS
+    _attr_min_color_temp_kelvin = 2700
+    _attr_max_color_temp_kelvin = 6500
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -241,6 +256,9 @@ class ProfileLight(ProfileBaseEntity, LightEntity):
         if "rgb" in fields:
             self._attr_supported_color_modes = {ColorMode.RGB}
             self._attr_color_mode = ColorMode.RGB
+        elif "color_temp" in fields:
+            self._attr_supported_color_modes = {ColorMode.COLOR_TEMP}
+            self._attr_color_mode = ColorMode.COLOR_TEMP
         elif "brightness" in fields:
             self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
         else:
@@ -269,12 +287,23 @@ class ProfileLight(ProfileBaseEntity, LightEntity):
         rgb = int(value)
         return ((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF)
 
+    @property
+    def color_temp_kelvin(self):
+        value = self._values().get("color_temp")
+        if value is None:
+            return None
+        return _native_temperature_to_kelvin(int(value))
+
     async def async_turn_on(self, **kwargs: Any) -> None:
         brightness = kwargs.get("brightness")
         rgb_color = kwargs.get("rgb_color")
+        color_temp = kwargs.get("color_temp_kelvin")
         if rgb_color is not None:
             r, g, b = rgb_color
             await self._send("set_rgb", (r << 16) | (g << 8) | b)
+        if color_temp is not None:
+            await self._send(
+                "set_color_temp", _kelvin_to_native_temperature(color_temp))
         if brightness is not None:
             await self._send("set_brightness",
                              round(brightness * 100 / 255))
