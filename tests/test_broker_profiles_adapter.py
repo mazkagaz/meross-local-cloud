@@ -428,10 +428,10 @@ async def test_profile_update_notifications(hass):
             self.created = []
             self.dismissed = []
 
-        async def async_create(self, *args, **kwargs):
+        def async_create(self, *args, **kwargs):
             self.created.append((args, kwargs))
 
-        async def async_dismiss(self, *args, **kwargs):
+        def async_dismiss(self, *args, **kwargs):
             self.dismissed.append((args, kwargs))
 
     notifications = Notifications()
@@ -443,6 +443,29 @@ async def test_profile_update_notifications(hass):
     adapter.registry.profiles["meross.mrs100"].version = "1.0.0"
     await adapter._async_sync_notifications(notifications)
     assert notifications.dismissed
+
+
+async def test_dismiss_profile_update_uses_sync_notification(hass, monkeypatch):
+    from homeassistant.components import persistent_notification
+
+    from custom_components.meross_local_cloud import broker_adapter as module
+
+    coordinator = SimpleNamespace(
+        config_entry_id="entry-1",
+        client=object(),
+        http_api_endpoint="https://broker:2004",
+        credentials=SimpleNamespace(token="t"),
+        mqtt_ssl_context=object(),
+    )
+    adapter = BrokerProfileAdapter(hass, coordinator)
+    calls = []
+    monkeypatch.setattr(
+        persistent_notification, "async_dismiss",
+        lambda hass, notification_id: calls.append(notification_id))
+
+    adapter.dismiss_profile_update("meross.msl")
+
+    assert calls == ["meross_local_cloud_profile_meross.msl"]
 
 
 async def test_unchanged_catalog_does_not_reload(hass, monkeypatch):
