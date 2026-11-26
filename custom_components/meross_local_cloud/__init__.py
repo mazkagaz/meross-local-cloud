@@ -31,6 +31,7 @@ from .common import (
     CONF_CA_PEM, CONF_CA_FINGERPRINT, MISSING_TRACKER,
     BROKER_ADAPTER, SHUTTER_CONFIG_CACHE, effective_user_agent
 )
+from .broker_adapter import BrokerProfileAdapter
 from .broker_config import RollerShutterConfigCache
 from .broker_devices import BrokerDeviceInfo, async_list_devices
 from .broker_http import (
@@ -410,8 +411,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
                 lambda: meross_coordinator.credentials.token,
                 meross_coordinator.mqtt_ssl_context,
                 user_agent=meross_coordinator.user_agent))
-
-        from .broker_adapter import BrokerProfileAdapter
 
         adapter = BrokerProfileAdapter(hass, meross_coordinator)
         adapter.entities_only = True
