@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   push:
@@ -17,11 +17,12 @@ env:
   MEROSS_BROKER_REPO: ${{ github.workspace }}/broker-src
 
 concurrency:
-  group: tests-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  pytest:
+  tests:
+    name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -69,3 +70,38 @@ jobs:
           name: pytest-reports
           path: reports/
           if-no-files-found: ignore
+
+  hacs:
+    name: HACS
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: integration
+
+  hassfest:
+    name: Hassfest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  gate:
+    name: CI
+    needs:
+      - tests
+      - hacs
+      - hassfest
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every job to succeed
+        run: |
+          if ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}; then
+            echo "One or more CI jobs did not succeed."
+            exit 1
+          fi
