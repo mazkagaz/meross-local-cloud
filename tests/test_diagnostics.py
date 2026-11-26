@@ -1,10 +1,12 @@
 import json
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.meross_local_cloud.broker_devices import BrokerDeviceInfo
+from custom_components.meross_local_cloud.broker_http import BrokerCredentials
 from custom_components.meross_local_cloud.common import (
     BROKER_ADAPTER,
     CONF_CA_PEM,
@@ -110,6 +112,42 @@ async def test_diagnostics_export_never_contains_credentials(hass, ca_pem):
     for value in secrets.values():
         assert value not in payload
     assert payload.count("**REDACTED**") == len(secrets)
+
+
+async def test_diagnostics_redacts_the_real_stored_credentials(hass, ca_pem):
+    """The entry stores BrokerCredentials.as_dict(); no secret may leak."""
+    creds = BrokerCredentials(
+        token="real-token-9f3a",
+        key="real-key-9f3a",
+        user_id="real-user-id-9f3a",
+        user_email="real-user@example.invalid",
+        domain="https://10.0.0.5:2004",
+        mqtt_domain="10.0.0.5:2001",
+        issued_on=datetime.now(timezone.utc),
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_HTTP_ENDPOINT: "https://10.0.0.5:2004",
+            CONF_CA_PEM: ca_pem,
+            CONF_STORED_CREDS: creds.as_dict(),
+        },
+    )
+    entry.add_to_hass(hass)
+    hass.data[DOMAIN] = {}
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+    stored = result["entry"]["stored_credentials"]
+
+    for field in ("token", "key", "user_id", "user_email", "issued_on"):
+        assert stored[field] == "**REDACTED**"
+    assert stored["domain"] == "https://10.0.0.5:2004"
+    assert stored["mqtt_domain"] == "10.0.0.5:2001"
+
+    payload = json.dumps(result, sort_keys=True)
+    for value in (creds.token, creds.key, creds.user_id, creds.user_email,
+                  creds.issued_on.isoformat()):
+        assert value not in payload
 
 
 async def test_diagnostics_reports_the_profile_backend(hass, ca_pem):
