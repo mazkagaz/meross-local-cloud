@@ -8,6 +8,8 @@ Docker autonome (HA Container).
 - Import de `BrokerProfileAdapter` déplacé au chargement du module : paho
   n’est plus importé sur la boucle d’événements, ce qui supprime
   l’avertissement « blocking call » de Home Assistant 2026.11.
+- Manifeste : catégorie `hubs_protocols` déclarée ; suppression des logos
+  redondants du dossier `brand/` (les icônes servent de repli).
 - Documentation : section Home Assistant Container dans le README EN/FR et
   page de test Docker.
 - Tests : 520 unitaires/intégration + 30 fonctionnels ; test E2E Docker

@@ -5,6 +5,9 @@
     "network",
     "zeroconf"
   ],
+  "categories": [
+    "hubs_protocols"
+  ],
   "codeowners": [
     "@mazkagaz"
   ],
