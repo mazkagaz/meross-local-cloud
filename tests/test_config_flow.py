@@ -79,8 +79,8 @@ async def test_discovery_failure_opens_empty_form(hass, monkeypatch):
     assert result["errors"]["base"] == "mdns_lookup_failed"
     defaults = _defaults(result)
     assert defaults[CONF_BROKER_HOST] == ""
-    assert defaults[CONF_HTTPS_PORT] == ""
-    assert defaults[CONF_MQTT_PORT] == ""
+    assert defaults[CONF_HTTPS_PORT] == "2004"
+    assert defaults[CONF_MQTT_PORT] == "2001"
 
 
 async def test_initial_flow_survives_discovery_exception(hass, monkeypatch):

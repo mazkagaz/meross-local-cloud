@@ -56,8 +56,10 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._username: Optional[str] = None
         self._password: Optional[str] = None
         self._broker_host: str = ""
-        self._https_port: str = ""
-        self._mqtt_port: str = ""
+        # The broker only ever listens on these two ports; prefilling them
+        # keeps the manual (Docker/HA Container) form to host + credentials.
+        self._https_port: str = "2004"
+        self._mqtt_port: str = "2001"
         self._form_step: str = "configure_manager"
         self._local_mode: bool = True
         self._discovered_services: List[AsyncServiceInfo] = []
@@ -338,8 +340,8 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         self._discovered_mqtt = None
         self._discovered_https = False
         self._broker_host = ""
-        self._https_port = ""
-        self._mqtt_port = ""
+        self._https_port = "2004"
+        self._mqtt_port = "2001"
         self._form_step = "configure_manager_missing"
         return self._show_form(errors={"base": "mdns_lookup_failed"})
 
