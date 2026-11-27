@@ -36,6 +36,10 @@ from custom_components.meross_local_cloud.profile_entities import (
 from custom_components.meross_local_cloud.profiles.compiler import compile_profile
 from custom_components.meross_local_cloud.profiles.models import ProfileMeta
 from custom_components.meross_local_cloud.profiles.runtime import DeviceRuntime
+from custom_components.meross_local_cloud.runtime_store import (
+    restore_runtimes,
+    snapshot_runtimes,
+)
 
 _LOGGER = logging.getLogger(__name__)
 FIXTURES = Path(__file__).parent / "fixtures" / "profiles"
@@ -268,6 +272,49 @@ async def test_msl610_brightness_only_uses_capacity_4(hass):
 
     assert adapter.sent[-2][3] == {
         "channel": 0, "light": {"capacity": 4, "luminance": 50}}
+    assert adapter.sent[-1][3] == {
+        "channel": 0, "light": {"onoff": 1}}
+
+
+async def test_msl610_color_temperature_bounds(hass):
+    device = runtime("msl610")
+    device.entities["light"].values.update(
+        {"onoff": 1, "brightness": 20, "color_temp": 1})
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
+
+    assert entity.color_temp_kelvin == 2700
+    device.entities["light"].values["color_temp"] = 100
+    assert entity.color_temp_kelvin == 6500
+
+    await entity.async_turn_on(color_temp_kelvin=6500)
+    assert adapter.sent[-2][3] == {
+        "channel": 0,
+        "light": {"capacity": 6, "temperature": 100, "luminance": 20},
+    }
+    assert adapter.sent[-1][3] == {
+        "channel": 0, "light": {"onoff": 1}}
+
+
+async def test_msl610_restored_state_allows_color_only(hass):
+    source = runtime("msl610")
+    source.entities["light"].values.update(
+        {"onoff": 1, "brightness": 20, "color_temp": 50})
+    data = snapshot_runtimes({"u1": source})
+    device = DeviceRuntime("u1", source.profile)
+    assert restore_runtimes(data, {"u1": device}) == 1
+
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
+
+    assert entity.is_on is True
+    await entity.async_turn_on(color_temp_kelvin=2700)
+    assert adapter.sent[-2][3] == {
+        "channel": 0,
+        "light": {"capacity": 6, "temperature": 1, "luminance": 20},
+    }
     assert adapter.sent[-1][3] == {
         "channel": 0, "light": {"onoff": 1}}
 

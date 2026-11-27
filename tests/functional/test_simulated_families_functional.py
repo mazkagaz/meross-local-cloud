@@ -8,10 +8,11 @@ from device_simulator import (
     Msxh0Simulator,
     LightSimulator,
     MS600Simulator,
+    MSL610Simulator,
     MTS200Simulator,
     MTS300Simulator,
 )
-from helpers import start_adapter_with_bus, wait_for
+from helpers import entry, setup_entities, start_adapter_with_bus, wait_for
 from mqtt_bus import InMemoryMqttBus
 
 THERMOSTAT = "Appliance.Control.Thermostat.Mode"
@@ -63,6 +64,61 @@ async def test_light_over_the_bus(hass):
         simulator.emit()
         assert light["onoff"] == 1
         assert light["brightness"] == 100
+    finally:
+        await adapter.async_stop()
+
+
+async def test_msl610_color_brightness_and_onoff_over_the_bus(hass):
+    bus = InMemoryMqttBus()
+    simulator = bus.add(MSL610Simulator())
+    adapter = await start_adapter_with_bus(hass, bus, ["msl610"], ["l610"])
+    component = await setup_entities(hass, adapter, "light", entry())
+    entity = next(iter(component.entities))
+    try:
+        assert entity.is_on is None
+
+        simulator.emit_light()
+        simulator.emit_toggle()
+        assert await wait_for(lambda: entity.brightness == 128)
+        assert entity.is_on is True
+        assert 4500 <= entity.color_temp_kelvin <= 4700
+
+        await entity.async_turn_on(brightness=128)
+        assert bus.requests[-2][2] == "SET"
+        assert bus.requests[-2][3] == {
+            "channel": 0,
+            "light": {"capacity": 4, "luminance": 50},
+        }
+        assert simulator.light["luminance"] == 50
+
+        await entity.async_turn_on(color_temp_kelvin=3000)
+        color_payload = bus.requests[-2][3]["light"]
+        assert color_payload == {
+            "capacity": 6,
+            "temperature": 9,
+            "luminance": 50,
+        }
+        assert simulator.light["temperature"] == 9
+
+        await entity.async_turn_on(
+            brightness=255, color_temp_kelvin=2700)
+        assert bus.requests[-3][3]["light"] == {
+            "capacity": 6, "temperature": 1, "luminance": 100}
+        assert bus.requests[-2][3]["light"] == {
+            "capacity": 4, "luminance": 100}
+        assert bus.requests[-1][3]["light"] == {"onoff": 1}
+
+        await entity.async_turn_off()
+        assert bus.requests[-1][3] == {
+            "channel": 0, "light": {"onoff": 0}}
+        simulator.emit_toggle()
+        assert await wait_for(lambda: entity.is_on is False)
+
+        assert not [
+            request for request in bus.requests
+            if request[2] in ("GET", "GETACK")
+        ]
+        assert bus.multiples == []
     finally:
         await adapter.async_stop()
 
