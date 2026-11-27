@@ -40,9 +40,12 @@ def _clean_values(values: Any,
 
 
 def _state_fields(spec) -> set:
-    if spec.state is None:
-        return set()
-    return set(spec.state.fields)
+    fields = set()
+    if spec.state is not None:
+        fields.update(spec.state.fields)
+    if spec.movement is not None:
+        fields.update(spec.movement.fields)
+    return fields
 
 
 def _entity_payload(spec, state) -> Dict[str, Any]:

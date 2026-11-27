@@ -84,3 +84,15 @@ def test_restore_handles_subdevices_and_bad_payloads():
     assert restore_runtimes(data, {"hub1": empty}) == 0
     assert restore_runtimes(None, {"hub1": empty}) == 0
     assert restore_runtimes({"version": STORE_VERSION}, {"hub1": empty}) == 0
+
+
+def test_movement_fields_are_persisted_and_restored():
+    source = DeviceRuntime("u1", compiled("msl610"))
+    source.entities["light"].values.update(
+        {"onoff": 1, "brightness": 20, "color_temp": 50})
+    data = snapshot_runtimes({"u1": source})
+
+    target = DeviceRuntime("u1", compiled("msl610"))
+    assert restore_runtimes(data, {"u1": target}) == 1
+    assert target.entities["light"].values == {
+        "onoff": 1, "brightness": 20, "color_temp": 50}

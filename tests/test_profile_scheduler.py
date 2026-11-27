@@ -228,3 +228,12 @@ def test_set_only_namespaces_are_not_polled():
 
     assert "Appliance.RollerShutter.Adjust" not in scheduler._plan
     assert "Appliance.RollerShutter.Position" in scheduler._plan
+
+
+def test_msl610_push_only_profile_has_no_polling_plan():
+    profile = compiled_fixture("msl610")
+    scheduler = DeviceScheduler(
+        "u1", profile, DeviceRuntime("u1", profile), FakeSender())
+
+    assert scheduler._plan == {}
+    assert scheduler.start() is None

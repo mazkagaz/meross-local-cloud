@@ -34,12 +34,23 @@ du broker et les descriptors MQTT.
 
 - Les valeurs brutes du runtime sont sauvegardées dans le Store HA
   (`meross_local_cloud.runtime_state`), de façon différée et à l’arrêt propre.
+- Les champs de `state` et de `movement` sont persistés (moteur 2.6), notamment
+  `onoff` pour les lumières dont l’état ON/OFF vient de `ToggleX`.
 - Elles sont restaurées au démarrage avant la création des entités, pour les
   appareils et sous-appareils dont le profil et la plateforme correspondent
   encore ; les valeurs non scalaires ou inconnues sont ignorées.
 - La disponibilité n’est jamais restaurée : elle reste pilotée par le transport
   et le broker. Le cache P3 reste utilisé pour les données autoritatives du
   volet.
+
+## Commandes dépendantes de l’état
+
+- Le jeton `$brightness` (moteur 2.6) injecte la luminosité brute 0–100 de
+  l’entité `light` dans un payload de commande. Il est refusé sur les autres
+  plateformes.
+- Une commande `set_color_temp` qui utilise `$brightness` exige une luminosité
+  connue dans l’état ou fournie dans l’appel Home Assistant. Sinon l’entité
+  lève `HomeAssistantError` sans envoyer de `SET`.
 
 ## Runtime et scheduler
 

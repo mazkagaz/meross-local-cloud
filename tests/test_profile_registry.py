@@ -68,6 +68,17 @@ def test_requires_engine_too_recent_is_skipped():
     assert "requires engine" in registry.skipped[0].reason
 
 
+def test_engine_2_6_is_required_for_brightness_profiles():
+    accepted = ProfileRegistry.from_catalog(
+        catalog(entry("msl610", ">=2.6")))
+    rejected = ProfileRegistry.from_catalog(
+        catalog(entry("msl610", ">=2.6.1")))
+
+    assert list(accepted.profiles) == ["msl610"]
+    assert rejected.profiles == {}
+    assert rejected.skipped[0].id == "msl610"
+
+
 def test_duplicate_profile_is_skipped():
     registry = ProfileRegistry.from_catalog(catalog(entry("a"), entry("a")))
 
