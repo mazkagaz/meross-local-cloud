@@ -247,6 +247,54 @@ def test_unknown_or_partial_command_token_is_refused(token):
     assert any("unsupported token" in error for error in compiled.errors)
 
 
+def test_brightness_token_is_accepted_on_light_commands():
+    namespace = "Appliance.Control.Light"
+    light = entity(
+        key="light",
+        platform="light",
+        state={
+            "namespace": namespace,
+            "channel": "$channel",
+            "fields": {"brightness": "light.luminance"},
+        },
+        commands={
+            "set_color_temp": {
+                "namespace": namespace,
+                "payload": {
+                    "channel": "$channel",
+                    "light": {
+                        "temperature": "$value",
+                        "luminance": "$brightness",
+                    },
+                },
+            },
+        },
+    )
+
+    compiled = compile_profile(meta(doc(
+        entities=[light],
+        payloads={namespace: {"methods": ["SET"], "fields": {}}})))
+
+    assert compiled.errors == []
+    assert compiled.entities["light"].commands[
+        "set_color_temp"].payload["light"]["luminance"] == "$brightness"
+
+
+def test_brightness_token_is_refused_outside_light_entities():
+    switch = entity(commands={
+        "turn_on": {
+            "namespace": TOGGLE_NS,
+            "payload": {"brightness": "$brightness"},
+        },
+    })
+
+    compiled = compile_profile(meta(doc(entities=[switch])))
+
+    assert compiled.entities == {}
+    assert any("$brightness is only valid on light" in error
+               for error in compiled.errors)
+
+
 def test_value_is_required_for_number_commands():
     payloads = {
         "Appliance.Control.Number": {"methods": ["SET"], "fields": {}},

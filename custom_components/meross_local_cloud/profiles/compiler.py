@@ -664,6 +664,10 @@ def _compile_commands(prefix: str, platform: str, raw: Any,
             errors.append(
                 f"{prefix}: command {name}: $id is only valid in a "
                 "subdevice template")
+        if "$brightness" in tokens and platform != "light":
+            errors.append(
+                f"{prefix}: command {name}: $brightness is only valid on "
+                "light entities")
         if (name in _REQUIRED_VALUE_COMMANDS.get(platform, ())
                 and "$value" not in tokens):
             errors.append(
