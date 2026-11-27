@@ -16,7 +16,7 @@ MISSING = object()
 MAX_DEPTH = 16
 MAX_KEY_LENGTH = 64
 RESERVED_KEYS = frozenset({"__proto__", "constructor", "prototype"})
-ALLOWED_TOKENS = ("$channel", "$value", "$id")
+ALLOWED_TOKENS = ("$channel", "$value", "$id", "$brightness")
 
 _SEGMENT_RE = re.compile(r"([A-Za-z0-9_]+)(?:\[([0-9]+)\])?")
 
@@ -106,7 +106,7 @@ def validate_tokens(value: Any, allowed: Iterable[str] = ALLOWED_TOKENS
 
 
 def substitute(value: Any, values: Mapping[str, Any]) -> Any:
-    """Replace ``$channel``/``$value`` whole strings, recursively.
+    """Replace ``$channel``/``$value``/``$id``/``$brightness`` whole strings.
 
     Only whole strings are replaced: ``$channel_x`` is rejected instead of
     being partially expanded. Unknown tokens raise UnknownToken.

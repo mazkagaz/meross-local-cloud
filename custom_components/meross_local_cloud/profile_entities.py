@@ -41,6 +41,7 @@ from homeassistant.components.update import (
     UpdateEntityFeature,
 )
 from homeassistant.const import UnitOfTemperature
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, EntityCategory
 
@@ -53,7 +54,7 @@ from .common import (
     calculate_id,
     device_internal_id,
 )
-from .profiles.paths import substitute
+from .profiles.paths import find_tokens, substitute
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -190,11 +191,22 @@ class ProfileBaseEntity(Entity):
             state = self._runtime.entities.get(self._spec.key)
         return dict(state.values) if state is not None else {}
 
-    def _command_payload(self, command: str, value: Any = None):
+    def _command_payload(self, command: str, value: Any = None,
+                         extra: Optional[Dict[str, Any]] = None):
         spec = self._spec.commands.get(command)
         if spec is None:
             return None
         values = {"channel": self._spec.channel, "id": self._subdevice_id}
+        if extra:
+            values.update({
+                key: item for key, item in extra.items()
+                if item is not None
+            })
+        if "$brightness" in find_tokens(spec.payload):
+            if "brightness" not in values:
+                brightness = self._values().get("brightness")
+                if brightness is not None:
+                    values["brightness"] = brightness
         if value is not None:
             if spec.value_scale is not None:
                 value = value * spec.value_scale
@@ -203,16 +215,18 @@ class ProfileBaseEntity(Entity):
             values["value"] = value
         return spec, substitute(spec.payload, values)
 
-    async def _send(self, command: str, value: Any = None) -> None:
-        prepared = self._command_payload(command, value)
+    async def _send(self, command: str, value: Any = None,
+                    **extra: Any) -> None:
+        prepared = self._command_payload(command, value, extra or None)
         if prepared is None:
             return
         spec, payload = prepared
         await self._adapter.async_send(
             self._device_uuid, spec.namespace, "SET", payload)
 
-    async def _send_priority(self, command: str, value: Any = None) -> None:
-        prepared = self._command_payload(command, value)
+    async def _send_priority(self, command: str, value: Any = None,
+                             **extra: Any) -> None:
+        prepared = self._command_payload(command, value, extra or None)
         if prepared is None:
             return
         spec, payload = prepared
@@ -266,10 +280,13 @@ class ProfileLight(ProfileBaseEntity, LightEntity):
             self._attr_color_mode = ColorMode.ONOFF
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> Optional[bool]:
         values = self._values()
         if "onoff" in values:
             return _as_bool(values.get("onoff"))
+        movement = self._spec.movement
+        if movement is not None and "onoff" in movement.fields:
+            return None
         return bool(values.get("brightness"))
 
     @property
@@ -278,6 +295,16 @@ class ProfileLight(ProfileBaseEntity, LightEntity):
         if value is None:
             return None
         return round(float(value) * 255 / 100)
+
+    def _brightness_percent(self) -> Optional[int]:
+        value = self._values().get("brightness")
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return None
+        return max(0, min(100, round(float(value))))
+
+    def _command_needs_brightness(self, command: str) -> bool:
+        spec = self._spec.commands.get(command)
+        return spec is not None and "$brightness" in find_tokens(spec.payload)
 
     @property
     def rgb_color(self):
@@ -298,15 +325,27 @@ class ProfileLight(ProfileBaseEntity, LightEntity):
         brightness = kwargs.get("brightness")
         rgb_color = kwargs.get("rgb_color")
         color_temp = kwargs.get("color_temp_kelvin")
+        brightness_percent = (
+            round(brightness * 100 / 255)
+            if brightness is not None else self._brightness_percent())
         if rgb_color is not None:
             r, g, b = rgb_color
             await self._send("set_rgb", (r << 16) | (g << 8) | b)
         if color_temp is not None:
+            needs_brightness = self._command_needs_brightness(
+                "set_color_temp")
+            if needs_brightness and brightness_percent is None:
+                raise HomeAssistantError(
+                    "Color temperature requires a known brightness for "
+                    "this device; set brightness first or include "
+                    "brightness in the service call")
+            extra = ({"brightness": brightness_percent}
+                     if needs_brightness else None)
             await self._send(
-                "set_color_temp", _kelvin_to_native_temperature(color_temp))
+                "set_color_temp",
+                _kelvin_to_native_temperature(color_temp), **extra or {})
         if brightness is not None:
-            await self._send("set_brightness",
-                             round(brightness * 100 / 255))
+            await self._send("set_brightness", brightness_percent)
         await self._send("turn_on")
 
     async def async_turn_off(self, **kwargs: Any) -> None:

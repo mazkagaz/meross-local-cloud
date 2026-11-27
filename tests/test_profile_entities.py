@@ -4,9 +4,11 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import pytest
 import yaml
 from homeassistant.components.light import ColorMode
 from homeassistant.components.number import NumberMode
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_component import EntityComponent
 
 from custom_components.meross_local_cloud.broker_config import (
@@ -185,9 +187,11 @@ async def test_msl610_light_exposes_color_temperature(hass):
 
     await entity.async_turn_on(brightness=255, color_temp_kelvin=2700)
     assert adapter.sent[-3][3] == {
-        "channel": 0, "light": {"temperature": 1}}
+        "channel": 0,
+        "light": {"capacity": 6, "temperature": 1, "luminance": 100}}
     assert adapter.sent[-2][3] == {
-        "channel": 0, "light": {"luminance": 100}}
+        "channel": 0,
+        "light": {"capacity": 4, "luminance": 100}}
     assert adapter.sent[-1][3] == {
         "channel": 0, "light": {"onoff": 1}}
 
@@ -211,6 +215,138 @@ async def test_msl610_captured_frames_feed_color_temperature_entity(hass):
     assert entity.brightness == 20
     assert entity.color_temp_kelvin is not None
     assert 4500 <= entity.color_temp_kelvin <= 4700
+
+    await entity.async_turn_on(color_temp_kelvin=2700)
+    assert adapter.sent[-2][3] == {
+        "channel": 0,
+        "light": {"capacity": 6, "temperature": 1, "luminance": 8}}
+    assert adapter.sent[-1][3] == {
+        "channel": 0, "light": {"onoff": 1}}
+
+
+async def test_msl610_unknown_brightness_blocks_color_only(hass):
+    device = runtime("msl610")
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
+
+    assert entity.is_on is None
+    assert entity.brightness is None
+
+    with pytest.raises(HomeAssistantError, match="brightness"):
+        await entity.async_turn_on(color_temp_kelvin=2700)
+    assert adapter.sent == []
+
+
+async def test_msl610_color_uses_explicit_brightness_when_state_unknown(hass):
+    device = runtime("msl610")
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
+
+    await entity.async_turn_on(brightness=128, color_temp_kelvin=2700)
+
+    assert adapter.sent[-3][3] == {
+        "channel": 0,
+        "light": {"capacity": 6, "temperature": 1, "luminance": 50}}
+    assert adapter.sent[-2][3] == {
+        "channel": 0,
+        "light": {"capacity": 4, "luminance": 50}}
+    assert adapter.sent[-1][3] == {
+        "channel": 0, "light": {"onoff": 1}}
+
+
+async def test_msl610_brightness_only_uses_capacity_4(hass):
+    device = runtime("msl610")
+    device.entities["light"].values.update(
+        {"onoff": 1, "brightness": 20, "color_temp": 50})
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
+
+    await entity.async_turn_on(brightness=128)
+
+    assert adapter.sent[-2][3] == {
+        "channel": 0, "light": {"capacity": 4, "luminance": 50}}
+    assert adapter.sent[-1][3] == {
+        "channel": 0, "light": {"onoff": 1}}
+
+
+async def test_msl610_turn_off_uses_light_onoff(hass):
+    device = runtime("msl610")
+    device.entities["light"].values.update(
+        {"onoff": 1, "brightness": 20, "color_temp": 50})
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
+
+    await entity.async_turn_off()
+
+    assert adapter.sent[-1][3] == {
+        "channel": 0, "light": {"onoff": 0}}
+
+
+async def test_msl610_onoff_is_unknown_until_togglex_push(hass):
+    device = runtime("msl610")
+    device.entities["light"].values["brightness"] = 20
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
+
+    assert entity.is_on is None
+
+    device.dispatch("Appliance.Control.ToggleX", "PUSH", {
+        "togglex": [{"channel": 0, "onoff": 0, "lmTime": 1}]})
+    await hass.async_block_till_done()
+    assert entity.is_on is False
+
+    device.dispatch("Appliance.Control.ToggleX", "PUSH", {
+        "togglex": [{"channel": 0, "onoff": 1, "lmTime": 2}]})
+    await hass.async_block_till_done()
+    assert entity.is_on is True
+
+
+async def test_color_temp_light_without_brightness_token_is_unchanged(hass):
+    data = {
+        "schema_version": 2,
+        "profile": {"id": "test.color", "version": "1"},
+        "match": {"type": ["test"]},
+        "payloads": {
+            "Appliance.Control.Light": {
+                "methods": ["SET", "PUSH"],
+                "fields": {},
+            },
+        },
+        "entities": [{
+            "key": "light",
+            "platform": "light",
+            "channel": 0,
+            "state": {
+                "namespace": "Appliance.Control.Light",
+                "channel": "$channel",
+                "fields": {"color_temp": "light.temperature"},
+            },
+            "commands": {
+                "set_color_temp": {
+                    "namespace": "Appliance.Control.Light",
+                    "payload": {
+                        "channel": "$channel",
+                        "light": {"temperature": "$value"},
+                    },
+                },
+                "turn_on": {
+                    "namespace": "Appliance.Control.Light",
+                    "payload": {"channel": "$channel", "light": {"onoff": 1}},
+                },
+            },
+        }],
+    }
+    device = DeviceRuntime("u1", compile_profile(ProfileMeta(
+        id="test.color", version="1", source="test", digest=None,
+        requires_engine=None, data=data)))
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
 
     await entity.async_turn_on(color_temp_kelvin=2700)
     assert adapter.sent[-2][3] == {

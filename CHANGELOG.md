@@ -1,3 +1,18 @@
+## 4.0.7 — MSL610 : luminosité et couleur fiables
+
+- Moteur de profils **2.6.0** : jeton `$brightness` pour injecter la
+  luminosité brute d’une entité `light` dans une commande.
+- MSL610 : luminosité envoyée avec `capacity: 4` ; température de couleur
+  avec `capacity: 6` et la luminosité courante, sans retomber à 1 %.
+- Couleur seule sans luminosité connue ou fournie : `HomeAssistantError`
+  explicite, aucun `SET` envoyé.
+- Persistance des champs `movement` : l’état ON/OFF `ToggleX` survit au
+  reload ; un ON/OFF inconnu n’est plus déduit de la luminosité.
+- Le profil MSL610 `2026.11.4` nécessite le broker **1.6.2** et le moteur
+  `2.6.0` ; les autres appareils restent compatibles avec les brokers
+  antérieurs.
+- Tests : 566 unitaires/intégration, dont les nouveaux cas MSL610.
+
 ## 4.0.6 — Température de couleur MSL610
 
 - Support `ColorMode.COLOR_TEMP` pour les entités `light` dont le profil

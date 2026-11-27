@@ -149,3 +149,13 @@ def test_token_discovery():
     assert validate_tokens(payload) == ()
     assert set(validate_tokens({"a": "$partial", "b": "$value"})) == {
         "$partial"}
+
+
+def test_brightness_token_is_substituted():
+    assert substitute({"luminance": "$brightness"}, {"brightness": 20}) == {
+        "luminance": 20}
+
+
+def test_unknown_substitution_still_raises():
+    with pytest.raises(UnknownToken):
+        substitute({"luminance": "$brightness"}, {})
