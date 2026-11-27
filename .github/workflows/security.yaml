@@ -1,0 +1,27 @@
+name: Security
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-dependencies:
+    name: Runtime dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Audit the runtime dependency
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          printf 'paho-mqtt>=2.1.0\n' > /tmp/runtime-requirements.txt
+          pip-audit -r /tmp/runtime-requirements.txt
