@@ -64,7 +64,14 @@ jobs:
             --junitxml=reports/functional.xml
 
       - name: Full suite with JUnit report
-        run: python -m pytest tests -q --junitxml=reports/pytest.xml
+        run: |
+          python -m pytest tests -q \
+            --junitxml=reports/pytest.xml \
+            --cov=custom_components.meross_local_cloud \
+            --cov-config=.coveragerc \
+            --cov-report=term-missing \
+            --cov-report=xml:reports/coverage.xml \
+            --cov-fail-under=85
 
       - name: Upload test reports
         if: always()
