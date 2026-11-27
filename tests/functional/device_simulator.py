@@ -565,6 +565,97 @@ class LightSimulator:
                              self._body(), method)
 
 
+class MSL610Simulator:
+    """MSL610 bulb: Light state plus ToggleX on/off notifications."""
+
+    uuid = "l610"
+    connected = True
+    LIGHT = "Appliance.Control.Light"
+    TOGGLE = "Appliance.Control.ToggleX"
+
+    def __init__(self, uuid="l610"):
+        self.uuid = uuid
+        self.bus = None
+        self.requests = []
+        self.multiples = []
+        self.light = {
+            "capacity": 6,
+            "channel": 0,
+            "temperature": 50,
+            "luminance": 50,
+        }
+        self.toggle = {"channel": 0, "onoff": 1, "lmTime": 1}
+
+    async def async_connect(self):
+        return None
+
+    async def async_stop(self):
+        return None
+
+    async def async_describe(self, device_uuid):
+        return DeviceDescriptor({
+            "all": {"system": {
+                "hardware": {"type": "msl610", "subType": "un",
+                             "version": "1.0.0", "uuid": self.uuid,
+                             "macAddress": "AA:BB:CC:DD:EE:61"},
+                "firmware": {"version": "1.0.0"},
+                "online": {"status": 1},
+            }, "digest": {
+                "light": dict(self.light),
+                "togglex": [dict(self.toggle)],
+            }},
+            "ability": {self.LIGHT: {}, self.TOGGLE: {}},
+        })
+
+    def _light_body(self):
+        return {"channel": 0, "light": dict(self.light)}
+
+    def _toggle_body(self):
+        return {"togglex": [dict(self.toggle)]}
+
+    async def async_request(self, uuid, namespace, method, payload):
+        self.requests.append((uuid, namespace, method, payload))
+        if method == "SET" and namespace == self.LIGHT:
+            for key in ("capacity", "luminance", "temperature", "onoff"):
+                if key in payload.get("light", {}):
+                    self.light[key] = payload["light"][key]
+                    if key == "onoff":
+                        self.toggle["onoff"] = payload["light"][key]
+        elif method == "SET" and namespace == self.TOGGLE:
+            for item in payload.get("togglex", []):
+                if item.get("channel") == 0 and "onoff" in item:
+                    self.toggle["onoff"] = item["onoff"]
+        body = (self._light_body() if namespace == self.LIGHT
+                else self._toggle_body())
+        return SimpleNamespace(
+            uuid=uuid, namespace=namespace,
+            method="SETACK" if method == "SET" else "GETACK",
+            payload=body)
+
+    async def async_request_multiple(self, uuid, requests):
+        requests = list(requests)
+        self.multiples.append(requests)
+        entries = []
+        for namespace, _, _ in requests:
+            body = (self._light_body() if namespace == self.LIGHT
+                    else self._toggle_body())
+            entries.append({
+                "header": {"namespace": namespace, "method": "GETACK"},
+                "payload": body,
+            })
+        return SimpleNamespace(
+            uuid=uuid, namespace="Appliance.Control.Multiple",
+            method="SETACK", payload={"multiple": entries})
+
+    def emit_light(self):
+        if self.bus is not None:
+            self.bus.publish(self.uuid, self.LIGHT, self._light_body())
+
+    def emit_toggle(self):
+        if self.bus is not None:
+            self.bus.publish(self.uuid, self.TOGGLE, self._toggle_body())
+
+
 class DiffuserSimulator:
     uuid = "d1"
     connected = True
