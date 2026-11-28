@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   latest-home-assistant:
-    name: Latest Home Assistant
+    name: Latest supported Home Assistant
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

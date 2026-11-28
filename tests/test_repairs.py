@@ -1,3 +1,6 @@
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
 import pytest
 from homeassistant.components import repairs as repairs_component
 from homeassistant.data_entry_flow import FlowResultType
@@ -20,7 +23,8 @@ async def test_confirm_removes_device_and_issue(hass):
     entry = MockConfigEntry(domain=DOMAIN, data={})
     entry.add_to_hass(hass)
     assert await async_setup_component(hass, repairs_component.DOMAIN, {})
-    hass.data[repairs_component.DOMAIN]["platforms"] = {DOMAIN: repairs}
+    hass.data[repairs_component.DOMAIN]["platforms"] = SimpleNamespace(
+        async_get_platform=AsyncMock(return_value=repairs))
 
     registry = dr.async_get(hass)
     registry.async_get_or_create(
@@ -49,6 +53,6 @@ async def test_confirm_removes_device_and_issue(hass):
 
     result = await flow_manager.async_configure(result["flow_id"], user_input={})
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert registry.async_get_device(
-        identifiers={(DOMAIN, "#BASE:u1")}) is None
+    assert registry.async_get_devices(
+        identifiers={(DOMAIN, "#BASE:u1")}) == []
     assert ir.async_get(hass).async_get_issue(DOMAIN, issue_id("u1")) is None

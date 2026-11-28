@@ -58,7 +58,8 @@ async def test_f2_4_hub_subdevice_identity_and_via_device(hass):
 
     assert temperature.device_info["identifiers"] == {
         (DOMAIN, "#BASE:hub1#SUB:sub1")}
-    assert temperature.device_info["via_device"] == (DOMAIN, "#BASE:hub1")
+    assert temperature.device_info["via_device_id"]
+    assert "via_device" not in temperature.device_info
     ids = [entity.unique_id for entity in sensors.entities]
     assert len(ids) == len(set(ids))
 

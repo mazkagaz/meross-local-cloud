@@ -21,10 +21,10 @@ async def async_remove_device(hass: HomeAssistant, device_uuid: str) -> None:
     """Drop the device from the manager, the registries and the tracker."""
     domain_data = hass.data.get(DOMAIN, {})
     registry = dr.async_get(hass)
-    entry = registry.async_get_device(
-        {(DOMAIN, device_internal_id(device_uuid))})
-    if entry is not None:
-        registry.async_remove_device(entry.id)
+    devices = registry.async_get_devices(
+        identifiers={(DOMAIN, device_internal_id(device_uuid))})
+    if devices:
+        registry.async_remove_device(devices[0].id)
 
     tracker = domain_data.get(MISSING_TRACKER)
     if tracker is not None:

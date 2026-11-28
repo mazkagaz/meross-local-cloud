@@ -1,6 +1,0 @@
-# Test-only constraints for the Home Assistant test environment.
-# Keep these aligned with the Home Assistant version selected by
-# pytest-homeassistant-custom-component; they avoid a costly pip backtrack
-# between habluetooth and bluetooth-data-tools.
-habluetooth==6.1.0
-bluetooth-data-tools==1.28.4

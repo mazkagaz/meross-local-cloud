@@ -687,7 +687,13 @@ class BrokerProfileAdapter:
                     or identifier.startswith(prefix + "#SUB:"))
                 for domain, identifier in entry.identifiers)
         ]
-        top = registry.async_get_device({(DOMAIN, prefix)})
+        top = next(
+            (entry for entry in devices
+             if (DOMAIN, prefix) in entry.identifiers),
+            None)
+        if top is None and entry_id:
+            top = registry.async_get_device_by_identifier(
+                (DOMAIN, prefix), entry_id)
         if top is not None and top not in devices:
             devices.append(top)
 
