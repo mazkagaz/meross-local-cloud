@@ -115,3 +115,22 @@ def log_exception(message: str = None, logger: logging = None):
     if logger is None:
         logger = logging.getLogger(__name__)
     logger.exception("Error occurred: %s", message or "unknown error")
+
+
+def get_device_by_identifier(registry, identifier, entry_id):
+    """Return a device by identifier on old and new Home Assistant APIs."""
+    getter = getattr(registry, "async_get_device_by_identifier", None)
+    if getter is not None:
+        return getter(identifier, entry_id)
+    # HA 2025.6 has no entry-scoped lookup; identifiers were unique there.
+    return registry.async_get_device(identifiers={identifier})
+
+
+def device_via_info(registry, parent_id):
+    """Return the parent link key supported by this Home Assistant."""
+    if getattr(registry, "async_get_device_by_identifier", None) is not None:
+        return {"via_device_id": parent_id}
+    parent = registry.async_get(parent_id)
+    if parent is not None and parent.identifiers:
+        return {"via_device": next(iter(parent.identifiers))}
+    return {}

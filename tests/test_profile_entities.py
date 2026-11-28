@@ -658,8 +658,8 @@ async def test_subdevice_entity_device_info(hass):
         "sensor:#BASE:hub1#SUB:sub1:0:temperature:°C")
     assert entity.device_info["identifiers"] == {
         (DOMAIN, "#BASE:hub1#SUB:sub1")}
-    assert entity.device_info["via_device_id"]
-    assert "via_device" not in entity.device_info
+    assert (entity.device_info.get("via_device_id")
+            or entity.device_info.get("via_device"))
 
 
 async def test_climate_entity(hass):
@@ -798,8 +798,8 @@ async def test_update_entities_cover_hub_and_subdevices(hass):
     assert hub.latest_version == device.profile.version
     assert hub.release_summary == device.profile.description
     assert sub.title == "ms100 profile"
-    assert sub.device_info["via_device_id"]
-    assert "via_device" not in sub.device_info
+    assert (sub.device_info.get("via_device_id")
+            or sub.device_info.get("via_device"))
 
     await hub.async_install(None, False)
     assert adapter.reloads == 1
