@@ -209,6 +209,17 @@ class ProfileBaseEntity(Entity):
     def _on_runtime_update(self) -> None:
         self.hass.loop.call_soon_threadsafe(self._write_state)
 
+    def use_key_fallback_unique_id(self) -> None:
+        """Give colliding legacy entities a stable key-suffixed id."""
+        classifiers = list(self._spec.legacy_classifiers)
+        classifiers.append(self._spec.key)
+        self._attr_unique_id = calculate_id(
+            self._spec.platform,
+            device_internal_id(self._device_uuid, self._subdevice_id),
+            self._spec.channel if self._spec.channel is not None else 0,
+            classifiers,
+        )
+
     def _write_state(self) -> None:
         try:
             self.async_write_ha_state()
@@ -820,6 +831,13 @@ class ProfileUpdateEntity(UpdateEntity):
                 f"{DOMAIN}:{device_uuid}:update:{runtime.profile.profile_id}")
             self._attr_title = f"{runtime.profile.profile_id} profile"
 
+    def use_device_scoped_unique_id(self) -> None:
+        """Add the hub UUID when two subdevices share the same id."""
+        if self._subdevice_id is not None:
+            self._attr_unique_id = (
+                f"{DOMAIN}:{self._device_uuid}:{self._subdevice_id}"
+                f":update:{self._template.uid}")
+
     @property
     def available(self) -> bool:
         return self._adapter.device_available(self._device_uuid)
@@ -875,13 +893,20 @@ def async_setup_profile_updates(hass, config_entry, async_add_entities
     if adapter is None:
         return
     added = data.setdefault("ADDED_ENTITIES_IDS", set())
+    sources = data.setdefault("ADDED_ENTITY_SOURCES", set())
 
     def add_now() -> None:
         entities: List[Entity] = []
 
         def add(device_uuid, runtime, subdevice_id=None, template=None):
+            source = ("update", device_uuid, subdevice_id)
+            if source in sources:
+                return
+            sources.add(source)
             entity = ProfileUpdateEntity(
                 adapter, device_uuid, runtime, subdevice_id, template)
+            if entity.unique_id in added:
+                entity.use_device_scoped_unique_id()
             if entity.unique_id in added:
                 return
             added.add(entity.unique_id)
@@ -923,6 +948,7 @@ def async_setup_profile_entities(hass, config_entry, platform: str,
         return
 
     added = data.setdefault("ADDED_ENTITIES_IDS", set())
+    sources = data.setdefault("ADDED_ENTITY_SOURCES", set())
 
     def add_now() -> None:
         entities: List[Entity] = []
@@ -930,8 +956,15 @@ def async_setup_profile_entities(hass, config_entry, platform: str,
         def add(device_uuid, runtime, spec, subdevice=None):
             if spec.platform != platform:
                 return
+            source = (platform, device_uuid, spec.uid,
+                      subdevice[0] if subdevice else None)
+            if source in sources:
+                return
+            sources.add(source)
             entity = entity_class(
                 adapter, device_uuid, runtime, spec, subdevice)
+            if entity.unique_id in added:
+                entity.use_key_fallback_unique_id()
             if entity.unique_id in added:
                 return
             added.add(entity.unique_id)

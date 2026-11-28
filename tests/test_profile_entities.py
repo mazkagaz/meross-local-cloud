@@ -18,6 +18,7 @@ from custom_components.meross_local_cloud.broker_config import (
 from custom_components.meross_local_cloud.common import (
     BROKER_ADAPTER,
     DOMAIN,
+    HA_BINARY_SENSOR,
     HA_BUTTON,
     HA_CLIMATE,
     HA_COVER,
@@ -34,7 +35,10 @@ from custom_components.meross_local_cloud.profile_entities import (
     async_setup_profile_entities,
     async_setup_profile_updates,
 )
-from custom_components.meross_local_cloud.profiles.compiler import compile_profile
+from custom_components.meross_local_cloud.profiles.compiler import (
+    compile_profile,
+    expand_channel_entities,
+)
 from custom_components.meross_local_cloud.profiles.models import ProfileMeta
 from custom_components.meross_local_cloud.profiles.runtime import DeviceRuntime
 from custom_components.meross_local_cloud.runtime_store import (
@@ -135,6 +139,11 @@ async def setup_entities(hass, adapter, platform, entry_obj=None, extra=None):
 
 def runtime(name, uuid="u1"):
     compiled = compiled_fixture(name)
+    return DeviceRuntime(uuid, compiled)
+
+
+def runtime_channels(name, channels, uuid="u1"):
+    compiled = expand_channel_entities(compiled_fixture(name), channels)
     return DeviceRuntime(uuid, compiled)
 
 
@@ -948,3 +957,59 @@ async def test_cover_position_prefers_the_p3_cache(hass):
     device.entities["cover"].values["position"] = 0
     assert entity.current_cover_position == 0
     assert entity.is_closed is True
+
+
+async def test_em_multi_sensor_ids_are_all_created(hass):
+    device = runtime_channels("em", [0], uuid="em1")
+    adapter = FakeAdapter(device)
+    sensors = await setup_entities(hass, adapter, HA_SENSOR)
+
+    ids = [entity.unique_id for entity in sensors.entities]
+    assert len(ids) == 5
+    assert len(ids) == len(set(ids))
+    assert "sensor:#BASE:em1:0" in ids
+    assert "sensor:#BASE:em1:0:power_factor_0" in ids
+
+
+async def test_ms600_multi_sensor_ids_are_all_created(hass):
+    device = runtime("ms600", uuid="p1")
+    adapter = FakeAdapter(device)
+    sensors = await setup_entities(hass, adapter, HA_SENSOR)
+
+    ids = [entity.unique_id for entity in sensors.entities]
+    assert len(ids) == 3
+    assert len(ids) == len(set(ids))
+    assert "sensor:#BASE:p1:0" in ids
+    assert "sensor:#BASE:p1:0:illuminance" in ids
+
+
+async def test_gs559_binary_sensor_ids_are_all_created(hass):
+    device = runtime("msh300", uuid="hub1")
+    template = next(
+        item for item in device.profile.subdevices if item.name == "gs559")
+    device.add_subdevice("sub1", template)
+    adapter = FakeAdapter(device)
+    sensors = await setup_entities(hass, adapter, HA_BINARY_SENSOR)
+
+    ids = [entity.unique_id for entity in sensors.entities]
+    assert len(ids) == 4
+    assert len(ids) == len(set(ids))
+    assert "binary_sensor:#BASE:hub1#SUB:sub1:0" in ids
+    assert "binary_sensor:#BASE:hub1#SUB:sub1:0:muted" in ids
+
+
+async def test_update_entity_ids_are_unique_across_hubs(hass):
+    first = runtime("msh300", uuid="hub1")
+    first_template = next(
+        item for item in first.profile.subdevices if item.name == "ms100")
+    first.add_subdevice("sub1", first_template)
+    second = runtime("msh300", uuid="hub2")
+    second.add_subdevice("sub1", first_template)
+    adapter = FakeAdapter(first)
+    adapter.runtimes["hub2"] = second
+
+    updates = await setup_updates(hass, adapter)
+    ids = [entity.unique_id for entity in updates.entities]
+    assert len(ids) == 4
+    assert len(ids) == len(set(ids))
+    assert f"{DOMAIN}:hub2:sub1:update:{first_template.uid}" in ids
