@@ -32,22 +32,19 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: mazkagaz/meross-local-broker
-          ref: 6a40cef3a62a44813d9ac9b7c1c88e9f2422d6c3
+          ref: c8395c8aca3d19f7f9ec07eca123f0041c046846
           path: broker-src
 
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.14"
           cache: pip
-          cache-dependency-path: |
-            tests/requirements_test.txt
-            tests/constraints_test.txt
+          cache-dependency-path: tests/requirements_test.txt
 
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r tests/requirements_test.txt \
-            -c tests/constraints_test.txt
+          python -m pip install -r tests/requirements_test.txt
 
       - name: Prepare test reports
         run: mkdir -p reports
@@ -55,16 +52,15 @@ jobs:
       - name: Check documentation translations
         run: python tools/check_docs_translations.py
 
-      - name: Fast suites (unit and integration)
-        run: python -m pytest tests --ignore=tests/functional -q
-
-      - name: Functional scenarios (H2)
-        run: |
-          python -m pytest tests/functional -q \
-            --junitxml=reports/functional.xml
-
       - name: Full suite with JUnit report
-        run: python -m pytest tests -q --junitxml=reports/pytest.xml
+        run: |
+          python -m pytest tests -q \
+            --junitxml=reports/pytest.xml \
+            --cov=custom_components.meross_local_cloud \
+            --cov-config=.coveragerc \
+            --cov-report=term-missing \
+            --cov-report=xml:reports/coverage.xml \
+            --cov-fail-under=85
 
       - name: Upload test reports
         if: always()

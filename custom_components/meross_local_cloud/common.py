@@ -1,5 +1,4 @@
 import logging
-import re
 from typing import List
 
 from . import version
@@ -45,8 +44,6 @@ SHUTTER_CONFIG_CACHE = "shutter_config_cache"
 
 HTTP_UPDATE_INTERVAL = 120
 
-HTTP_API_RE = re.compile("(http://|https://)?([^:]+)(:([0-9]+))?")
-
 DEFAULT_USER_AGENT = f"MerossHA/{version.MEROSS_INTEGRATION_VERSION}"
 
 
@@ -66,6 +63,30 @@ def calculate_id(platform: str, uuid: str, channel: int, supplementary_classifie
             extrastr = ":" + extrastr
         return base + extrastr
     return base
+
+
+def format_host_port(host: str, port) -> str:
+    """Format a host/port pair, bracketing IPv6 literals."""
+    value = str(host).strip()
+    if ":" in value and not value.startswith("["):
+        value = f"[{value}]"
+    return f"{value}:{port}"
+
+
+def split_host_port(address: str = None):
+    """Split host:port or [IPv6]:port without losing the IPv6 literal."""
+    if not address:
+        return "", ""
+    value = str(address).strip()
+    if value.startswith("["):
+        end = value.find("]")
+        if end == -1:
+            return value, ""
+        return value[1:end], value[end + 1:].lstrip(":")
+    host, separator, port = value.rpartition(":")
+    if not separator:
+        return value, ""
+    return host, port
 
 
 def device_internal_id(device_uuid: str,
@@ -94,3 +115,22 @@ def log_exception(message: str = None, logger: logging = None):
     if logger is None:
         logger = logging.getLogger(__name__)
     logger.exception("Error occurred: %s", message or "unknown error")
+
+
+def get_device_by_identifier(registry, identifier, entry_id):
+    """Return a device by identifier on old and new Home Assistant APIs."""
+    getter = getattr(registry, "async_get_device_by_identifier", None)
+    if getter is not None:
+        return getter(identifier, entry_id)
+    # HA 2025.6 has no entry-scoped lookup; identifiers were unique there.
+    return registry.async_get_device(identifiers={identifier})
+
+
+def device_via_info(registry, parent_id):
+    """Return the parent link key supported by this Home Assistant."""
+    if getattr(registry, "async_get_device_by_identifier", None) is not None:
+        return {"via_device_id": parent_id}
+    parent = registry.async_get(parent_id)
+    if parent is not None and parent.identifiers:
+        return {"via_device": next(iter(parent.identifiers))}
+    return {}

@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, patch
 
 import yaml
 from homeassistant.helpers.entity_component import EntityComponent
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.meross_local_cloud.common import BROKER_ADAPTER, DOMAIN
 from custom_components.meross_local_cloud.profiles.compiler import compile_profile
@@ -45,6 +46,7 @@ def catalog_entry(name):
 class FakeAdapter:
     def __init__(self, runtime_obj, state="connected"):
         self.state = state
+        self._entry_id = "test-entry"
         self.runtimes = {runtime_obj.uuid: runtime_obj}
         self.schedulers = {}
         self.sent = []
@@ -107,6 +109,9 @@ def entry(entities=True, only=False):
 
 
 async def setup_entities(hass, adapter, platform, config_entry):
+    entry_id = getattr(adapter, "_entry_id", None)
+    if entry_id and hass.config_entries.async_get_entry(entry_id) is None:
+        MockConfigEntry(domain=DOMAIN, entry_id=entry_id).add_to_hass(hass)
     hass.data[DOMAIN] = {
         BROKER_ADAPTER: adapter,
         "ADDED_ENTITIES_IDS": set(),

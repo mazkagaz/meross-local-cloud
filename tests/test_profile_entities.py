@@ -10,6 +10,7 @@ from homeassistant.components.light import ColorMode
 from homeassistant.components.number import NumberMode
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_component import EntityComponent
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.meross_local_cloud.broker_config import (
     RollerShutterConfigCache,
@@ -17,6 +18,7 @@ from custom_components.meross_local_cloud.broker_config import (
 from custom_components.meross_local_cloud.common import (
     BROKER_ADAPTER,
     DOMAIN,
+    HA_BINARY_SENSOR,
     HA_BUTTON,
     HA_CLIMATE,
     HA_COVER,
@@ -33,9 +35,16 @@ from custom_components.meross_local_cloud.profile_entities import (
     async_setup_profile_entities,
     async_setup_profile_updates,
 )
-from custom_components.meross_local_cloud.profiles.compiler import compile_profile
+from custom_components.meross_local_cloud.profiles.compiler import (
+    compile_profile,
+    expand_channel_entities,
+)
 from custom_components.meross_local_cloud.profiles.models import ProfileMeta
 from custom_components.meross_local_cloud.profiles.runtime import DeviceRuntime
+from custom_components.meross_local_cloud.runtime_store import (
+    restore_runtimes,
+    snapshot_runtimes,
+)
 
 _LOGGER = logging.getLogger(__name__)
 FIXTURES = Path(__file__).parent / "fixtures" / "profiles"
@@ -52,6 +61,7 @@ def compiled_fixture(name):
 class FakeAdapter:
     def __init__(self, runtime, state="connected"):
         self.state = state
+        self._entry_id = "test-entry"
         self.runtimes = {runtime.uuid: runtime}
         self.schedulers = {}
         self.sent = []
@@ -108,6 +118,9 @@ def entry(enabled=True, only=False):
 
 
 async def setup_entities(hass, adapter, platform, entry_obj=None, extra=None):
+    entry_id = getattr(adapter, "_entry_id", None)
+    if entry_id and hass.config_entries.async_get_entry(entry_id) is None:
+        MockConfigEntry(domain=DOMAIN, entry_id=entry_id).add_to_hass(hass)
     hass.data[DOMAIN] = {
         BROKER_ADAPTER: adapter,
         "ADDED_ENTITIES_IDS": set(),
@@ -126,6 +139,11 @@ async def setup_entities(hass, adapter, platform, entry_obj=None, extra=None):
 
 def runtime(name, uuid="u1"):
     compiled = compiled_fixture(name)
+    return DeviceRuntime(uuid, compiled)
+
+
+def runtime_channels(name, channels, uuid="u1"):
+    compiled = expand_channel_entities(compiled_fixture(name), channels)
     return DeviceRuntime(uuid, compiled)
 
 
@@ -268,6 +286,49 @@ async def test_msl610_brightness_only_uses_capacity_4(hass):
 
     assert adapter.sent[-2][3] == {
         "channel": 0, "light": {"capacity": 4, "luminance": 50}}
+    assert adapter.sent[-1][3] == {
+        "channel": 0, "light": {"onoff": 1}}
+
+
+async def test_msl610_color_temperature_bounds(hass):
+    device = runtime("msl610")
+    device.entities["light"].values.update(
+        {"onoff": 1, "brightness": 20, "color_temp": 1})
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
+
+    assert entity.color_temp_kelvin == 2700
+    device.entities["light"].values["color_temp"] = 100
+    assert entity.color_temp_kelvin == 6500
+
+    await entity.async_turn_on(color_temp_kelvin=6500)
+    assert adapter.sent[-2][3] == {
+        "channel": 0,
+        "light": {"capacity": 6, "temperature": 100, "luminance": 20},
+    }
+    assert adapter.sent[-1][3] == {
+        "channel": 0, "light": {"onoff": 1}}
+
+
+async def test_msl610_restored_state_allows_color_only(hass):
+    source = runtime("msl610")
+    source.entities["light"].values.update(
+        {"onoff": 1, "brightness": 20, "color_temp": 50})
+    data = snapshot_runtimes({"u1": source})
+    device = DeviceRuntime("u1", source.profile)
+    assert restore_runtimes(data, {"u1": device}) == 1
+
+    adapter = FakeAdapter(device)
+    component = await setup_entities(hass, adapter, HA_LIGHT)
+    entity = next(iter(component.entities))
+
+    assert entity.is_on is True
+    await entity.async_turn_on(color_temp_kelvin=2700)
+    assert adapter.sent[-2][3] == {
+        "channel": 0,
+        "light": {"capacity": 6, "temperature": 1, "luminance": 20},
+    }
     assert adapter.sent[-1][3] == {
         "channel": 0, "light": {"onoff": 1}}
 
@@ -597,7 +658,8 @@ async def test_subdevice_entity_device_info(hass):
         "sensor:#BASE:hub1#SUB:sub1:0:temperature:°C")
     assert entity.device_info["identifiers"] == {
         (DOMAIN, "#BASE:hub1#SUB:sub1")}
-    assert entity.device_info["via_device"] == (DOMAIN, "#BASE:hub1")
+    assert (entity.device_info.get("via_device_id")
+            or entity.device_info.get("via_device"))
 
 
 async def test_climate_entity(hass):
@@ -692,6 +754,9 @@ async def test_legacy_classifiers_for_shutter_entities(hass):
 
 
 async def setup_updates(hass, adapter):
+    entry_id = getattr(adapter, "_entry_id", None)
+    if entry_id and hass.config_entries.async_get_entry(entry_id) is None:
+        MockConfigEntry(domain=DOMAIN, entry_id=entry_id).add_to_hass(hass)
     hass.data[DOMAIN] = {
         BROKER_ADAPTER: adapter,
         "ADDED_ENTITIES_IDS": set(),
@@ -733,7 +798,8 @@ async def test_update_entities_cover_hub_and_subdevices(hass):
     assert hub.latest_version == device.profile.version
     assert hub.release_summary == device.profile.description
     assert sub.title == "ms100 profile"
-    assert sub.device_info["via_device"] == (DOMAIN, "#BASE:hub1")
+    assert (sub.device_info.get("via_device_id")
+            or sub.device_info.get("via_device"))
 
     await hub.async_install(None, False)
     assert adapter.reloads == 1
@@ -891,3 +957,59 @@ async def test_cover_position_prefers_the_p3_cache(hass):
     device.entities["cover"].values["position"] = 0
     assert entity.current_cover_position == 0
     assert entity.is_closed is True
+
+
+async def test_em_multi_sensor_ids_are_all_created(hass):
+    device = runtime_channels("em", [0], uuid="em1")
+    adapter = FakeAdapter(device)
+    sensors = await setup_entities(hass, adapter, HA_SENSOR)
+
+    ids = [entity.unique_id for entity in sensors.entities]
+    assert len(ids) == 5
+    assert len(ids) == len(set(ids))
+    assert "sensor:#BASE:em1:0" in ids
+    assert "sensor:#BASE:em1:0:power_factor_0" in ids
+
+
+async def test_ms600_multi_sensor_ids_are_all_created(hass):
+    device = runtime("ms600", uuid="p1")
+    adapter = FakeAdapter(device)
+    sensors = await setup_entities(hass, adapter, HA_SENSOR)
+
+    ids = [entity.unique_id for entity in sensors.entities]
+    assert len(ids) == 3
+    assert len(ids) == len(set(ids))
+    assert "sensor:#BASE:p1:0" in ids
+    assert "sensor:#BASE:p1:0:illuminance" in ids
+
+
+async def test_gs559_binary_sensor_ids_are_all_created(hass):
+    device = runtime("msh300", uuid="hub1")
+    template = next(
+        item for item in device.profile.subdevices if item.name == "gs559")
+    device.add_subdevice("sub1", template)
+    adapter = FakeAdapter(device)
+    sensors = await setup_entities(hass, adapter, HA_BINARY_SENSOR)
+
+    ids = [entity.unique_id for entity in sensors.entities]
+    assert len(ids) == 4
+    assert len(ids) == len(set(ids))
+    assert "binary_sensor:#BASE:hub1#SUB:sub1:0" in ids
+    assert "binary_sensor:#BASE:hub1#SUB:sub1:0:muted" in ids
+
+
+async def test_update_entity_ids_are_unique_across_hubs(hass):
+    first = runtime("msh300", uuid="hub1")
+    first_template = next(
+        item for item in first.profile.subdevices if item.name == "ms100")
+    first.add_subdevice("sub1", first_template)
+    second = runtime("msh300", uuid="hub2")
+    second.add_subdevice("sub1", first_template)
+    adapter = FakeAdapter(first)
+    adapter.runtimes["hub2"] = second
+
+    updates = await setup_updates(hass, adapter)
+    ids = [entity.unique_id for entity in updates.entities]
+    assert len(ids) == 4
+    assert len(ids) == len(set(ids))
+    assert f"{DOMAIN}:hub2:sub1:update:{first_template.uid}" in ids

@@ -1,5 +1,7 @@
 # Branches, versions et canal bêta
 
+Checklist de release : [MAINTENANCE.md](../../MAINTENANCE.md).
+
 ## Branches
 
 - `main` : **livraisons publiques**. Aucun commit direct ; on y fusionne

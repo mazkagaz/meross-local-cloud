@@ -15,7 +15,10 @@ from custom_components.meross_local_cloud.broker_http import (
     BrokerTokenError,
 )
 from custom_components.meross_local_cloud.common import (
+    CONF_CA_FINGERPRINT,
+    CONF_CA_PEM,
     CONF_HTTP_ENDPOINT,
+    CONF_OVERRIDE_MQTT_ENDPOINT,
     CONF_STORED_CREDS,
     DOMAIN,
 )
@@ -114,7 +117,12 @@ async def test_broker_outage_retries_setup(hass, ca_pem, monkeypatch):
 
 async def test_stored_domain_is_aligned_with_the_endpoint(
         hass, ca_pem, monkeypatch):
-    entry = make_entry()
+    entry = MockConfigEntry(domain=DOMAIN, data={
+        **dict(make_entry().data),
+        CONF_OVERRIDE_MQTT_ENDPOINT: "10.0.0.5:2001",
+        CONF_CA_PEM: "stored-ca",
+        CONF_CA_FINGERPRINT: "stored-fingerprint",
+    })
     entry.add_to_hass(hass)
     hass.data[DOMAIN] = {}
     stale = credentials("https://old-host:2004")
@@ -139,3 +147,28 @@ async def test_stored_domain_is_aligned_with_the_endpoint(
     assert coordinator.credentials.domain == ENDPOINT
     assert entry.data[CONF_HTTP_ENDPOINT] == ENDPOINT
     assert entry.data[CONF_STORED_CREDS]["domain"] == ENDPOINT
+    assert entry.data[CONF_OVERRIDE_MQTT_ENDPOINT] == "10.0.0.5:2001"
+    assert entry.data[CONF_CA_PEM] == "stored-ca"
+    assert entry.data[CONF_CA_FINGERPRINT] == "stored-fingerprint"
+
+
+async def test_http_client_uses_the_http_ssl_context(hass, ca_pem, monkeypatch):
+    entry = make_entry()
+    entry.add_to_hass(hass)
+    hass.data[DOMAIN] = {}
+    seen = {}
+
+    class FakeHttpClient:
+        def __init__(self, *args, **kwargs):
+            seen["ssl"] = args[2]
+
+    coordinator = make_coordinator(hass, entry)
+    coordinator._ca_pem = ca_pem
+    coordinator._http_ssl_context = object()
+    monkeypatch.setattr(integration, "BrokerHttpClient", FakeHttpClient)
+    monkeypatch.setattr(
+        integration, "async_list_devices", AsyncMock(return_value=[]))
+
+    await coordinator.initial_setup()
+
+    assert seen["ssl"] is coordinator._http_ssl_context

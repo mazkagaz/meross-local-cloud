@@ -1,0 +1,65 @@
+name: Maintenance
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: maintenance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  latest-home-assistant:
+    name: Latest supported Home Assistant
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MEROSS_BROKER_REPO: ${{ github.workspace }}/broker-src
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check out the current broker contracts
+        uses: actions/checkout@v7
+        with:
+          repository: mazkagaz/meross-local-broker
+          ref: dev
+          path: broker-src
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: tests/requirements_test.txt
+
+      - name: Install the latest Home Assistant test harness
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade \
+            pytest-homeassistant-custom-component paho-mqtt jsonschema
+
+      - name: Check documentation translations
+        run: python tools/check_docs_translations.py
+
+      - name: Run the full suite against latest Home Assistant
+        run: python -m pytest tests -q
+
+  runtime-dependencies:
+    name: Runtime dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Audit the runtime dependency
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          printf 'paho-mqtt>=2.1.0\n' > /tmp/runtime-requirements.txt
+          pip-audit -r /tmp/runtime-requirements.txt

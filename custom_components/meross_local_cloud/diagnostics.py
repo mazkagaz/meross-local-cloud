@@ -87,6 +87,7 @@ async def async_get_config_entry_diagnostics(
         },
         "tls": {
             "ca": _ca_diagnostics(entry),
+            "ca_change": tls_info.get("ca_change"),
             "server": tls_info.get("server"),
             "http": {
                 "verified": tls_info.get("http_verified", True),

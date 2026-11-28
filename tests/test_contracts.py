@@ -112,7 +112,10 @@ async def test_roller_shutter_fixture_is_normalized():
 
 
 async def test_client_uses_the_contracted_paths():
-    http = SimpleNamespace(async_post=AsyncMock(return_value={}))
+    async def response(path, *args, **kwargs):
+        return [] if path == DEVICE_LIST_PATH else {}
+
+    http = SimpleNamespace(async_post=AsyncMock(side_effect=response))
 
     await async_fetch_revision(http)
     await async_fetch_catalog(http)

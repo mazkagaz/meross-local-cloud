@@ -1,7 +1,8 @@
 {
   "config": {
     "abort": {
-      "single_instance_allowed": "Only a single configuration of Meross Local Cloud is allowed."
+      "single_instance_allowed": "Only a single configuration of Meross Local Cloud is allowed.",
+      "reauth_successful": "Reauthentication successful."
     },
     "error": {
       "invalid_credentials": "Invalid local login or password.",
@@ -71,15 +72,47 @@
   "issues": {
     "remove_missing_device": {
       "title": "Meross device no longer paired",
-      "description": "**{name}** (`{uuid}`) has not been reported by the broker for more than 48 hours. If it was unpaired or deleted on purpose, fix this issue to remove its device and entities from Home Assistant."
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Remove the device?",
+            "description": "**{name}** (`{uuid}`) has not been reported by the broker for more than 48 hours. If it was unpaired or deleted on purpose, fix this issue to remove its device and entities from Home Assistant.\n\nDelete **{name}** and its Home Assistant entities? Re-pairing the device later recreates them with the same identity."
+          }
+        }
+      }
     },
     "unsupported_device": {
       "title": "No device profile for {name}",
       "description": "The broker reports **{name}** (`{uuid}`, type `{type}`), but no catalog profile matches it. Its entities are not created. Add or update the profile in the broker catalog; the integration reloads automatically when the revision changes."
     },
-    "confirm": {
-      "title": "Remove the device?",
-      "description": "Delete **{name}** and its Home Assistant entities? Re-pairing the device later recreates them with the same identity."
+    "ca_change_detected": {
+      "title": "Broker CA certificate changed",
+      "fix_flow": {
+        "abort": {
+          "cannot_disable": "The integration could not be disabled. Disable it manually in Settings > Devices & services.",
+          "entry_missing": "The integration entry no longer exists.",
+          "remind_later": "The integration stays active. The notice remains available in Repairs."
+        },
+        "step": {
+          "init": {
+            "title": "Broker CA certificate changed",
+            "description": "The broker presented a new CA certificate.\n\nOld fingerprint: {old_fingerprint}\nNew fingerprint: {new_fingerprint}\nSubject: {subject}\nIssuer: {issuer}\nValid until: {valid_until}\nEndpoint: {endpoint}\nDetected: {detected_at}\n\nLegitimate causes include a first broker install, a reinstall or loss of /data/mqtt/certs, restoring a backup without certificates, migrating to a new installation, migrating a legacy CA, automatic rotation near expiry, or a manual CA replacement.\n\nIf you recognize this change, choose verified. The integration stays active. If you do not recognize it, choose not recognized to review the consequences before disabling anything.",
+            "menu_options": {
+              "verified": "I verified this change - continue",
+              "not_recognized": "I do not recognize this change - verify",
+              "later": "Remind me later"
+            }
+          },
+          "not_recognized": {
+            "title": "Verification required",
+            "description": "The integration is still active and will continue to communicate with the current broker until it is disabled.\n\nDisabling it now will:\n- make all its entities unavailable;\n- make automations using them fail or stop acting;\n- stop history updates;\n- stop device control from Home Assistant;\n- keep the entry stopped while disabled.\n\nNo data, entities or credentials are deleted. You can re-enable the entry after verification.\n\nVerify the broker fingerprint through a trusted channel. Do not regenerate credentials or reconnect before you have verified the broker.",
+            "menu_options": {
+              "disable": "Disable the integration now",
+              "back": "Cancel and keep the integration active"
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -1,7 +1,8 @@
 {
   "config": {
     "abort": {
-      "single_instance_allowed": "Une seule configuration de Meross Local Cloud est autorisée."
+      "single_instance_allowed": "Une seule configuration de Meross Local Cloud est autorisée.",
+      "reauth_successful": "Réauthentification réussie."
     },
     "error": {
       "invalid_credentials": "Identifiant local ou mot de passe invalide.",
@@ -71,15 +72,47 @@
   "issues": {
     "remove_missing_device": {
       "title": "Appareil Meross plus appairé",
-      "description": "**{name}** (`{uuid}`) n'est plus signalé par le broker depuis plus de 48 heures. Si l'appareil a été dissocié ou supprimé volontairement, corrigez ce problème pour retirer son appareil et ses entités de Home Assistant."
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Retirer l'appareil ?",
+            "description": "**{name}** (`{uuid}`) n'est plus signalé par le broker depuis plus de 48 heures. Si l'appareil a été dissocié ou supprimé volontairement, corrigez ce problème pour retirer son appareil et ses entités de Home Assistant.\n\nSupprimer **{name}** et ses entités Home Assistant ? Un nouvel appairage recréera les entités avec la même identité."
+          }
+        }
+      }
     },
     "unsupported_device": {
       "title": "Aucun profil pour {name}",
       "description": "Le broker signale **{name}** (`{uuid}`, type `{type}`), mais aucun profil du catalogue ne correspond. Ses entités ne sont pas créées. Ajoutez ou mettez à jour le profil dans le catalogue du broker ; l'intégration se recharge automatiquement quand la révision change."
     },
-    "confirm": {
-      "title": "Retirer l'appareil ?",
-      "description": "Supprimer **{name}** et ses entités Home Assistant ? Un nouvel appairage recréera les entités avec la même identité."
+    "ca_change_detected": {
+      "title": "Le certificat CA du broker a changé",
+      "fix_flow": {
+        "abort": {
+          "cannot_disable": "L'intégration n'a pas pu être désactivée. Désactivez-la manuellement dans Paramètres > Appareils et services.",
+          "entry_missing": "L'entrée d'intégration n'existe plus.",
+          "remind_later": "L'intégration reste active. L'avertissement reste disponible dans Réparations."
+        },
+        "step": {
+          "init": {
+            "title": "Le certificat CA du broker a changé",
+            "description": "Le broker présente un nouveau certificat CA.\n\nAncienne empreinte : {old_fingerprint}\nNouvelle empreinte : {new_fingerprint}\nSujet : {subject}\nÉmetteur : {issuer}\nValide jusqu'au : {valid_until}\nPoint d'accès : {endpoint}\nDétecté le : {detected_at}\n\nLes causes légitimes incluent une première installation du broker, une réinstallation ou une perte de /data/mqtt/certs, une restauration sans certificats, une migration vers une nouvelle installation, la migration d'une ancienne CA, une rotation automatique proche de l'expiration ou un remplacement manuel du CA.\n\nSi vous reconnaissez ce changement, choisissez « vérifié ». L'intégration reste active. Sinon, choisissez « non reconnu » pour lire les conséquences avant toute désactivation.",
+            "menu_options": {
+              "verified": "J'ai vérifié ce changement - continuer",
+              "not_recognized": "Je ne reconnais pas ce changement - vérifier",
+              "later": "Me rappeler plus tard"
+            }
+          },
+          "not_recognized": {
+            "title": "Vérification nécessaire",
+            "description": "L'intégration est toujours active et continuera de communiquer avec le broker actuel tant qu'elle n'est pas désactivée.\n\nLa désactiver maintenant va :\n- rendre toutes ses entités indisponibles ;\n- faire échouer ou empêcher les automatisations qui les utilisent ;\n- arrêter l'historique ;\n- arrêter le pilotage des appareils depuis Home Assistant ;\n- laisser l'entrée arrêtée tant qu'elle est désactivée.\n\nAucune donnée, entité ou identifiant n'est supprimé. Vous pourrez réactiver l'entrée après vérification.\n\nVérifiez l'empreinte du broker par un canal sûr. Ne régénérez pas les identifiants et ne reconnectez rien avant d'avoir vérifié le broker.",
+            "menu_options": {
+              "disable": "Désactiver l'intégration maintenant",
+              "back": "Annuler et laisser l'intégration active"
+            }
+          }
+        }
+      }
     }
   }
 }

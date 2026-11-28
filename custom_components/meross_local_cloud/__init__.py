@@ -3,7 +3,7 @@ import asyncio
 import logging
 import ssl
 from dataclasses import replace
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, List, Dict, Optional
 from urllib.parse import urlparse
 
@@ -25,7 +25,7 @@ from .common import (
     log_exception,
     CONF_STORED_CREDS,
     CONF_HTTP_ENDPOINT,
-    HTTP_API_RE,
+    split_host_port,
     HTTP_UPDATE_INTERVAL, DEVICE_LIST_COORDINATOR,
     CONF_OPT_CUSTOM_USER_AGENT, CONF_OVERRIDE_MQTT_ENDPOINT,
     CONF_CA_PEM, CONF_CA_FINGERPRINT, MISSING_TRACKER,
@@ -42,6 +42,7 @@ from .broker_http import (
     BrokerTokenError,
 )
 from .missing_devices import MissingDeviceTracker
+from .repairs import async_create_ca_change_issue
 from .log_redaction import install as install_log_redaction
 from .version import MEROSS_INTEGRATION_VERSION
 from .tls import (
@@ -104,7 +105,8 @@ class MerossCoordinator(DataUpdateCoordinator):
                  update_interval: timedelta,
                  ua_header: str,
                  ca_pem: str,
-                 ca_check_hostname: bool = False):
+                 ca_check_hostname: bool = False,
+                 http_ssl_context: Optional[ssl.SSLContext] = None):
 
         self._entry = config_entry
         self._http_api_endpoint = http_api_endpoint
@@ -112,6 +114,7 @@ class MerossCoordinator(DataUpdateCoordinator):
         self._mqtt_override_address = mqtt_override_address
         self._ca_pem = ca_pem
         self._ca_check_hostname = ca_check_hostname
+        self._http_ssl_context = http_ssl_context
         self._mqtt_ssl_context_verified: Optional[ssl.SSLContext] = None
         self._broker_http: Optional[BrokerHttpClient] = None
         self._setup_done = False
@@ -137,7 +140,7 @@ class MerossCoordinator(DataUpdateCoordinator):
             # Raising ConfigEntryAuthFailed will cancel future updates
             # and start a config flow with SOURCE_REAUTH (async_step_reauth)
             raise ConfigEntryAuthFailed from err
-        except (BrokerHttpError, TimeoutError) as err:
+        except (BrokerHttpError, TimeoutError, aiohttp.ClientError) as err:
             raise UpdateFailed(f"Error communicating with API: {err}")
 
     async def initial_setup(self):
@@ -155,7 +158,7 @@ class MerossCoordinator(DataUpdateCoordinator):
         self._broker_http = BrokerHttpClient(
             self._http_api_endpoint,
             lambda: self._cached_creds.token,
-            self._mqtt_ssl_context_verified,
+            self._http_ssl_context or self._mqtt_ssl_context_verified,
             user_agent=self._ua_header)
 
         try:
@@ -177,6 +180,7 @@ class MerossCoordinator(DataUpdateCoordinator):
             self.hass.config_entries.async_update_entry(
                 entry=self._entry,
                 data={
+                    **self._entry.data,
                     CONF_HTTP_ENDPOINT: self._http_api_endpoint,
                     CONF_STORED_CREDS: self._cached_creds.as_dict(),
                 },
@@ -220,6 +224,10 @@ class MerossCoordinator(DataUpdateCoordinator):
         return host, 2001
 
     @property
+    def http_ssl_context(self) -> Optional[ssl.SSLContext]:
+        return self._http_ssl_context or self._mqtt_ssl_context_verified
+
+    @property
     def mqtt_ssl_context(self) -> ssl.SSLContext:
         return self._mqtt_ssl_context_verified
 
@@ -260,6 +268,7 @@ async def _async_prepare_tls(
     stored_fp = config_entry.data.get(CONF_CA_FINGERPRINT)
     ca_pem = stored_pem
     ca_fp = stored_fp
+    ca_change = None
     fetched = await async_fetch_ca(endpoint)
     if fetched:
         cert = parse_certificate(fetched)
@@ -267,8 +276,18 @@ async def _async_prepare_tls(
             ca_fp = fingerprint(cert)
             if stored_fp and ca_fp != stored_fp:
                 _LOGGER.warning(
-                    "Broker TLS CA changed (SHA-256 %s); trusting the new CA.",
+                    "Broker TLS CA changed (SHA-256 %s); trusting the new CA "
+                    "and creating a non-blocking repair notice.",
                     ca_fp)
+                ca_change = {
+                    "old_fingerprint": stored_fp,
+                    "new_fingerprint": ca_fp,
+                    "subject": cert.subject.rfc4514_string(),
+                    "issuer": cert.issuer.rfc4514_string(),
+                    "valid_until": cert.not_valid_after_utc.isoformat(),
+                    "endpoint": endpoint,
+                    "detected_at": datetime.now(timezone.utc).isoformat(),
+                }
             ca_pem = fetched
         else:
             raise ConfigEntryNotReady(
@@ -310,7 +329,7 @@ async def _async_prepare_tls(
     http_context = await hass.async_add_executor_job(
         build_client_ssl_context, ca_pem, http_check)
     return (ca_pem, ca_fp, http_context, http_check, mqtt_check,
-            server_info)
+            server_info, ca_change)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
@@ -333,9 +352,16 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
     _LOGGER.info("Override MQTT address set to: %s", "no" if mqtt_override_address is None else "yes -> %s" % mqtt_override_address)
 
     # Make sure we have all the needed requirements
-    if http_api_endpoint is None or HTTP_API_RE.fullmatch(http_api_endpoint) is None:
-        raise ConfigEntryAuthFailed("Missing or wrong HTTP_API_ENDPOINT")
-    if not http_api_endpoint.lower().startswith("https://"):
+    parsed_http = urlparse(http_api_endpoint or "")
+    try:
+        parsed_http_port = parsed_http.port
+    except ValueError as err:
+        raise ConfigEntryAuthFailed(
+            "Invalid HTTP API endpoint") from err
+    if (http_api_endpoint is None
+            or parsed_http.scheme != "https"
+            or not parsed_http.hostname
+            or parsed_http_port is None):
         raise ConfigEntryAuthFailed(
             "The broker must be reached over HTTPS. Use the https://…:2004 "
             "endpoint and update the broker (broker 1.0.0 or later).")
@@ -343,12 +369,17 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         raise ConfigEntryAuthFailed("Missing credentials. Please re-authenticate.")
     mqtt_host = None
     if mqtt_override_address is not None:
-        mqtt_host = mqtt_override_address.split(":")[0]
-        mqtt_port = int(mqtt_override_address.split(":")[1])
+        host_value, port_value = split_host_port(mqtt_override_address)
+        try:
+            mqtt_port = int(port_value)
+        except (TypeError, ValueError) as err:
+            raise ConfigEntryAuthFailed(
+                "Invalid MQTT endpoint") from err
+        mqtt_host = host_value
         mqtt_override_address = (mqtt_host, mqtt_port)
 
     (ca_pem, ca_fingerprint, http_ssl_context, http_check_hostname,
-     ca_check_hostname, server_tls) = await _async_prepare_tls(
+     ca_check_hostname, server_tls, ca_change) = await _async_prepare_tls(
         hass, config_entry, http_api_endpoint, mqtt_host)
     _LOGGER.info(
         "Meross Local Cloud %s: broker CA pinned (SHA-256 %s), "
@@ -382,6 +413,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         "http_check_hostname": http_check_hostname,
         "mqtt_check_hostname": ca_check_hostname,
         "server": server_tls,
+        "ca_change": ca_change,
     }
 
     # Retrieve options we need
@@ -400,6 +432,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             ua_header=ua_header,
             ca_pem=ca_pem,
             ca_check_hostname=ca_check_hostname,
+            http_ssl_context=http_ssl_context,
         )
 
         # Initiate the coordinator. This validates the token and lists devices.
@@ -409,7 +442,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             BrokerHttpClient(
                 meross_coordinator.http_api_endpoint,
                 lambda: meross_coordinator.credentials.token,
-                meross_coordinator.mqtt_ssl_context,
+                meross_coordinator.http_ssl_context,
                 user_agent=meross_coordinator.user_agent))
 
         adapter = BrokerProfileAdapter(hass, meross_coordinator)
@@ -456,6 +489,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
 
         adapter.start_background(hass)
 
+        if ca_change:
+            try:
+                async_create_ca_change_issue(hass, config_entry, ca_change)
+            except Exception:  # noqa: BLE001 - a warning must not block setup
+                _LOGGER.exception(
+                    "Unable to publish the broker CA change notice")
+
         return True
 
     except (BrokerAuthError, BrokerTokenError) as ex:
@@ -486,9 +526,16 @@ async def async_unload_entry(hass, entry):
     _LOGGER.info("Removing Meross Local Cloud integration.")
     _LOGGER.info("Cleaning up resources...")
 
-    for platform in MEROSS_PLATFORMS:
-        _LOGGER.info(f"Cleaning up platform {platform}")
-        await hass.config_entries.async_forward_entry_unload(entry, platform)
+    results = await asyncio.gather(
+        *(
+            hass.config_entries.async_forward_entry_unload(entry, platform)
+            for platform in MEROSS_PLATFORMS
+        ),
+        return_exceptions=True,
+    )
+    if any(isinstance(result, Exception) or not result for result in results):
+        _LOGGER.warning("Not all Meross platforms unloaded cleanly")
+        return False
 
     adapter = hass.data.get(DOMAIN, {}).get(BROKER_ADAPTER)
     if adapter is not None:
