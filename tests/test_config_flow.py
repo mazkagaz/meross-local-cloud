@@ -29,6 +29,16 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 
 
 @pytest.fixture(autouse=True)
+def skip_entry_setup(monkeypatch):
+    """Keep these tests focused on the flow, not on broker connectivity."""
+    async def _setup(*args, **kwargs):
+        return True
+
+    monkeypatch.setattr(
+        "custom_components.meross_local_cloud.async_setup_entry", _setup)
+
+
+@pytest.fixture(autouse=True)
 def fake_ca(monkeypatch, ca_pem):
     async def _fetch(endpoint):
         return ca_pem

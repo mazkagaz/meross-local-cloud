@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, List, Optional, Tuple
 
-from .broker_http import BrokerHttpClient
+from .broker_http import BrokerHttpClient, BrokerHttpError
 
 DEVICE_LIST_PATH = "/v1/Device/devList"
 
@@ -64,4 +64,7 @@ def parse_devices(payload: Any) -> List[BrokerDeviceInfo]:
 
 
 async def async_list_devices(http: BrokerHttpClient) -> List[BrokerDeviceInfo]:
-    return parse_devices(await http.async_post(DEVICE_LIST_PATH))
+    payload = await http.async_post(DEVICE_LIST_PATH)
+    if not isinstance(payload, list):
+        raise BrokerHttpError("Malformed device list response")
+    return parse_devices(payload)

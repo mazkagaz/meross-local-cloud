@@ -43,7 +43,7 @@ firmware and the functions that work or fail: that is what makes it possible to
 validate each profile. The MRS100 is not a prerequisite: any family in the
 catalog can be tested.
 
-**Stable version 4.0.7**, compatible with broker **1.3.0** (1.4.6 recommended
+**Stable version 4.0.8**, compatible with broker **1.3.0** (1.4.6 recommended
 for MRS100 icons, 1.4.8 for Position and typed durations) and pairer **2.0.9**.
 
 ## The three building blocks
@@ -65,10 +65,10 @@ MRS100 ──MQTT/TLS──> Meross Local Broker add-on ──API/MQTT──> th
 
 | Component | Minimum version | Notes |
 |---|---|---|
-| Meross Local Cloud | 4.0.7 | this integration, profile engine 2.6 |
-| Meross Local Broker | 1.3.0 | full catalog; 1.3.1 shutter fix; 1.4.6 MRS100 icons; 1.4.8 Position; **1.5.0 for HA Container**; **1.6.2 for MSL610** |
+| Meross Local Cloud | 4.0.8 | this integration, profile engine 2.6 |
+| Meross Local Broker | 1.3.0 | full catalog; 1.3.1 shutter fix; 1.4.6 MRS100 icons; 1.4.8 Position; **1.5.0 for HA Container**; **1.6.2 for MSL610**, **1.6.3 for Clock sync** |
 | Meross Local Pairer | 2.0.9 | HTTPS 2004 only |
-| Home Assistant | 2025.6 | tested with 2026.11 |
+| Home Assistant | 2025.6 | tested with 2026.10 (latest harness; 2026.11 pending support) |
 
 ## Beta channel
 
@@ -95,7 +95,7 @@ Common prerequisites:
 3. At least one Meross device (MRS100 or another family in the catalog) has
    been paired with **Meross Local Pairer**.
 4. **HACS** is installed in Home Assistant.
-5. Home Assistant 2025.6 or newer (tested with 2026.11).
+5. Home Assistant 2025.6 or newer (tested with 2026.10 (latest harness; 2026.11 pending support)).
 
 ## Install with HACS
 

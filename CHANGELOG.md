@@ -1,3 +1,22 @@
+## 4.0.8 — fiabilité, compatibilité HA et avertissement CA
+
+- Avertissement non bloquant lorsqu’un broker présente un nouveau CA :
+  l’intégration continue de fonctionner, une réparation affiche les anciennes
+  et nouvelles empreintes et propose de vérifier, différer ou désactiver.
+- Les changements de CA légitimes et les conséquences d’une désactivation sont
+  expliqués avant toute action.
+- Compatibilité restaurée avec les API de registre d’appareils antérieures à
+  Home Assistant 2026.10, tout en utilisant l’API actuelle quand elle existe.
+- Correction des collisions d’`unique_id` avec conservation des identifiants
+  historiques.
+- Correctifs de transport et de cycle de vie : contexte TLS HTTP distinct du
+  MQTT, conservation de l’override MQTT et du CA lors de la migration de
+  domaine, endpoints IPv6, réponses `devList`/JSON malformées, résultat des
+  unloads et suppression complète des sous-appareils dans les réparations.
+- Tests : **593 passed**, couverture **87,73 %** ; HACS et Hassfest verts.
+- Broker **1.6.3** recommandé pour la synchronisation Clock des appareils ;
+  aucun changement de profil ni de schéma.
+
 ## 4.0.7 — MSL610 : luminosité et couleur fiables
 
 - Moteur de profils **2.6.0** : jeton `$brightness` pour injecter la

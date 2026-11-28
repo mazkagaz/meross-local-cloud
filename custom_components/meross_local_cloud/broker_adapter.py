@@ -32,6 +32,7 @@ from .common import (
     PROFILE_CATALOG_SIGNAL,
     SHUTTER_CONFIG_CACHE,
     device_internal_id,
+    get_device_by_identifier,
 )
 from .profiles import (
     ENGINE_VERSION,
@@ -517,10 +518,13 @@ class BrokerProfileAdapter:
             while True:
                 await asyncio.sleep(CATALOG_CHECK_INTERVAL)
                 try:
+                    http_ssl = (
+                        getattr(self._coordinator, "http_ssl_context", None)
+                        or self._coordinator.mqtt_ssl_context)
                     http = BrokerHttpClient(
                         self._coordinator.http_api_endpoint,
                         lambda: self._coordinator.credentials.token,
-                        self._coordinator.mqtt_ssl_context,
+                        http_ssl,
                         user_agent=getattr(
                             self._coordinator, "user_agent",
                             "MerossHA/unknown"))
@@ -687,7 +691,13 @@ class BrokerProfileAdapter:
                     or identifier.startswith(prefix + "#SUB:"))
                 for domain, identifier in entry.identifiers)
         ]
-        top = registry.async_get_device({(DOMAIN, prefix)})
+        top = next(
+            (entry for entry in devices
+             if (DOMAIN, prefix) in entry.identifiers),
+            None)
+        if top is None and entry_id:
+            top = get_device_by_identifier(
+                registry, (DOMAIN, prefix), entry_id)
         if top is not None and top not in devices:
             devices.append(top)
 
@@ -737,10 +747,13 @@ class BrokerProfileAdapter:
 
     async def _async_fetch_profiles(self) -> None:
         endpoint = self._coordinator.http_api_endpoint
+        http_ssl = (
+            getattr(self._coordinator, "http_ssl_context", None)
+            or self._coordinator.mqtt_ssl_context)
         http = BrokerHttpClient(
             endpoint,
             lambda: self._coordinator.credentials.token,
-            self._coordinator.mqtt_ssl_context,
+            http_ssl,
             user_agent=getattr(
                 self._coordinator, "user_agent", "MerossHA/unknown"))
         self._http = http

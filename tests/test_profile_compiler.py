@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -12,8 +13,10 @@ from custom_components.meross_local_cloud.profiles.models import ProfileMeta
 
 FIXTURES = Path(__file__).parent / "fixtures" / "profiles"
 BROKER_PROFILES = (
-    Path(__file__).resolve().parents[2]
-    / "meross-local-broker"
+    Path(
+        os.environ.get("MEROSS_BROKER_REPO")
+        or Path(__file__).resolve().parents[2] / "meross-local-broker"
+    )
     / "meross_local_broker"
     / "rootfs"
     / "opt"

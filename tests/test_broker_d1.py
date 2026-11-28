@@ -74,6 +74,7 @@ async def test_app_client_resolves_pending_transactions(hass):
 
     transaction.set_result.assert_called_once()
     assert transaction.set_result.call_args.args[0].messageid == "m1"
+    connection.cancel_callback(connection._random_disconnect)
 
 
 async def test_app_client_notifies_the_payload_listener(hass):
@@ -129,6 +130,7 @@ async def test_app_client_notifies_the_payload_listener(hass):
     transaction.set_result.assert_called_once()
     assert len(seen) == 1
     assert seen[0].namespace == "Appliance.Control.ToggleX"
+    connection.cancel_callback(connection._random_disconnect)
 
 
 def test_transport_reports_connection_state_changes():

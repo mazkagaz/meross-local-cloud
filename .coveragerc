@@ -1,0 +1,15 @@
+[run]
+source = custom_components.meross_local_cloud
+omit =
+    */vendor/*
+    custom_components/meross_local_cloud/binary_sensor.py
+    custom_components/meross_local_cloud/button.py
+    custom_components/meross_local_cloud/climate.py
+    custom_components/meross_local_cloud/cover.py
+    custom_components/meross_local_cloud/fan.py
+    custom_components/meross_local_cloud/humidifier.py
+    custom_components/meross_local_cloud/light.py
+    custom_components/meross_local_cloud/number.py
+    custom_components/meross_local_cloud/sensor.py
+    custom_components/meross_local_cloud/switch.py
+    custom_components/meross_local_cloud/update.py

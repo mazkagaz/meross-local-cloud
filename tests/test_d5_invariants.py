@@ -69,4 +69,4 @@ def test_device_registry_identifiers_match_historical_format():
     assert top["identifiers"] == {("meross_local_cloud", "#BASE:uuid")}
     assert sub["identifiers"] == {
         ("meross_local_cloud", "#BASE:hub#SUB:sub")}
-    assert sub["via_device"] == ("meross_local_cloud", "#BASE:hub")
+    assert "via_device" not in sub
