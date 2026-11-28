@@ -42,6 +42,7 @@ from homeassistant.components.update import (
 )
 from homeassistant.const import UnitOfTemperature
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity, EntityCategory
 
@@ -106,7 +107,6 @@ def _device_info(device_uuid: str, subdevice_id: Optional[str] = None,
             "name": (template.name if template is not None else None)
             or subdevice_id,
             "manufacturer": "Meross",
-            "via_device": (DOMAIN, device_internal_id(device_uuid)),
         }
     descriptor = descriptor or {}
     info = {
@@ -121,6 +121,33 @@ def _device_info(device_uuid: str, subdevice_id: Optional[str] = None,
     if descriptor.get("hardware"):
         info["hw_version"] = descriptor["hardware"]
     return info
+
+
+def _parent_device_id(hass, adapter, device_uuid: str,
+                      descriptor=None) -> Optional[str]:
+    """Return the parent device registry id, creating it when needed."""
+    if hass is None:
+        return None
+    registry = dr.async_get(hass)
+    identifier = (DOMAIN, device_internal_id(device_uuid))
+    entry_id = getattr(adapter, "_entry_id", None)
+    if not entry_id:
+        return None
+    parent = registry.async_get_device_by_identifier(identifier, entry_id)
+    if parent is not None:
+        return parent.id
+
+    descriptor = descriptor or {}
+    parent = registry.async_get_or_create(
+        config_entry_id=entry_id,
+        identifiers={identifier},
+        name=descriptor.get("name") or device_uuid,
+        manufacturer="Meross",
+        model=descriptor.get("type"),
+        sw_version=descriptor.get("firmware"),
+        hw_version=descriptor.get("hardware"),
+    )
+    return parent.id
 
 
 class ProfileBaseEntity(Entity):
@@ -155,9 +182,15 @@ class ProfileBaseEntity(Entity):
     def device_info(self) -> Dict[str, Any]:
         descriptor = getattr(self._adapter, "descriptors", {}).get(
             self._device_uuid)
-        return _device_info(
+        info = _device_info(
             self._device_uuid, self._subdevice_id, self._template,
             descriptor)
+        if self._subdevice_id is not None:
+            parent_id = _parent_device_id(
+                self.hass, self._adapter, self._device_uuid, descriptor)
+            if parent_id is not None:
+                info["via_device_id"] = parent_id
+        return info
 
     async def async_added_to_hass(self) -> None:
         self._remove_listener = self._runtime.add_listener(
@@ -795,9 +828,15 @@ class ProfileUpdateEntity(UpdateEntity):
     def device_info(self) -> Dict[str, Any]:
         descriptor = getattr(self._adapter, "descriptors", {}).get(
             self._device_uuid)
-        return _device_info(
+        info = _device_info(
             self._device_uuid, self._subdevice_id, self._template,
             descriptor)
+        if self._subdevice_id is not None:
+            parent_id = _parent_device_id(
+                self.hass, self._adapter, self._device_uuid, descriptor)
+            if parent_id is not None:
+                info["via_device_id"] = parent_id
+        return info
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()

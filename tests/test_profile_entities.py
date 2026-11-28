@@ -10,6 +10,7 @@ from homeassistant.components.light import ColorMode
 from homeassistant.components.number import NumberMode
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_component import EntityComponent
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.meross_local_cloud.broker_config import (
     RollerShutterConfigCache,
@@ -56,6 +57,7 @@ def compiled_fixture(name):
 class FakeAdapter:
     def __init__(self, runtime, state="connected"):
         self.state = state
+        self._entry_id = "test-entry"
         self.runtimes = {runtime.uuid: runtime}
         self.schedulers = {}
         self.sent = []
@@ -112,6 +114,9 @@ def entry(enabled=True, only=False):
 
 
 async def setup_entities(hass, adapter, platform, entry_obj=None, extra=None):
+    entry_id = getattr(adapter, "_entry_id", None)
+    if entry_id and hass.config_entries.async_get_entry(entry_id) is None:
+        MockConfigEntry(domain=DOMAIN, entry_id=entry_id).add_to_hass(hass)
     hass.data[DOMAIN] = {
         BROKER_ADAPTER: adapter,
         "ADDED_ENTITIES_IDS": set(),
@@ -644,7 +649,8 @@ async def test_subdevice_entity_device_info(hass):
         "sensor:#BASE:hub1#SUB:sub1:0:temperature:°C")
     assert entity.device_info["identifiers"] == {
         (DOMAIN, "#BASE:hub1#SUB:sub1")}
-    assert entity.device_info["via_device"] == (DOMAIN, "#BASE:hub1")
+    assert entity.device_info["via_device_id"]
+    assert "via_device" not in entity.device_info
 
 
 async def test_climate_entity(hass):
@@ -739,6 +745,9 @@ async def test_legacy_classifiers_for_shutter_entities(hass):
 
 
 async def setup_updates(hass, adapter):
+    entry_id = getattr(adapter, "_entry_id", None)
+    if entry_id and hass.config_entries.async_get_entry(entry_id) is None:
+        MockConfigEntry(domain=DOMAIN, entry_id=entry_id).add_to_hass(hass)
     hass.data[DOMAIN] = {
         BROKER_ADAPTER: adapter,
         "ADDED_ENTITIES_IDS": set(),
@@ -780,7 +789,8 @@ async def test_update_entities_cover_hub_and_subdevices(hass):
     assert hub.latest_version == device.profile.version
     assert hub.release_summary == device.profile.description
     assert sub.title == "ms100 profile"
-    assert sub.device_info["via_device"] == (DOMAIN, "#BASE:hub1")
+    assert sub.device_info["via_device_id"]
+    assert "via_device" not in sub.device_info
 
     await hub.async_install(None, False)
     assert adapter.reloads == 1

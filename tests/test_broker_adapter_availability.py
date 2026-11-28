@@ -87,7 +87,7 @@ async def test_unbind_removes_device_subdevice_and_entities(hass):
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, "#BASE:u1#SUB:s1")},
         name="sonde",
-        via_device=(DOMAIN, "#BASE:u1"))
+        via_device_id=top.id)
     other = devices.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, "#BASE:u10")},

@@ -68,7 +68,7 @@ MRS100 ──MQTT/TLS──> Meross Local Broker add-on ──API/MQTT──> th
 | Meross Local Cloud | 4.0.6 | this integration, profile engine 2.5 |
 | Meross Local Broker | 1.3.0 | full catalog; 1.3.1 shutter fix; 1.4.6 MRS100 icons; 1.4.8 Position; **1.5.0 for HA Container**; **1.5.2 for MSL610** |
 | Meross Local Pairer | 2.0.9 | HTTPS 2004 only |
-| Home Assistant | 2025.6 | tested with 2026.11 |
+| Home Assistant | 2025.6 | tested with 2026.10 (latest harness; 2026.11 pending support) |
 
 ## Beta channel
 
@@ -95,7 +95,7 @@ Common prerequisites:
 3. At least one Meross device (MRS100 or another family in the catalog) has
    been paired with **Meross Local Pairer**.
 4. **HACS** is installed in Home Assistant.
-5. Home Assistant 2025.6 or newer (tested with 2026.11).
+5. Home Assistant 2025.6 or newer (tested with 2026.10 (latest harness; 2026.11 pending support)).
 
 ## Install with HACS
 

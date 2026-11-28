@@ -7,7 +7,8 @@ Dernière revue : **2026-11-27**
 - **PR** : la CI teste la version de Home Assistant épinglée dans
   `tests/requirements_test.txt`.
 - **Compatibilité** : un workflow planifié teste chaque semaine la dernière
-  version stable de Home Assistant sur la version de Python qu’elle exige.
+  version de Home Assistant supportée par le dernier
+  `pytest-homeassistant-custom-component` stable.
 - **Minimum déclaré** : Home Assistant `2025.6`. Cette version minimale doit
   être couverte par un job dédié lors de la phase 1 de maintenance ; jusque-là,
   elle n’est pas une garantie testée.
