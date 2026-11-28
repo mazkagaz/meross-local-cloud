@@ -48,14 +48,14 @@ jobs:
 
       - name: Check test dependency ownership
         run: |
-          if grep -Eq '^pytest(-cov)?==' tests/requirements_test.txt; then
-            echo "pytest must be owned by pytest-homeassistant-custom-component" >&2
+          if grep -Eq '^(pytest(-cov)?|paho-mqtt)==' tests/requirements_test.txt; then
+            echo "pytest, pytest-cov and paho-mqtt must be owned by pytest-homeassistant-custom-component" >&2
             exit 1
           fi
           python -m pip check
           python - <<'PY'
           import importlib.metadata as metadata
-          for name in ("pytest", "pytest-cov", "pytest-homeassistant-custom-component"):
+          for name in ("pytest", "pytest-cov", "paho-mqtt", "pytest-homeassistant-custom-component"):
               try:
                   print(f"{name}: {metadata.version(name)}")
               except metadata.PackageNotFoundError:

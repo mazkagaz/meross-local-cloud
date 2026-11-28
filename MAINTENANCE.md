@@ -21,7 +21,7 @@ Dernière revue : **2026-11-27**
 |---|---|
 | Chaque PR | tests unitaires, fonctionnels, HACS, Hassfest, traductions, couverture ≥ 85 % |
 | Hebdomadaire | compatibilité dernière HA stable + audit de sécurité runtime |
-| Mensuel | revue des PR Dependabot, versions mineures et correctifs ; vérifier que pytest/pytest-cov restent fournis par le harness HA |
+| Mensuel | revue des PR Dependabot, versions mineures et correctifs ; vérifier que pytest, pytest-cov et paho-mqtt restent fournis par le harness HA |
 | Trimestriel | revue HA/Python, matrice de support, dépendances EOL |
 | Annuel | revue d’architecture et de sécurité plus profonde |
 
