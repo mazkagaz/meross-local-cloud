@@ -16,7 +16,7 @@ le workflow de release refuse un tag dont la version diffère.
 
 | Canal | Version | Tag | Release GitHub |
 | ----- | ------- | --- | -------------- |
-| stable | `4.0.7` | `v4.0.7` | normale |
+| stable | `4.0.8` | `v4.0.8` | normale |
 | test | `3.0.0-beta.4` | `v3.0.0-beta.4` | **pre-release** |
 
 ## Publier une version de test
