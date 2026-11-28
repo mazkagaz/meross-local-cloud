@@ -1,7 +1,8 @@
 {
   "config": {
     "abort": {
-      "single_instance_allowed": "Only a single configuration of Meross Local Cloud is allowed."
+      "single_instance_allowed": "Only a single configuration of Meross Local Cloud is allowed.",
+      "reauth_successful": "Reauthentication successful."
     },
     "error": {
       "invalid_credentials": "Invalid local login or password.",
@@ -71,15 +72,18 @@
   "issues": {
     "remove_missing_device": {
       "title": "Meross device no longer paired",
-      "description": "**{name}** (`{uuid}`) has not been reported by the broker for more than 48 hours. If it was unpaired or deleted on purpose, fix this issue to remove its device and entities from Home Assistant."
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Remove the device?",
+            "description": "**{name}** (`{uuid}`) has not been reported by the broker for more than 48 hours. If it was unpaired or deleted on purpose, fix this issue to remove its device and entities from Home Assistant.\n\nDelete **{name}** and its Home Assistant entities? Re-pairing the device later recreates them with the same identity."
+          }
+        }
+      }
     },
     "unsupported_device": {
       "title": "No device profile for {name}",
       "description": "The broker reports **{name}** (`{uuid}`, type `{type}`), but no catalog profile matches it. Its entities are not created. Add or update the profile in the broker catalog; the integration reloads automatically when the revision changes."
-    },
-    "confirm": {
-      "title": "Remove the device?",
-      "description": "Delete **{name}** and its Home Assistant entities? Re-pairing the device later recreates them with the same identity."
     }
   }
 }

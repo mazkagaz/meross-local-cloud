@@ -20,7 +20,7 @@ from homeassistant.components import network, zeroconf
 from .common import DOMAIN, CONF_STORED_CREDS, CONF_MFA_CODE, \
     CONF_HTTP_ENDPOINT, CONF_CA_PEM, CONF_CA_FINGERPRINT, \
     CONF_BROKER_HOST, CONF_HTTPS_PORT, CONF_MQTT_PORT, \
-    CONF_OPT_CUSTOM_USER_AGENT, \
+    CONF_OPT_CUSTOM_USER_AGENT, format_host_port, split_host_port, \
     MEROSS_LOCAL_MDNS_SERVICE_TYPES, MEROSS_LOCAL_MDNS_MQTT_SERVICE_TYPE, \
     MEROSS_LOCAL_MDNS_API_SERVICE_TYPE, CONF_OVERRIDE_MQTT_ENDPOINT, \
     effective_user_agent
@@ -118,10 +118,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     def _split_host_port(address: Optional[str]):
-        if not address:
-            return "", ""
-        host, _, port = address.partition(":")
-        return host, port
+        return split_host_port(address)
 
     def _reauth_entry(self) -> ConfigEntry:
         entry_id = self.context.get("entry_id")
@@ -402,7 +399,7 @@ class MerossFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 requires_mfa=requires_mfa)
 
         endpoint = f"https://{self._url_host(host)}:{https_port}"
-        mqtt = f"{host}:{mqtt_port}"
+        mqtt = format_host_port(host, mqtt_port)
         self._http_api = endpoint
         self._mqtt_boker = mqtt
         self._username = username

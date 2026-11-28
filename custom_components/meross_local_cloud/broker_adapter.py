@@ -517,10 +517,13 @@ class BrokerProfileAdapter:
             while True:
                 await asyncio.sleep(CATALOG_CHECK_INTERVAL)
                 try:
+                    http_ssl = (
+                        getattr(self._coordinator, "http_ssl_context", None)
+                        or self._coordinator.mqtt_ssl_context)
                     http = BrokerHttpClient(
                         self._coordinator.http_api_endpoint,
                         lambda: self._coordinator.credentials.token,
-                        self._coordinator.mqtt_ssl_context,
+                        http_ssl,
                         user_agent=getattr(
                             self._coordinator, "user_agent",
                             "MerossHA/unknown"))
@@ -743,10 +746,13 @@ class BrokerProfileAdapter:
 
     async def _async_fetch_profiles(self) -> None:
         endpoint = self._coordinator.http_api_endpoint
+        http_ssl = (
+            getattr(self._coordinator, "http_ssl_context", None)
+            or self._coordinator.mqtt_ssl_context)
         http = BrokerHttpClient(
             endpoint,
             lambda: self._coordinator.credentials.token,
-            self._coordinator.mqtt_ssl_context,
+            http_ssl,
             user_agent=getattr(
                 self._coordinator, "user_agent", "MerossHA/unknown"))
         self._http = http

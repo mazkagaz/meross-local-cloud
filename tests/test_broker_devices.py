@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from custom_components.meross_local_cloud.broker_http import BrokerHttpError
 from custom_components.meross_local_cloud.broker_devices import (
     DEVICE_LIST_PATH,
     BrokerDeviceInfo,
@@ -57,3 +58,10 @@ async def test_async_list_devices_uses_the_signed_client():
 
     assert devices[0].uuid == "u1"
     http.async_post.assert_awaited_once_with(DEVICE_LIST_PATH)
+
+
+async def test_async_list_devices_rejects_a_malformed_payload():
+    http = AsyncMock()
+    http.async_post.return_value = {"unexpected": "object"}
+    with pytest.raises(BrokerHttpError):
+        await async_list_devices(http)

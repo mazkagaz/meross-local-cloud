@@ -7,6 +7,7 @@ from homeassistant import data_entry_flow
 from homeassistant.components.repairs import RepairsFlow
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 
 from .common import (
@@ -21,10 +22,25 @@ async def async_remove_device(hass: HomeAssistant, device_uuid: str) -> None:
     """Drop the device from the manager, the registries and the tracker."""
     domain_data = hass.data.get(DOMAIN, {})
     registry = dr.async_get(hass)
-    devices = registry.async_get_devices(
-        identifiers={(DOMAIN, device_internal_id(device_uuid))})
-    if devices:
-        registry.async_remove_device(devices[0].id)
+    prefix = device_internal_id(device_uuid)
+    devices = []
+    for config_entry in hass.config_entries.async_entries(DOMAIN):
+        devices.extend(
+            device
+            for device in dr.async_entries_for_config_entry(
+                registry, config_entry.entry_id)
+            if any(
+                domain == DOMAIN and (
+                    identifier == prefix
+                    or identifier.startswith(prefix + "#SUB:"))
+                for domain, identifier in device.identifiers)
+        )
+    entities = er.async_get(hass)
+    for device in devices:
+        for entity in er.async_entries_for_device(
+                entities, device.id, include_disabled_entities=True):
+            entities.async_remove(entity.entity_id)
+        registry.async_remove_device(device.id)
 
     tracker = domain_data.get(MISSING_TRACKER)
     if tracker is not None:
