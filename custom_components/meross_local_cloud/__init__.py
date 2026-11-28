@@ -3,7 +3,7 @@ import asyncio
 import logging
 import ssl
 from dataclasses import replace
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, List, Dict, Optional
 from urllib.parse import urlparse
 
@@ -42,6 +42,7 @@ from .broker_http import (
     BrokerTokenError,
 )
 from .missing_devices import MissingDeviceTracker
+from .repairs import async_create_ca_change_issue
 from .log_redaction import install as install_log_redaction
 from .version import MEROSS_INTEGRATION_VERSION
 from .tls import (
@@ -267,6 +268,7 @@ async def _async_prepare_tls(
     stored_fp = config_entry.data.get(CONF_CA_FINGERPRINT)
     ca_pem = stored_pem
     ca_fp = stored_fp
+    ca_change = None
     fetched = await async_fetch_ca(endpoint)
     if fetched:
         cert = parse_certificate(fetched)
@@ -274,8 +276,18 @@ async def _async_prepare_tls(
             ca_fp = fingerprint(cert)
             if stored_fp and ca_fp != stored_fp:
                 _LOGGER.warning(
-                    "Broker TLS CA changed (SHA-256 %s); trusting the new CA.",
+                    "Broker TLS CA changed (SHA-256 %s); trusting the new CA "
+                    "and creating a non-blocking repair notice.",
                     ca_fp)
+                ca_change = {
+                    "old_fingerprint": stored_fp,
+                    "new_fingerprint": ca_fp,
+                    "subject": cert.subject.rfc4514_string(),
+                    "issuer": cert.issuer.rfc4514_string(),
+                    "valid_until": cert.not_valid_after_utc.isoformat(),
+                    "endpoint": endpoint,
+                    "detected_at": datetime.now(timezone.utc).isoformat(),
+                }
             ca_pem = fetched
         else:
             raise ConfigEntryNotReady(
@@ -317,7 +329,7 @@ async def _async_prepare_tls(
     http_context = await hass.async_add_executor_job(
         build_client_ssl_context, ca_pem, http_check)
     return (ca_pem, ca_fp, http_context, http_check, mqtt_check,
-            server_info)
+            server_info, ca_change)
 
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
@@ -367,7 +379,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         mqtt_override_address = (mqtt_host, mqtt_port)
 
     (ca_pem, ca_fingerprint, http_ssl_context, http_check_hostname,
-     ca_check_hostname, server_tls) = await _async_prepare_tls(
+     ca_check_hostname, server_tls, ca_change) = await _async_prepare_tls(
         hass, config_entry, http_api_endpoint, mqtt_host)
     _LOGGER.info(
         "Meross Local Cloud %s: broker CA pinned (SHA-256 %s), "
@@ -401,6 +413,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
         "http_check_hostname": http_check_hostname,
         "mqtt_check_hostname": ca_check_hostname,
         "server": server_tls,
+        "ca_change": ca_change,
     }
 
     # Retrieve options we need
@@ -475,6 +488,13 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry):
             config_entry.add_update_listener(update_listener))
 
         adapter.start_background(hass)
+
+        if ca_change:
+            try:
+                async_create_ca_change_issue(hass, config_entry, ca_change)
+            except Exception:  # noqa: BLE001 - a warning must not block setup
+                _LOGGER.exception(
+                    "Unable to publish the broker CA change notice")
 
         return True
 

@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import AsyncMock
 from homeassistant.components import repairs as repairs_component
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
@@ -62,3 +63,127 @@ async def test_confirm_removes_device_and_issue(hass):
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert _device_for(registry, (DOMAIN, "#BASE:u1")) is None
     assert ir.async_get(hass).async_get_issue(DOMAIN, issue_id("u1")) is None
+
+
+CA_CHANGE = {
+    "old_fingerprint": "AA:BB",
+    "new_fingerprint": "CC:DD",
+    "subject": "CN=New CA",
+    "issuer": "CN=New CA",
+    "valid_until": "2036-01-01T00:00:00+00:00",
+    "endpoint": "https://10.0.0.5:2004",
+    "detected_at": "2026-11-28T10:00:00+00:00",
+}
+
+
+async def _repairs_flow(hass):
+    assert await async_setup_component(hass, repairs_component.DOMAIN, {})
+
+    class Platforms(dict):
+        async def async_get_platform(self, domain):
+            return repairs
+
+    hass.data[repairs_component.DOMAIN]["platforms"] = Platforms({DOMAIN: repairs})
+    return hass.data[repairs_component.DOMAIN]["flow_manager"]
+
+
+async def test_ca_change_issue_is_created_once(hass):
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.add_to_hass(hass)
+
+    first = repairs.async_create_ca_change_issue(hass, entry, CA_CHANGE)
+    second = repairs.async_create_ca_change_issue(hass, entry, CA_CHANGE)
+
+    assert first == second
+    assert ir.async_get(hass).async_get_issue(DOMAIN, first) is not None
+
+
+async def test_ca_change_verified_keeps_the_entry_and_clears_the_issue(hass):
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.add_to_hass(hass)
+    issue = repairs.async_create_ca_change_issue(hass, entry, CA_CHANGE)
+    flow_manager = await _repairs_flow(hass)
+
+    result = await flow_manager.async_init(
+        DOMAIN, context={"source": "user"}, data={"issue_id": issue})
+    assert result["type"] is FlowResultType.MENU
+    assert result["step_id"] == "init"
+    assert result["menu_options"] == ["verified", "not_recognized", "later"]
+    assert result["description_placeholders"]["old_fingerprint"] == "AA:BB"
+    assert result["description_placeholders"]["new_fingerprint"] == "CC:DD"
+
+    result = await flow_manager.async_configure(
+        result["flow_id"], user_input={"next_step_id": "verified"})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert ir.async_get(hass).async_get_issue(DOMAIN, issue) is None
+    assert hass.config_entries.async_get_entry(entry.entry_id) is entry
+
+
+async def test_ca_change_not_recognized_does_not_disable_immediately(hass, monkeypatch):
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.add_to_hass(hass)
+    issue = repairs.async_create_ca_change_issue(hass, entry, CA_CHANGE)
+    flow_manager = await _repairs_flow(hass)
+    disable = AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        hass.config_entries, "async_set_disabled_by", disable)
+
+    result = await flow_manager.async_init(
+        DOMAIN, context={"source": "user"}, data={"issue_id": issue})
+    result = await flow_manager.async_configure(
+        result["flow_id"], user_input={"next_step_id": "not_recognized"})
+    assert result["type"] is FlowResultType.MENU
+    assert result["step_id"] == "not_recognized"
+    assert result["menu_options"] == ["disable", "back"]
+    disable.assert_not_awaited()
+
+    result = await flow_manager.async_configure(
+        result["flow_id"], user_input={"next_step_id": "back"})
+    assert result["type"] is FlowResultType.MENU
+    assert result["step_id"] == "init"
+    assert ir.async_get(hass).async_get_issue(DOMAIN, issue) is not None
+    disable.assert_not_awaited()
+
+
+async def test_ca_change_disable_asks_ha_to_disable_the_entry(hass, monkeypatch):
+    from homeassistant.config_entries import ConfigEntryDisabler
+
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.add_to_hass(hass)
+    issue = repairs.async_create_ca_change_issue(hass, entry, CA_CHANGE)
+    flow_manager = await _repairs_flow(hass)
+    disable = AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        hass.config_entries, "async_set_disabled_by", disable)
+
+    result = await flow_manager.async_init(
+        DOMAIN, context={"source": "user"}, data={"issue_id": issue})
+    result = await flow_manager.async_configure(
+        result["flow_id"], user_input={"next_step_id": "not_recognized"})
+    result = await flow_manager.async_configure(
+        result["flow_id"], user_input={"next_step_id": "disable"})
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    disable.assert_awaited_once_with(
+        entry.entry_id, ConfigEntryDisabler.USER)
+    assert ir.async_get(hass).async_get_issue(DOMAIN, issue) is None
+
+
+async def test_ca_change_can_be_deferred_without_disabling(hass, monkeypatch):
+    entry = MockConfigEntry(domain=DOMAIN, data={})
+    entry.add_to_hass(hass)
+    issue = repairs.async_create_ca_change_issue(hass, entry, CA_CHANGE)
+    flow_manager = await _repairs_flow(hass)
+    disable = AsyncMock(return_value=True)
+    monkeypatch.setattr(
+        hass.config_entries, "async_set_disabled_by", disable)
+
+    result = await flow_manager.async_init(
+        DOMAIN, context={"source": "user"}, data={"issue_id": issue})
+    result = await flow_manager.async_configure(
+        result["flow_id"], user_input={"next_step_id": "later"})
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "remind_later"
+    assert ir.async_get(hass).async_get_issue(DOMAIN, issue) is not None
+    disable.assert_not_awaited()
