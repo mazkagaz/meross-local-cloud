@@ -46,6 +46,22 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r tests/requirements_test.txt
 
+      - name: Check test dependency ownership
+        run: |
+          if grep -Eq '^pytest(-cov)?==' tests/requirements_test.txt; then
+            echo "pytest must be owned by pytest-homeassistant-custom-component" >&2
+            exit 1
+          fi
+          python -m pip check
+          python - <<'PY'
+          import importlib.metadata as metadata
+          for name in ("pytest", "pytest-cov", "pytest-homeassistant-custom-component"):
+              try:
+                  print(f"{name}: {metadata.version(name)}")
+              except metadata.PackageNotFoundError:
+                  raise SystemExit(f"missing test dependency: {name}")
+          PY
+
       - name: Prepare test reports
         run: mkdir -p reports
 

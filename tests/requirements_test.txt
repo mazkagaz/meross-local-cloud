@@ -1,5 +1,6 @@
-pytest==9.0.3
-pytest-cov==7.1.0
+# pytest and pytest-cov are pinned transitively by
+# pytest-homeassistant-custom-component. Do not add direct pins here: the
+# harness owns the compatible versions.
 pytest-homeassistant-custom-component==0.13.375
 paho-mqtt==2.1.0
 jsonschema==4.26.0
