@@ -28,8 +28,7 @@ Dernière revue : **2026-11-27**
 ## Automatisations
 
 - `Dependabot` : dépendances Python de test et GitHub Actions, PR groupées.
-- `compatibility.yaml` : dernière HA stable + Python exigé.
-- `security.yaml` : `pip-audit` sur la dépendance runtime `paho-mqtt`.
+- `maintenance.yaml` : compatibilité avec la dernière HA supportée et audit `pip-audit` de la dépendance runtime.
 - `docs/operations/RELEASING.md` : procédure de release.
 
 ## Checklist de release
