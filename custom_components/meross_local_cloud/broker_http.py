@@ -144,7 +144,12 @@ class BrokerHttpClient:
                     raise BrokerHttpError(
                         f"HTTP {response.status} on {path}",
                         status=response.status)
-                body = await response.json()
+                try:
+                    body = await response.json()
+                except (aiohttp.ContentTypeError, ValueError) as err:
+                    raise BrokerHttpError(
+                        f"Malformed JSON response on {path}",
+                        status=response.status) from err
         status = body.get("apiStatus") if isinstance(body, dict) else None
         if status == 0:
             return body.get("data")

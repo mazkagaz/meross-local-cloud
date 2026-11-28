@@ -1,5 +1,4 @@
 import logging
-import re
 from typing import List
 
 from . import version
@@ -45,8 +44,6 @@ SHUTTER_CONFIG_CACHE = "shutter_config_cache"
 
 HTTP_UPDATE_INTERVAL = 120
 
-HTTP_API_RE = re.compile("(http://|https://)?([^:]+)(:([0-9]+))?")
-
 DEFAULT_USER_AGENT = f"MerossHA/{version.MEROSS_INTEGRATION_VERSION}"
 
 
@@ -66,6 +63,30 @@ def calculate_id(platform: str, uuid: str, channel: int, supplementary_classifie
             extrastr = ":" + extrastr
         return base + extrastr
     return base
+
+
+def format_host_port(host: str, port) -> str:
+    """Format a host/port pair, bracketing IPv6 literals."""
+    value = str(host).strip()
+    if ":" in value and not value.startswith("["):
+        value = f"[{value}]"
+    return f"{value}:{port}"
+
+
+def split_host_port(address: str = None):
+    """Split host:port or [IPv6]:port without losing the IPv6 literal."""
+    if not address:
+        return "", ""
+    value = str(address).strip()
+    if value.startswith("["):
+        end = value.find("]")
+        if end == -1:
+            return value, ""
+        return value[1:end], value[end + 1:].lstrip(":")
+    host, separator, port = value.rpartition(":")
+    if not separator:
+        return value, ""
+    return host, port
 
 
 def device_internal_id(device_uuid: str,

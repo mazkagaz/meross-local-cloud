@@ -1,7 +1,8 @@
 {
   "config": {
     "abort": {
-      "single_instance_allowed": "È consentita una sola configurazione di Meross Local Cloud."
+      "single_instance_allowed": "È consentita una sola configurazione di Meross Local Cloud.",
+      "reauth_successful": "Riautenticazione riuscita."
     },
     "error": {
       "invalid_credentials": "Nome utente locale o password non validi.",
@@ -71,15 +72,18 @@
   "issues": {
     "remove_missing_device": {
       "title": "Dispositivo Meross non più associato",
-      "description": "**{name}** (`{uuid}`) non è più segnalato dal broker da oltre 48 ore. Se è stato dissociato o eliminato di proposito, correggi questo problema per rimuovere il dispositivo e le sue entità da Home Assistant."
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Rimuovere il dispositivo?",
+            "description": "**{name}** (`{uuid}`) non è più segnalato dal broker da oltre 48 ore. Se è stato dissociato o eliminato di proposito, correggi questo problema per rimuovere il dispositivo e le sue entità da Home Assistant.\n\nEliminare **{name}** e le sue entità Home Assistant? Una nuova associazione le ricreerà con la stessa identità."
+          }
+        }
+      }
     },
     "unsupported_device": {
       "title": "Nessun profilo per {name}",
       "description": "Il broker segnala **{name}** (`{uuid}`, tipo `{type}`), ma nessun profilo del catalogo corrisponde. Le sue entità non vengono create. Aggiungi o aggiorna il profilo nel catalogo del broker; l'integrazione si ricarica automaticamente quando cambia la revisione."
-    },
-    "confirm": {
-      "title": "Rimuovere il dispositivo?",
-      "description": "Eliminare **{name}** e le sue entità Home Assistant? Una nuova associazione le ricreerà con la stessa identità."
     }
   }
 }
