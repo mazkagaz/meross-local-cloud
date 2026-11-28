@@ -54,6 +54,8 @@ from .common import (
     SHUTTER_CONFIG_CACHE,
     calculate_id,
     device_internal_id,
+    device_via_info,
+    get_device_by_identifier,
 )
 from .profiles.paths import find_tokens, substitute
 
@@ -133,7 +135,7 @@ def _parent_device_id(hass, adapter, device_uuid: str,
     entry_id = getattr(adapter, "_entry_id", None)
     if not entry_id:
         return None
-    parent = registry.async_get_device_by_identifier(identifier, entry_id)
+    parent = get_device_by_identifier(registry, identifier, entry_id)
     if parent is not None:
         return parent.id
 
@@ -189,7 +191,8 @@ class ProfileBaseEntity(Entity):
             parent_id = _parent_device_id(
                 self.hass, self._adapter, self._device_uuid, descriptor)
             if parent_id is not None:
-                info["via_device_id"] = parent_id
+                info.update(device_via_info(
+                    dr.async_get(self.hass), parent_id))
         return info
 
     async def async_added_to_hass(self) -> None:
@@ -853,7 +856,8 @@ class ProfileUpdateEntity(UpdateEntity):
             parent_id = _parent_device_id(
                 self.hass, self._adapter, self._device_uuid, descriptor)
             if parent_id is not None:
-                info["via_device_id"] = parent_id
+                info.update(device_via_info(
+                    dr.async_get(self.hass), parent_id))
         return info
 
     async def async_added_to_hass(self) -> None:

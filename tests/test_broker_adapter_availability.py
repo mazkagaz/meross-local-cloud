@@ -11,6 +11,12 @@ from custom_components.meross_local_cloud.common import (
 )
 
 
+def _parent_link(registry, parent):
+    if hasattr(registry, "async_get_device_by_identifier"):
+        return {"via_device_id": parent.id}
+    return {"via_device": next(iter(parent.identifiers))}
+
+
 def adapter(state="connected"):
     instance = BrokerProfileAdapter.__new__(BrokerProfileAdapter)
     instance.state = state
@@ -87,7 +93,7 @@ async def test_unbind_removes_device_subdevice_and_entities(hass):
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, "#BASE:u1#SUB:s1")},
         name="sonde",
-        via_device_id=top.id)
+        **_parent_link(devices, top))
     other = devices.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, "#BASE:u10")},
